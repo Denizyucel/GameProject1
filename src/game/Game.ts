@@ -77,6 +77,8 @@ const CELL_SIZE = 1;
 
 // true iken engelli kareler kırmızı, bulunan yol yeşil çizgi olarak görünür
 const SHOW_DEBUG = true;
+// true iken tıklayınca bulunan yol zeminde yeşil çizgi olarak görünür (SHOW_DEBUG'dan ayrı)
+const SHOW_PATH_LINE = false;
 // Debug karolarının ortak şekli (yere yatırılmış kare) ve malzemesi
 const DEBUG_TILE_GEOMETRY = new THREE.PlaneGeometry(CELL_SIZE * 0.9, CELL_SIZE * 0.9).rotateX(-Math.PI / 2);
 const DEBUG_TILE_MATERIAL = new THREE.MeshBasicMaterial({ color: 0xff4d6d, transparent: true, opacity: 0.35 });
@@ -368,7 +370,7 @@ export class Game {
       step = 0;
     }
 
-    this.pathLine.visible = this.path.length > 0; // varınca yol çizgisini gizle
+    this.pathLine.visible = SHOW_PATH_LINE && this.path.length > 0; // varınca yol çizgisini gizle
   }
 
   private updateAttack(delta: number, elapsed: number) {
@@ -592,7 +594,7 @@ export class Game {
     points.push(new THREE.Vector3(end.x, y, end.z));
 
     this.path = points;
-    if (SHOW_DEBUG) this.showPath();
+    if (SHOW_PATH_LINE) this.showPath();
   }
 
   private addLights() {
@@ -668,12 +670,12 @@ export class Game {
     this.rebuildGrid(); // bütün taşları ızgaraya engel olarak işle
   }
 
-  // Debug görünümünü sahneye ekle: engelli kareler ve yol çizgisi
+  // Debug görünümünü sahneye ekle: engelli kareler ve (açıksa) yol çizgisi
   private addDebugView() {
     this.scene.add(this.debugTiles);
     this.refreshDebugTiles();
     this.pathLine.visible = false;
-    this.scene.add(this.pathLine);
+    if (SHOW_PATH_LINE) this.scene.add(this.pathLine);
   }
 
   // Debug: engelli kareleri yarı saydam kırmızı karolarla göster (eskileri silip baştan çizer)
