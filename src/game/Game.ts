@@ -3,6 +3,9 @@ import * as THREE from 'three';
 // Kameranın dikeyde kaç dünya birimi gördüğü. Küçültürsen yakınlaşır.
 const VIEW_HEIGHT = 18;
 
+// Karakterin yürüme hızı: saniyede kaç dünya birimi (≈ metre)
+const MOVE_SPEED = 4;
+
 export class Game {
   private readonly container: HTMLElement;
   private readonly renderer: THREE.WebGLRenderer;
@@ -16,6 +19,13 @@ export class Game {
   private readonly raycaster = new THREE.Raycaster();
   // Farenin ekrandaki konumu, -1..1 aralığında (sol alt -1,-1; sağ üst 1,1)
   private readonly pointer = new THREE.Vector2();
+
+  // Yürüme hedefi; null ise karakter duruyor
+  private moveTarget: THREE.Vector3 | null = null;
+  // Her karede yeni vektör yaratmamak için tekrar kullanılan geçici vektör
+  private readonly toTarget = new THREE.Vector3();
+  // Bir önceki karenin zamanı (saniye); delta time bundan hesaplanır
+  private lastTime: number | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -51,7 +61,13 @@ export class Game {
   start() {
     // Her ekran yenilemesinde (genelde saniyede 60 kez) çalışır
     this.renderer.setAnimationLoop((time) => {
-      this.update(time / 1000);
+      const elapsed = time / 1000; // milisaniyeyi saniyeye çevir
+      // Delta time: önceki kareden bu yana geçen süre. Sekme arka plandayken
+      // büyük bir boşluk oluşursa karakter ışınlanmasın diye 0.1 sn ile sınırlı.
+      const delta = this.lastTime === null ? 0 : Math.min(elapsed - this.lastTime, 0.1);
+      this.lastTime = elapsed;
+
+      this.update(elapsed, delta);
       this.renderer.render(this.scene, this.camera);
     });
   }
@@ -65,10 +81,34 @@ export class Game {
     this.renderer.domElement.remove();
   }
 
-  private update(elapsed: number) {
+  private update(elapsed: number, delta: number) {
+    this.updateMovement(delta);
+
     // Nefes alma: döngünün çalıştığını gösteren küçük hareket
     const breath = 1 + Math.sin(elapsed * 2) * 0.03;
     this.player.scale.set(1, breath, 1);
+  }
+
+  private updateMovement(delta: number) {
+    if (!this.moveTarget) return; // hedef yok, duruyoruz
+
+    // Karakterden hedefe giden vektör: uzunluğu kalan mesafe, yönü gidilecek yön
+    this.toTarget.subVectors(this.moveTarget, this.player.position);
+    const distance = this.toTarget.length();
+    const step = MOVE_SPEED * delta; // bu karede atılacak adımın boyu
+
+    if (distance <= step) {
+      // Hedefe bir adımdan az kaldı: tam üstüne koy ve dur
+      this.player.position.copy(this.moveTarget);
+      this.moveTarget = null;
+      return;
+    }
+
+    // Yüzünü yürüdüğü yöne çevir. atan2, x ve z farkından açıyı (radyan) bulur.
+    this.player.rotation.y = Math.atan2(this.toTarget.x, this.toTarget.z);
+
+    // Yönü 1 birim uzunluğa indir (normalize), sonra adım boyu kadar ilerle
+    this.player.position.addScaledVector(this.toTarget.normalize(), step);
   }
 
   // Ok fonksiyonu (=>) olarak yazıldı ki içindeki "this" her zaman Game'i göstersin
@@ -85,9 +125,10 @@ export class Game {
     const hit = this.raycaster.intersectObject(this.ground)[0];
     if (!hit) return; // zeminin dışına tıklandı
 
-    // 3. Çarptığı nokta: dünyada x (sağ-sol) ve z (ileri-geri); zemin düz olduğu için y hep 0
+    // 3. Çarptığı noktayı yürüme hedefi yap. Yükseklik (y) karakterinkiyle aynı
+    //    kalsın ki kapsül yere gömülmeye çalışmasın, sadece x ve z'de yürüsün.
     const { x, z } = hit.point;
-    console.log(`Zemine tıklandı: x=${x.toFixed(2)}, z=${z.toFixed(2)}`);
+    this.moveTarget = new THREE.Vector3(x, this.player.position.y, z);
   };
 
   private addLights() {
@@ -148,6 +189,17 @@ export class Game {
     );
     body.position.y = 1; // kapsül 2 birim boyunda; yarısı kadar yukarı ki zemine bassın
     body.castShadow = true;
+
+    // Yüz işareti: kapsül yuvarlak olduğu için dönüşü görünmez; bu küçük
+    // parça karakterin baktığı yönü (yerel +z) gösterir. Kapsülün "çocuğu"
+    // olduğu için kapsülle birlikte hareket eder ve döner.
+    const face = new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 0.12, 0.2),
+      new THREE.MeshStandardMaterial({ color: 0xb6f0d0, emissive: 0x3a8f6a }),
+    );
+    face.position.set(0, 0.45, 0.38);
+    body.add(face);
+
     this.scene.add(body);
     return body;
   }
