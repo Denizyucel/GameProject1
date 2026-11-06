@@ -338,7 +338,7 @@ export class Game {
     this.updateCast(delta);
     this.updateCorpses(delta);
     this.updateEnemies(elapsed, delta);
-    for (const minion of this.minions) minion.update(delta, this.player.position, this.grid);
+    for (const minion of this.minions) minion.update(delta, elapsed, this.player.position, this.grid, this.enemies);
     this.updateAnimation(delta);
     this.updateZoom(delta);
     this.updateCamera(delta); // karakter yürüdükten sonra, ki kamera güncel konumu izlesin
@@ -1068,6 +1068,7 @@ export class Game {
     loadSkeletonModel({
       idle: idleClip,
       walk: walkClip,
+      attack: attackClip,
       hipsHeight,
       walkClipSpeed: WALK_CLIP_SPEED,
     }).catch((error) => console.error('İskelet modeli yüklenemedi:', error));

@@ -21,6 +21,7 @@ export type GlowMaterial = THREE.MeshStandardMaterial | THREE.MeshPhongMaterial;
 export interface SkeletonAnimations {
   idle: THREE.AnimationClip;
   walk: THREE.AnimationClip;
+  attack: THREE.AnimationClip;
   // Yürüme animasyonu normal hızda oynarken iskeletin saniyede kaç metre yürüdüğü.
   // Minion bundan hızlı yürürse animasyon da o oranda hızlandırılır, ayaklar kaymasın.
   walkSpeed: number;
@@ -45,6 +46,7 @@ export interface Skeleton {
 export interface SourceAnimations {
   idle: THREE.AnimationClip;
   walk: THREE.AnimationClip;
+  attack: THREE.AnimationClip;
   hipsHeight: number; // karakterin kalça kemiğinin duruştaki yüksekliği (Mixamo birimi, cm)
   walkClipSpeed: number; // yürüme animasyonunda ayağın geriye kayma hızı (cm/sn)
 }
@@ -83,6 +85,7 @@ export async function loadSkeletonModel(source: SourceAnimations) {
   templateAnimations = {
     idle: adaptClip(source.idle, model, ratio),
     walk: adaptClip(source.walk, model, ratio),
+    attack: adaptClip(source.attack, model, ratio),
     walkSpeed: source.walkClipSpeed * ratio * scale,
   };
   template = model;

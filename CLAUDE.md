@@ -13,7 +13,7 @@ Retina ekranlar hedeflenir.
 - Vite + TypeScript (strict)
 - Three.js: render (sahne, kamera, ışık, modeller)
 - React: yalnızca HUD ve menüler
-- Zustand: oyun ile HUD arasındaki durum (Faz 5'te eklenecek)
+- Zustand: oyun ile HUD arasındaki durum (src/state/gameStore.ts; oyun zustand/vanilla ile yazar, HUD useStore ile okur)
 - React Three Fiber kullanılmaz.
 
 ## Mimari kurallar
@@ -38,11 +38,16 @@ SHOW_DEBUG ile engelli kareler görünür; şu an sabit engel yok, düşmanlar h
 Düşmanlar: 5 vampir (src/game/Enemy.ts davranış, src/game/Vampire.ts model; Mixamo
 "Vampire A Lusth.fbx" + Walking.fbx). Evlerinin çevresinde (5 m) rastgele dolaşıyorlar; beklerken
 karakterin idle animasyonu, yürürken Walking (root motion kaldırılıp hızına göre ayarlı).
-Model yoksa yedek olarak hareketsiz mezar taşı. Henüz karşılık vermiyorlar.
+Model yoksa yedek olarak hareketsiz, zararsız mezar taşı.
+Vampirler karşılık veriyor: karakteri 5 m'den fark edip (vurulunca 6 sn kızgın, 12 m'ye kadar)
+kovalıyor, karakterin attack animasyonuyla 6 hasar vuruyor; vururken darbe almak vuruşu kesmiyor.
+Can puanla: vampir 30, karakterin vuruşu 10, minionunki 5. Karakterin 100 canı var; HUD'da can
+barı ve iskelet sayısı. Can bitince geriye devriliyor, "Öldün" yazısı, 4 sn sonra (0, 0)'da tam
+canla doğuyor; vampirler evlerine dönüyor.
 Tıklamayı görünmez bir kutu (hitbox) yakalıyor. Vampire bir kez tıklayınca karakter onu kovalıyor
 (yol 0.3 sn'de bir yenilenir), menzile girince vuruyor, ölene kadar vurmaya devam ediyor; zemine
 tıklamak ya da WASD saldırıyı bırakır. Vurulan vampir sarsılıp kırmızı parlıyor, saldırana dönüp
-1.6 sn duruyor. 3 vuruşta geriye devrilip toprağa gömülüyor.
+0.4 sn şaşırıyor. Canı bitince geriye devrilip toprağa gömülüyor.
 Karakter Mixamo modeli (Nightshade): idle, walk, attack animasyonları AnimationMixer ile;
 silah sağ el kemiğine bağlı: Meshy kılıcı (sword.glb), yoksa çizilmiş tırpan. Modeller public/models içinde, Git dışında (lisans).
 Kontroller: tıklayarak (A*) ya da WASD/ok tuşlarıyla (ekrana göre, çarpışmalı) yürüme;
@@ -52,9 +57,12 @@ yığını (8 m içinde) diriltir. Karakter Magic Spell Pack'ten rastgele bir b�
 yığın yeşil parlar, içinden iskelet minion topraktan çıkar, yığın toprağa gömülür; minion karakteri A* ile takip eder
 (src/game/Skeleton.ts: Mixamo'da riglenmiş skeleton.fbx; flesh.glb yoksa ceset olarak T-pozunda yatar;
 model yoksa çizilmiş iskelet. src/game/Minion.ts: takip, kendi AnimationMixer'ı).
+Minionlar 6 m içindeki en yakın vampire koşup vuruyor (karakterden 10 m'den fazla uzaklaşmıyor),
+vampir ölünce takibe dönüyor. Minionların canı yok, vampirler onlara saldırmıyor.
+Yol bulma + yolda yürüme ortak: src/game/pathing.ts (planPath, followPath).
 Başka Mixamo modellerine karakterin animasyonları src/game/retarget.ts (adaptClip) ile uyarlanır:
 kalça konumu boy oranıyla ölçeklenir.
-Sıradaki: birlikte kararlaştırılacak (vampirler karşılık versin mi, minionlar saldırsın mı).
+Sıradaki: birlikte kararlaştırılacak.
 Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 
 ## Sonra
@@ -69,6 +77,9 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Minion sayısı sınırı ve mana; yakında ceset yoksa HUD'da uyarı
 - Vampire kendi animasyonları (vurulma, ölüm) ve can barı
 - Hareketli çarpışma: karakter, vampir ve minionlar birbirinin içinden geçmesin
+- Minionların canı olsun, vampirler minionlara da saldırsın
+- Can yenilenmesi (iksir ya da zamanla), mana ve diriltmenin mana maliyeti
+- Karakter için ölüm ve vurulma animasyonu (şimdi sadece devriliyor)
 - Walking.fbx'i Without Skin indir (15 MB → ~0.5 MB)
 - Diriltme büyüsü için ışık/parçacık efekti
 - Minionlar birbirinin ve karakterin içinden geçmesin
