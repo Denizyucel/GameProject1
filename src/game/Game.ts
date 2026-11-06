@@ -25,6 +25,9 @@ const CELL_SIZE = 1;
 
 // true iken engelli kareler kırmızı, bulunan yol yeşil çizgi olarak görünür
 const SHOW_DEBUG = true;
+// Debug karolarının ortak şekli (yere yatırılmış kare) ve malzemesi
+const DEBUG_TILE_GEOMETRY = new THREE.PlaneGeometry(CELL_SIZE * 0.9, CELL_SIZE * 0.9).rotateX(-Math.PI / 2);
+const DEBUG_TILE_MATERIAL = new THREE.MeshBasicMaterial({ color: 0xff4d6d, transparent: true, opacity: 0.35 });
 
 // Saldırı: karakter merkezi ile taş merkezi arasında en fazla bu mesafe varken vurabilir
 const ATTACK_RANGE = 2;
@@ -37,6 +40,10 @@ const WEAPON_WINDUP = -0.9;
 const WEAPON_STRIKE = 1.7;
 // Vurulan taşın sarsılıp parladığı süre (saniye)
 const HIT_FEEDBACK = 0.3;
+// Bir taşın canı: kaç vuruşta kırıldığı
+const GRAVE_HEALTH = 3;
+// Kırılan taşın toprağa gömülme süresi (saniye)
+const BREAK_DURATION = 0.5;
 
 // Sahnedeki bir mezar taşı ve vuruş tepkisi için gereken bilgiler
 interface Grave {
@@ -46,6 +53,8 @@ interface Grave {
   hitDirection: THREE.Vector3; // darbenin geldiği yön; taş o yöne sarsılır
   hitTime: number | null; // son darbenin zamanı (saniye)
   hits: number; // toplam kaç kez vuruldu
+  footprint: THREE.Box3; // zemindeki izi (kapsül payı dahil); ızgarada engel olarak kullanılır
+  breakTime: number | null; // kırılmaya başladığı zaman; null ise sağlam
 }
 
 export class Game {
@@ -82,6 +91,8 @@ export class Game {
     new THREE.BufferGeometry(),
     new THREE.LineBasicMaterial({ color: 0x9dffc8 }),
   );
+  // Debug: engelli kareleri gösteren kırmızı karolar. Izgara değişince yeniden çizilir.
+  private readonly debugTiles = new THREE.Group();
   // Her karede yeni vektör yaratmamak için tekrar kullanılan geçici vektör
   private readonly toTarget = new THREE.Vector3();
   // Bir önceki karenin zamanı (saniye); delta time bundan hesaplanır
@@ -230,18 +241,60 @@ export class Game {
   }
 
   private hitGrave(grave: Grave, elapsed: number) {
+    if (grave.breakTime !== null) return; // zaten kırılıyor
     grave.hits += 1;
     grave.hitTime = elapsed;
     // Darbe yönü: karakterden taşa. Taş bu yöne doğru sarsılacak.
     grave.hitDirection
       .set(grave.basePosition.x - this.player.position.x, 0, grave.basePosition.z - this.player.position.z)
       .normalize();
-    console.log(`Mezar taşına vuruldu (${grave.hits}. vuruş)`);
+    console.log(`Mezar taşına vuruldu (${grave.hits}/${GRAVE_HEALTH})`);
+
+    if (grave.hits >= GRAVE_HEALTH) {
+      grave.breakTime = elapsed;
+      this.rebuildGrid(); // engel hemen kalksın, karakter oradan geçebilsin
+      console.log('Mezar taşı kırıldı');
+    }
   }
 
-  // Vurulan taşları sars ve parlat; süre dolunca eski hallerine döndür
-  private updateGraves(elapsed: number) {
+  // Izgarayı sağlam taşlardan baştan kur. Sadece kırılan taşın karelerini boşaltmak
+  // yerine baştan kuruyoruz ki iki engel aynı kareyi paylaşsa bile doğru kalsın.
+  private rebuildGrid() {
+    this.grid.clear();
     for (const grave of this.graves) {
+      if (grave.breakTime !== null) continue;
+      const { min, max } = grave.footprint;
+      this.grid.blockRect(min.x, min.z, max.x, max.z);
+    }
+    if (SHOW_DEBUG) this.refreshDebugTiles();
+  }
+
+  // Vurulan taşları sars ve parlat; kırılanları toprağa göm ve sahneden sil
+  private updateGraves(elapsed: number) {
+    // Sondan başa doğru dönüyoruz ki silinen taş, sıradaki taşların yerini kaydırmasın
+    for (let i = this.graves.length - 1; i >= 0; i--) {
+      const grave = this.graves[i];
+
+      if (grave.breakTime !== null) {
+        const t = (elapsed - grave.breakTime) / BREAK_DURATION; // 0 → 1
+        if (t >= 1) {
+          // Gömülme bitti: sahneden ve listeden tamamen çıkar, malzemenin belleğini boşalt
+          this.scene.remove(grave.mesh);
+          grave.material.dispose();
+          this.graves.splice(i, 1);
+          continue;
+        }
+        const eased = t * t; // yavaş başlayıp hızlanan gömülme
+        grave.mesh.position.copy(grave.basePosition).addScaledVector(grave.hitDirection, eased * 0.3);
+        grave.mesh.position.y = grave.basePosition.y - eased * 1.3; // taş 1.2 boyunda: tamamen girsin
+        // Darbe yönüne doğru devril: yön vektörüne dik eksen etrafında döndür
+        grave.mesh.rotation.x = grave.hitDirection.z * eased * 0.9;
+        grave.mesh.rotation.z = -grave.hitDirection.x * eased * 0.9;
+        grave.mesh.scale.setScalar(1 - eased * 0.3);
+        grave.material.emissiveIntensity = 1 - t;
+        continue;
+      }
+
       if (grave.hitTime === null) continue;
 
       const t = (elapsed - grave.hitTime) / HIT_FEEDBACK; // 0 → 1 arası ilerleme
@@ -285,7 +338,8 @@ export class Game {
     this.raycaster.setFromCamera(this.pointer, this.camera);
 
     // 2a. Önce mezar taşlarına bak: birine tıklandıysa ona saldır
-    const graveHit = this.raycaster.intersectObjects(this.graves.map((g) => g.mesh), false)[0];
+    const standing = this.graves.filter((g) => g.breakTime === null); // kırılanlara tıklanmaz
+    const graveHit = this.raycaster.intersectObjects(standing.map((g) => g.mesh), false)[0];
     const grave = graveHit && this.graves.find((g) => g.mesh === graveHit.object);
     if (grave) {
       this.attack(grave);
@@ -407,6 +461,10 @@ export class Game {
       grave.castShadow = true;
       grave.receiveShadow = true;
       this.scene.add(grave);
+      // Taşın zemindeki izi (dönük haliyle), kapsül yarıçapı kadar büyütülmüş.
+      // Box3 = nesneyi saran kutu. Izgarada bu izin dokunduğu kareler engelli olur.
+      const footprint = new THREE.Box3().setFromObject(grave).expandByScalar(PLAYER_RADIUS);
+
       this.graves.push({
         mesh: grave,
         material,
@@ -414,33 +472,34 @@ export class Game {
         hitDirection: new THREE.Vector3(),
         hitTime: null,
         hits: 0,
+        footprint,
+        breakTime: null,
       });
-
-      // Taşın zemindeki izini (dönük haliyle) bul, kapsül yarıçapı kadar büyüt
-      // ve dokunduğu kareleri ızgarada engelli yap. Box3 = nesneyi saran kutu.
-      const footprint = new THREE.Box3().setFromObject(grave).expandByScalar(PLAYER_RADIUS);
-      this.grid.blockRect(footprint.min.x, footprint.min.z, footprint.max.x, footprint.max.z);
     }
+
+    this.rebuildGrid(); // bütün taşları ızgaraya engel olarak işle
   }
 
-  // Debug: engelli kareleri yarı saydam kırmızı karolarla göster
+  // Debug görünümünü sahneye ekle: engelli kareler ve yol çizgisi
   private addDebugView() {
-    const tile = new THREE.PlaneGeometry(CELL_SIZE * 0.9, CELL_SIZE * 0.9);
-    tile.rotateX(-Math.PI / 2); // yere yatır
-    const material = new THREE.MeshBasicMaterial({ color: 0xff4d6d, transparent: true, opacity: 0.35 });
+    this.scene.add(this.debugTiles);
+    this.refreshDebugTiles();
+    this.pathLine.visible = false;
+    this.scene.add(this.pathLine);
+  }
 
+  // Debug: engelli kareleri yarı saydam kırmızı karolarla göster (eskileri silip baştan çizer)
+  private refreshDebugTiles() {
+    this.debugTiles.clear(); // önceki karoları kaldır (geometri ve malzeme ortak, silinmiyor)
     for (let row = 0; row < this.grid.rows; row++) {
       for (let col = 0; col < this.grid.cols; col++) {
         if (this.grid.isWalkable(col, row)) continue;
         const center = this.grid.cellCenter({ col, row });
-        const mesh = new THREE.Mesh(tile, material);
+        const mesh = new THREE.Mesh(DEBUG_TILE_GEOMETRY, DEBUG_TILE_MATERIAL);
         mesh.position.set(center.x, 0.02, center.z); // ızgara çizgilerinin hemen üstü
-        this.scene.add(mesh);
+        this.debugTiles.add(mesh);
       }
     }
-
-    this.pathLine.visible = false;
-    this.scene.add(this.pathLine);
   }
 
   // Debug: bulunan yolu karakterin ayağından başlayan bir çizgiyle çiz

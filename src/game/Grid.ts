@@ -51,6 +51,11 @@ export class Grid {
     };
   }
 
+  /** Bütün kareleri boşalt (engeller baştan kurulacaksa) */
+  clear() {
+    this.blocked.fill(0);
+  }
+
   /** Dünyada verilen dikdörtgenin dokunduğu bütün kareleri engelli yap */
   blockRect(minX: number, minZ: number, maxX: number, maxZ: number) {
     const from = this.worldToCell(minX, minZ);

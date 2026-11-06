@@ -37,7 +37,8 @@ taşlarının etrafından dolaşıyor (src/game/Grid.ts, src/game/findPath.ts;
 SHOW_DEBUG ile engelli kareler ve yol görünür).
 Karakterin tırpanı var: taşa tıklayınca yanına yürüyüp vuruyor, taş sarsılıp
 parlıyor, vuruş sayısı tutuluyor.
-Sıradaki: taşların canı olsun, yeterince vurulunca kırılsın (ızgaradaki engel de kalksın).
+Taşların 3 vuruşluk canı var; kırılınca toprağa gömülüp siliniyor, ızgara yeniden kuruluyor.
+Sıradaki: birlikte kararlaştırılacak (ilk minion ya da ilk düşman).
 Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 
 ## Sonra
@@ -46,3 +47,4 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Fare basılı tutulunca sürekli yürüme
 - Harita kenarı: siyah boşluk yerine duvar/sis; gölge alanı karakteri takip etsin
 - A* açık listesini öncelik kuyruğuna çevir (harita büyüyünce)
+- Kırılan taştan saçılan parçalar, ekran sarsıntısı gibi vuruş hissi efektleri
