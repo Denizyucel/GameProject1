@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import type { Grid } from './Grid';
 import { findPath } from './findPath';
-import { createSkeleton, type Skeleton } from './Skeleton';
+import { createSkeleton, setGlow, type Skeleton } from './Skeleton';
 
 // Yürüme hızı (karakterden biraz hızlı, ki geride kalınca yetişebilsin)
 const MINION_SPEED = 3.4;
@@ -17,9 +17,13 @@ const REPATH_INTERVAL = 0.5;
 // Topraktan çıkma süresi (saniye) ve başlangıçta toprağın ne kadar altında olduğu
 const RISE_DURATION = 0.9;
 const RISE_DEPTH = 1.8;
-// Yürürken kol ve bacakların ne kadar sallandığı (radyan) ve ne hızlı
+// Yürürken kol ve bacakların ne kadar sallandığı (radyan) ve adım hızı
 const LIMB_SWING = 0.6;
 const STEP_RATE = 9;
+// Yürürken gövdenin her adımda ne kadar zıpladığı (metre) ve iki yana yalpaladığı (radyan).
+// Model tek parça olduğu için yürüme hissini bu ikisi veriyor.
+const STEP_BOB = 0.06;
+const STEP_SWAY = 0.1;
 
 export class Minion {
   readonly object: THREE.Group;
@@ -30,6 +34,7 @@ export class Minion {
   private riseTime: number | null = 0;
   // Yürüme döngüsünün açısı: kol ve bacak sallanması bundan hesaplanır
   private walkCycle = 0;
+  private swing = 0;
   // Karakterin çevresindeki kendi yeri (açı). Her minion farklı yerde dursun, üst üste binmesin.
   private readonly slotAngle: number;
   private readonly toTarget = new THREE.Vector3();
@@ -65,7 +70,7 @@ export class Minion {
     const t = Math.min(riseTime / RISE_DURATION, 1);
     const eased = 1 - (1 - t) ** 3; // hızlı başlayıp yavaşlayan çıkış
     this.object.position.y = -RISE_DEPTH * (1 - eased);
-    this.skeleton.material.emissiveIntensity = 1 - t;
+    setGlow(this.skeleton, 1 - t);
     this.riseTime = t >= 1 ? null : riseTime;
   }
 
@@ -114,22 +119,27 @@ export class Minion {
     return true;
   }
 
-  // Yürürken kol ve bacakları zıt yönlerde salla; dururken yavaşça düz pozisyona dön
+  // Yürürken adım at: gövde zıplar ve yalpalar, (çizilmiş iskelette) kol ve bacaklar sallanır.
+  // Dururken her şey yavaşça düz duruşa döner.
   private animateLimbs(delta: number, moving: boolean) {
-    const { leftArm, rightArm, leftLeg, rightLeg } = this.skeleton;
-    let swing = 0;
+    // swing: -1..1 arası adım salınımı. Dururken sıfıra doğru sönümlenir (lerp).
     if (moving) {
       this.walkCycle += delta * STEP_RATE;
-      swing = Math.sin(this.walkCycle) * LIMB_SWING;
+      this.swing = Math.sin(this.walkCycle);
     } else {
-      // Durunca salınımı sıfıra doğru sönümle (lerp)
-      const current = leftLeg.rotation.x;
-      swing = THREE.MathUtils.lerp(current, 0, 1 - Math.exp(-10 * delta));
+      this.swing = THREE.MathUtils.lerp(this.swing, 0, 1 - Math.exp(-10 * delta));
       this.walkCycle = 0;
     }
-    leftLeg.rotation.x = swing;
-    rightLeg.rotation.x = -swing;
-    leftArm.rotation.x = -swing * 0.8; // kollar bacakların tersine
-    rightArm.rotation.x = swing * 0.8;
+
+    const { body, limbs } = this.skeleton;
+    body.position.y = Math.abs(this.swing) * STEP_BOB; // her adımda bir kez yukarı
+    body.rotation.z = this.swing * STEP_SWAY; // adım atılan ayağın tarafına yatar
+
+    if (!limbs) return;
+    const angle = this.swing * LIMB_SWING;
+    limbs.leftLeg.rotation.x = angle;
+    limbs.rightLeg.rotation.x = -angle;
+    limbs.leftArm.rotation.x = -angle * 0.8; // kollar bacakların tersine
+    limbs.rightArm.rotation.x = angle * 0.8;
   }
 }

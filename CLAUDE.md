@@ -45,7 +45,9 @@ tekerlek/pinch ile karaktere doğru yumuşak zoom.
 Ölü diriltme: kırılan taş 1-2 ceset bırakır; 1 tuşu en yakın cesedi (8 m içinde) diriltir.
 Karakter Magic Spell Pack'ten rastgele bir büyü animasyonu oynar, ceset yeşil parlayıp
 iskelet minion olarak topraktan çıkar ve karakteri A* ile takip eder
-(src/game/Skeleton.ts: basit şekillerden iskelet, src/game/Minion.ts: takip).
+(src/game/Skeleton.ts: skeleton.glb, iskeletsiz (rig yok) T-poz model; kollar yüklenirken
+omuzdan aşağı indiriliyor; yoksa basit şekillerden çizilmiş iskelet. src/game/Minion.ts: takip,
+yürürken zıplama/yalpalama).
 Sıradaki: birlikte kararlaştırılacak (ilk düşman ya da minion'a gerçek model).
 Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 
@@ -56,7 +58,8 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Harita kenarı: siyah boşluk yerine duvar/sis; gölge alanı karakteri takip etsin
 - A* açık listesini öncelik kuyruğuna çevir (harita büyüyünce)
 - Kırılan taştan saçılan parçalar, ekran sarsıntısı gibi vuruş hissi efektleri
-- Minion için gerçek model (Mixamo'da iskelet/zombi karakteri) ve animasyonları
+- İskelet modelini Mixamo'da rig'le (otomatik kemik), gerçek yürüme/kalkma animasyonları
+- skeleton.glb'yi hafiflet (278 bin üçgen; çok minionda ağırlaşır)
 - Minion sayısı sınırı ve mana; yakında ceset yoksa HUD'da uyarı
 - Diriltme büyüsü için ışık/parçacık efekti
 - Minionlar birbirinin ve karakterin içinden geçmesin

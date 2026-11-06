@@ -5,7 +5,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Grid } from './Grid';
 import { findPath } from './findPath';
 import { Minion } from './Minion';
-import { createSkeleton, type Skeleton } from './Skeleton';
+import { createSkeleton, loadSkeletonModel, setGlow, type Skeleton } from './Skeleton';
 
 // Kameranın dikeyde kaç dünya birimi gördüğü. Küçültürsen yakınlaşır.
 const VIEW_HEIGHT = 18;
@@ -252,6 +252,7 @@ export class Game {
     this.player = this.createPlayer();
     this.loadCharacter().catch((error) => console.error('Karakter modeli yüklenemedi:', error));
     this.loadSword().catch((error) => console.error('Kılıç modeli yüklenemedi:', error));
+    loadSkeletonModel().catch((error) => console.error('İskelet modeli yüklenemedi:', error));
     if (SHOW_DEBUG) this.addDebugView();
 
     // Canvas'a tıklanınca dünyada nereye tıklandığını bul
@@ -588,14 +589,16 @@ export class Game {
       // "YXZ" sırası bu dönüşlerin hangi sırayla uygulanacağını söyler.
       root.rotation.order = 'YXZ';
       root.rotation.set(-Math.PI / 2, Math.random() * Math.PI * 2, 0);
-      root.position.set(x, 0.13, z); // kemikler toprağa gömülmesin diye biraz yukarıda
-      // Kollar ve bacaklar iki yana açık, gözler sönük: ölü
-      corpse.leftArm.rotation.z = 0.5;
-      corpse.rightArm.rotation.z = -0.5;
-      corpse.leftLeg.rotation.z = 0.2;
-      corpse.rightLeg.rotation.z = -0.2;
-      corpse.eyes.visible = false;
-      corpse.material.color.multiplyScalar(0.75); // biraz daha soluk
+      root.position.set(x, corpse.lieHeight, z); // kemikler toprağa gömülmesin diye biraz yukarıda
+      // Çizilmiş iskelette kollar ve bacaklar iki yana açık, gözler sönük: ölü
+      if (corpse.limbs) {
+        corpse.limbs.leftArm.rotation.z = 0.5;
+        corpse.limbs.rightArm.rotation.z = -0.5;
+        corpse.limbs.leftLeg.rotation.z = 0.2;
+        corpse.limbs.rightLeg.rotation.z = -0.2;
+      }
+      if (corpse.eyes) corpse.eyes.visible = false;
+      for (const material of corpse.materials) material.color.multiplyScalar(0.75); // biraz daha soluk
 
       this.scene.add(root);
       this.corpses.push(corpse);
@@ -653,7 +656,7 @@ export class Game {
     const progress = Math.min(this.castTime / this.castDuration, 1);
 
     if (this.castTarget) {
-      this.castTarget.material.emissiveIntensity = Math.min(progress / RAISE_MOMENT, 1);
+      setGlow(this.castTarget, Math.min(progress / RAISE_MOMENT, 1));
       if (progress >= RAISE_MOMENT) {
         this.raiseCorpse(this.castTarget);
         this.castTarget = null;
@@ -670,7 +673,7 @@ export class Game {
   private raiseCorpse(corpse: Skeleton) {
     this.corpses.splice(this.corpses.indexOf(corpse), 1);
     this.scene.remove(corpse.root);
-    corpse.material.dispose();
+    for (const material of corpse.materials) material.dispose();
 
     const { x, z } = corpse.root.position;
     const player = this.player.position;
