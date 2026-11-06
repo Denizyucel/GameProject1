@@ -6,6 +6,14 @@ const VIEW_HEIGHT = 18;
 // Karakterin yürüme hızı: saniyede kaç dünya birimi (≈ metre)
 const MOVE_SPEED = 4;
 
+// Kameranın karaktere göre konumu. Üç eksende eşit = izometrik açı.
+// Kamera hep bu kadar ötede durur; sadece kayar, hiç dönmez.
+const CAMERA_OFFSET = new THREE.Vector3(20, 20, 20);
+
+// Kameranın karaktere ne kadar sıkı yapıştığı. Büyütürsen daha hızlı yetişir,
+// küçültürsen daha yumuşak ve gecikmeli gelir.
+const CAMERA_FOLLOW = 5;
+
 export class Game {
   private readonly container: HTMLElement;
   private readonly renderer: THREE.WebGLRenderer;
@@ -26,6 +34,10 @@ export class Game {
   private readonly toTarget = new THREE.Vector3();
   // Bir önceki karenin zamanı (saniye); delta time bundan hesaplanır
   private lastTime: number | null = null;
+  // Kameranın baktığı zemin noktası; karakteri yumuşakça takip eder
+  private readonly cameraFocus = new THREE.Vector3();
+  // Kameranın bu karede ulaşmak istediği nokta: karakterin ayağının altı
+  private readonly cameraGoal = new THREE.Vector3();
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -37,9 +49,10 @@ export class Game {
     this.renderer.shadowMap.type = THREE.PCFShadowMap; // kenarı yumuşatılmış gölge
     container.appendChild(this.renderer.domElement);
 
-    // Kamera: üç eksende eşit uzaklık = izometrik bakış
+    // Kamera: üç eksende eşit uzaklık = izometrik bakış. Yönü burada bir kez
+    // ayarlanır; sonra sadece konumu kaydırıldığı için açı hiç bozulmaz.
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
-    this.camera.position.set(20, 20, 20);
+    this.camera.position.copy(CAMERA_OFFSET);
     this.camera.lookAt(0, 0, 0);
 
     // Sahne içeriği
@@ -83,6 +96,7 @@ export class Game {
 
   private update(elapsed: number, delta: number) {
     this.updateMovement(delta);
+    this.updateCamera(delta); // karakter yürüdükten sonra, ki kamera güncel konumu izlesin
 
     // Nefes alma: döngünün çalıştığını gösteren küçük hareket
     const breath = 1 + Math.sin(elapsed * 2) * 0.03;
@@ -109,6 +123,19 @@ export class Game {
 
     // Yönü 1 birim uzunluğa indir (normalize), sonra adım boyu kadar ilerle
     this.player.position.addScaledVector(this.toTarget.normalize(), step);
+  }
+
+  private updateCamera(delta: number) {
+    // Hedef: karakterin tam altındaki zemin noktası (y = 0)
+    this.cameraGoal.set(this.player.position.x, 0, this.player.position.z);
+
+    // Lerp: aradaki mesafenin bir kısmını kapat. Oran delta'ya göre hesaplanıyor
+    // ki takip hissi 60 Hz ve 120 Hz ekranda aynı olsun.
+    const t = 1 - Math.exp(-CAMERA_FOLLOW * delta);
+    this.cameraFocus.lerp(this.cameraGoal, t);
+
+    // Kamerayı odak noktasından hep aynı uzaklığa koy
+    this.camera.position.copy(this.cameraFocus).add(CAMERA_OFFSET);
   }
 
   // Ok fonksiyonu (=>) olarak yazıldı ki içindeki "this" her zaman Game'i göstersin

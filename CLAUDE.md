@@ -32,5 +32,8 @@ Retina ekranlar hedeflenir.
 - Kapsamı büyütme; prototip dışındaki fikirleri "Sonra" listesine öner.
 
 ## Şu anki hedef
-Faz 1: izometrik Three.js sahnesini ekranda görmek.
+Faz 1 sahnesi ve tıklayarak hareket tamam (raycaster ile tıklama, delta time
+ile yürüme, yumuşak kamera takibi).
+Sıradaki: grid + A* yol bulma ile engellerin etrafından dolaşma; mezar taşları
+ilk engeller.
 Ayrıntılı plan: Necromancer-Baslangic-Plani.md
