@@ -13,9 +13,12 @@ yeniden indirip buraya koy:
 | `walk.fbx` | Walking animasyonu | Without Skin, In Place |
 | `attack.fbx` | Sword And Shield Attack | Without Skin |
 | `sword.glb` | Kılıç, [Meshy](https://www.meshy.ai) | GLB |
-| `skeleton.glb` | İskelet (ceset ve minion), Meshy, T-pozunda | GLB |
+| `skeleton.fbx` | İskelet (ceset ve minion): Meshy modeli, Mixamo'da Upload Character ile riglendi | FBX Binary, T-pose, With Skin |
 | `Magic Spell Pack/` | Magic Spell Pack (paket, klasör adıyla) | Without Skin |
 
 Dosyalar yoksa oyun yine çalışır; karakter yerine mor kapsül, kılıç yerine tırpan görünür,
 iskelet modeli yoksa çizilmiş iskelet,
 büyü animasyonları yoksa ceset yine dirilir ama karakter büyü hareketi yapmaz.
+
+İskelet minion, karakterin `idle.fbx` ve `walk.fbx` animasyonlarını kullanır (kemik adları aynı).
+Meshy modeli Mixamo'ya GLB olarak yüklenemiyor; önce OBJ + PNG doku olarak zip'lenip yüklendi.

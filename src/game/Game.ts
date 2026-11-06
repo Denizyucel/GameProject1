@@ -252,7 +252,6 @@ export class Game {
     this.player = this.createPlayer();
     this.loadCharacter().catch((error) => console.error('Karakter modeli yüklenemedi:', error));
     this.loadSword().catch((error) => console.error('Kılıç modeli yüklenemedi:', error));
-    loadSkeletonModel().catch((error) => console.error('İskelet modeli yüklenemedi:', error));
     if (SHOW_DEBUG) this.addDebugView();
 
     // Canvas'a tıklanınca dünyada nereye tıklandığını bul
@@ -987,6 +986,16 @@ export class Game {
     this.currentAction = idle;
 
     this.attachWeaponToHand(model);
+
+    // İskelet modeli de aynı Mixamo kemiklerine sahip: karakterin bekleme ve yürüme
+    // animasyonlarını ona veriyoruz. Kalça yüksekliği, animasyonu iskeletin boyuna uydurmak için.
+    const hips = model.getObjectByName('mixamorigHips');
+    loadSkeletonModel({
+      idle: idleClip,
+      walk: walkClip,
+      hipsHeight: hips ? hips.position.y : 100,
+      walkClipSpeed: WALK_CLIP_SPEED,
+    }).catch((error) => console.error('İskelet modeli yüklenemedi:', error));
     this.loadSpells(mixer).catch((error) => console.error('Büyü animasyonları yüklenemedi:', error));
   }
 

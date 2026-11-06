@@ -1,73 +1,88 @@
 // İskelet: hem yerde yatan ceset hem de dirilen minion bunu kullanır.
-// public/models/skeleton.glb yüklendiyse o model kopyalanır; yüklenmediyse basit şekillerden
-// (küre, silindir, kutu) çizilmiş yedek iskelet kullanılır.
+// public/models/skeleton.fbx (Mixamo'da riglenmiş) yüklendiyse o model kopyalanır ve karakterin
+// yürüme/bekleme animasyonlarını oynatır. Yüklenmediyse basit şekillerden çizilmiş yedek iskelet kullanılır.
 // Ölçüler metre; ayaklar y = 0'da, yüz +z yönüne bakıyor.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
-const SKELETON_URL = '/models/skeleton.glb';
+const SKELETON_URL = '/models/skeleton.fbx';
 // Oyundaki boyu (metre)
 const SKELETON_HEIGHT = 1.8;
-// Model T-pozunda (kollar iki yana açık). Kolları omuzdan bu kadar aşağı indiriyoruz (radyan, ≈78°).
-const ARM_DROP = 1.36;
-// Omzun modeldeki yeri (modelin kendi biriminde, ölçülerek bulundu): kollar |x| > 0.105'ten
-// başlıyor ve y ≈ 0.30 hizasında uzanıyor. Geçiş bölgesindeki noktalar kısmen döner, kopukluk olmaz.
-const SHOULDER_X = 0.105;
-const SHOULDER_Y = 0.3;
-const SHOULDER_BLEND = 0.015;
 // Dirilirken yayılan ışığın rengi
 const GLOW_COLOR = 0x3cff9a;
 
+type GlowMaterial = THREE.MeshStandardMaterial | THREE.MeshPhongMaterial;
+
+/** İskeletin oynatabileceği animasyonlar, iskeletin boyuna uyarlanmış */
+export interface SkeletonAnimations {
+  idle: THREE.AnimationClip;
+  walk: THREE.AnimationClip;
+  // Yürüme animasyonu normal hızda oynarken iskeletin saniyede kaç metre yürüdüğü.
+  // Minion bundan hızlı yürürse animasyon da o oranda hızlandırılır, ayaklar kaymasın.
+  walkSpeed: number;
+}
+
 export interface Skeleton {
   root: THREE.Group; // oyunun konumlandırıp döndürdüğü dış grup
-  body: THREE.Group; // içteki grup: yürürken zıplatılıp sallanır
+  body: THREE.Group; // içteki grup: çizilmiş iskelette yürürken zıplatılıp sallanır
   // Her iskeletin kendi malzemeleri, ki sadece dirilen parlasın
-  materials: THREE.MeshStandardMaterial[];
-  // Kol ve bacakların dönme noktaları. Sadece çizilmiş iskelette var; model tek parça.
+  materials: GlowMaterial[];
+  // Riglenmiş model ve animasyonları. Sadece model yüklendiyse var.
+  model: THREE.Object3D | null;
+  animations: SkeletonAnimations | null;
+  // Kol ve bacakların dönme noktaları. Sadece çizilmiş iskelette var.
   limbs: { leftArm: THREE.Group; rightArm: THREE.Group; leftLeg: THREE.Group; rightLeg: THREE.Group } | null;
   eyes: THREE.Group | null;
   // Sırtüstü yatarken merkezin yerden yüksekliği (kemikler toprağa gömülmesin)
   lieHeight: number;
 }
 
-// Yüklenip hazırlanmış model (ölçeklenmiş, kolları indirilmiş). Her iskelet bunun kopyası.
-let template: THREE.Object3D | null = null;
-let templateDepth = 0;
+/** Karakterden alınan animasyonlar ve o animasyonların yapıldığı karakterin ölçüleri */
+export interface SourceAnimations {
+  idle: THREE.AnimationClip;
+  walk: THREE.AnimationClip;
+  hipsHeight: number; // karakterin kalça kemiğinin duruştaki yüksekliği (Mixamo birimi, cm)
+  walkClipSpeed: number; // yürüme animasyonunda ayağın geriye kayma hızı (cm/sn)
+}
 
-/** skeleton.glb'yi yükle ve hazırla. Bitene kadar (ya da hiç yüklenmezse) çizilmiş iskelet kullanılır. */
-export async function loadSkeletonModel() {
-  const gltf = await new GLTFLoader().loadAsync(SKELETON_URL);
-  const model = gltf.scene;
-  model.updateMatrixWorld(true);
+// Yüklenip hazırlanmış model ve animasyonları. Her iskelet bunun kopyası.
+let template: THREE.Object3D | null = null;
+let templateAnimations: SkeletonAnimations | null = null;
+let templateLieHeight = 0;
+
+/** skeleton.fbx'i yükle ve karakterin animasyonlarını ona uyarla. Bitene kadar çizilmiş iskelet kullanılır. */
+export async function loadSkeletonModel(source: SourceAnimations) {
+  const model = await new FBXLoader().loadAsync(SKELETON_URL);
+
+  // Mixamo santimetre kullanır; boyu ölçüp SKELETON_HEIGHT'a ölçekle, ayakları zemine koy
+  const box = new THREE.Box3().setFromObject(model);
+  const scale = SKELETON_HEIGHT / (box.max.y - box.min.y);
+  model.scale.setScalar(scale);
+  model.position.y = -box.min.y * scale;
+  templateLieHeight = ((box.max.z - box.min.z) * scale) / 2;
 
   model.traverse((child) => {
     if (!(child instanceof THREE.Mesh)) return;
-    // Konum/dönüşü noktalara işle, ki ölçümler (omuz yeri) modelin kendi biriminde doğru olsun
-    child.geometry.applyMatrix4(child.matrixWorld);
-    child.position.set(0, 0, 0);
-    child.rotation.set(0, 0, 0);
-    child.scale.set(1, 1, 1);
-    lowerArms(child.geometry);
     child.castShadow = true;
-    // Model "metal" olarak işaretli; yansıtacak ortam olmadığı için simsiyah görünürdü. Kemik metal değil.
-    const material = child.material as THREE.MeshStandardMaterial;
-    material.metalness = 0;
-    material.emissive.set(GLOW_COLOR);
-    material.emissiveIntensity = 0;
+    child.frustumCulled = false; // karakterdeki gibi: animasyonda yanlışlıkla gizlenmesin
+    for (const material of materialsOf(child)) {
+      material.emissive.set(GLOW_COLOR);
+      material.emissiveIntensity = 0;
+      if (material instanceof THREE.MeshPhongMaterial) material.shininess = 5; // kemik parlak plastik gibi durmasın
+    }
   });
-  model.position.set(0, 0, 0);
-  model.rotation.set(0, 0, 0);
-  model.scale.set(1, 1, 1);
 
-  // Boyu ölç, SKELETON_HEIGHT'a ölçekle, ayakları zemine ve ortayı x-z'de merkeze koy
-  const box = new THREE.Box3().setFromObject(model);
-  const scale = SKELETON_HEIGHT / (box.max.y - box.min.y);
-  const center = box.getCenter(new THREE.Vector3());
-  model.scale.setScalar(scale);
-  model.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale);
-
-  templateDepth = (box.max.z - box.min.z) * scale;
+  // Animasyonlar karakter için yapıldı. İskelet daha kısa: kalça konumunu boy oranıyla küçült,
+  // yoksa iskelet havada yürür. Rotasyonlar (kemiklerin dönüşü) olduğu gibi kalır.
+  const hips = model.getObjectByName('mixamorigHips');
+  const ratio = hips ? hips.position.y / source.hipsHeight : 1;
+  templateAnimations = {
+    idle: adaptClip(source.idle, model, ratio),
+    walk: adaptClip(source.walk, model, ratio),
+    walkSpeed: source.walkClipSpeed * ratio * scale,
+  };
   template = model;
 }
 
@@ -81,63 +96,39 @@ export function setGlow(skeleton: Skeleton, intensity: number) {
   for (const material of skeleton.materials) material.emissiveIntensity = intensity;
 }
 
-// Kolları T-pozundan aşağı indir: omzun dışındaki her noktayı omuz etrafında döndür.
-// Modelde kemik (rig) olmadığı için bunu noktaları bir kez kaydırarak yapıyoruz.
-function lowerArms(geometry: THREE.BufferGeometry) {
-  const position = geometry.attributes.position;
-  const normal = geometry.attributes.normal as THREE.BufferAttribute | undefined;
-  const point = new THREE.Vector3();
-  const axis = new THREE.Vector3(0, 0, 1); // öne bakan eksen: kol bunun etrafında aşağı döner
+// Animasyonu iskelete uydur: kalça konumunu oranla, iskelette olmayan kemiklerin izlerini at
+// (karakterin pelerin kemikleri gibi; kalsalar konsolda uyarı verirler)
+function adaptClip(clip: THREE.AnimationClip, model: THREE.Object3D, ratio: number): THREE.AnimationClip {
+  const adapted = clip.clone(); // karakterin kendi animasyonu bozulmasın diye kopya
+  adapted.tracks = adapted.tracks.filter((track) => model.getObjectByName(track.name.split('.')[0]));
+  const hips = adapted.tracks.find((track) => track.name === 'mixamorigHips.position');
+  if (hips) for (let i = 0; i < hips.values.length; i++) hips.values[i] *= ratio;
+  return adapted;
+}
 
-  for (let i = 0; i < position.count; i++) {
-    point.fromBufferAttribute(position, i);
-    const side = Math.sign(point.x); // +1 sol kol, -1 sağ kol
-    // 0 = gövde (dönmez), 1 = kol (tam döner); omuz çevresinde yumuşak geçiş.
-    // İki koşul: omzun dışında olmak (x) ve omuz hizasında olmak (y). İkincisi olmazsa
-    // aynı x'teki kalça ve bacaklar da dönerdi.
-    const outside = THREE.MathUtils.smoothstep(Math.abs(point.x), SHOULDER_X - SHOULDER_BLEND, SHOULDER_X + SHOULDER_BLEND);
-    const high = THREE.MathUtils.smoothstep(point.y, SHOULDER_Y - 0.1, SHOULDER_Y - 0.05);
-    const weight = outside * high;
-    if (weight === 0) continue;
-    const angle = -side * ARM_DROP * weight;
-
-    // Omzu orijine al, döndür, geri koy
-    point.x -= side * SHOULDER_X;
-    point.y -= SHOULDER_Y;
-    point.applyAxisAngle(axis, angle);
-    point.x += side * SHOULDER_X;
-    point.y += SHOULDER_Y;
-    position.setXYZ(i, point.x, point.y, point.z);
-
-    // Yüzeyin baktığı yön (ışıklandırma için) de aynı açıyla dönmeli
-    if (normal) {
-      point.fromBufferAttribute(normal, i).applyAxisAngle(axis, angle);
-      normal.setXYZ(i, point.x, point.y, point.z);
-    }
-  }
-  position.needsUpdate = true;
-  if (normal) normal.needsUpdate = true;
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
+function materialsOf(mesh: THREE.Mesh): GlowMaterial[] {
+  const list = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  return list.filter((m): m is GlowMaterial => m instanceof THREE.MeshStandardMaterial || m instanceof THREE.MeshPhongMaterial);
 }
 
 function cloneModel(source: THREE.Object3D): Skeleton {
-  // clone() şekli (geometri) paylaşır, bellekte tek kopya durur. Malzemeyi ayrıca kopyalıyoruz
-  // ki bir iskeletin parlaması diğerlerine geçmesin (dokular yine ortak).
-  const model = source.clone();
-  const materials: THREE.MeshStandardMaterial[] = [];
+  // Kemikli modeller normal clone() ile kopyalanamaz (kopya, eskisinin kemiklerine bağlı kalır).
+  // SkeletonUtils.clone kemikleri de kopyalar; şekil (geometri) yine ortak, bellekte tek kopya durur.
+  const model = SkeletonUtils.clone(source);
+  // Malzemeyi ayrıca kopyalıyoruz ki bir iskeletin parlaması diğerlerine geçmesin (dokular ortak)
+  const materials: GlowMaterial[] = [];
   model.traverse((child) => {
     if (!(child instanceof THREE.Mesh)) return;
-    const material = (child.material as THREE.MeshStandardMaterial).clone();
-    child.material = material;
-    materials.push(material);
+    const copies = materialsOf(child).map((material) => material.clone());
+    child.material = copies.length === 1 ? copies[0] : copies;
+    materials.push(...copies);
   });
 
   const body = new THREE.Group();
   body.add(model);
   const root = new THREE.Group();
   root.add(body);
-  return { root, body, materials, limbs: null, eyes: null, lieHeight: templateDepth / 2 };
+  return { root, body, materials, model, animations: templateAnimations, limbs: null, eyes: null, lieHeight: templateLieHeight };
 }
 
 // --- Yedek: basit şekillerden çizilmiş iskelet (boyu ≈ 1.75) ---
@@ -202,5 +193,5 @@ function createDrawnSkeleton(): Skeleton {
 
   const root = new THREE.Group();
   root.add(body);
-  return { root, body, materials: [material], limbs, eyes, lieHeight: 0.13 };
+  return { root, body, materials: [material], model: null, animations: null, limbs, eyes, lieHeight: 0.13 };
 }

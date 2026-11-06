@@ -17,11 +17,13 @@ const REPATH_INTERVAL = 0.5;
 // Topraktan çıkma süresi (saniye) ve başlangıçta toprağın ne kadar altında olduğu
 const RISE_DURATION = 0.9;
 const RISE_DEPTH = 1.8;
-// Yürürken kol ve bacakların ne kadar sallandığı (radyan) ve adım hızı
+// Bekleme ile yürüme animasyonu arasındaki yumuşak geçiş süresi (saniye)
+const ANIMATION_FADE = 0.25;
+// Çizilmiş (kemiksiz) iskelet için: yürürken kol ve bacakların ne kadar sallandığı (radyan) ve adım hızı
 const LIMB_SWING = 0.6;
 const STEP_RATE = 9;
 // Yürürken gövdenin her adımda ne kadar zıpladığı (metre) ve iki yana yalpaladığı (radyan).
-// Model tek parça olduğu için yürüme hissini bu ikisi veriyor.
+// Çizilmiş iskelette animasyon olmadığı için yürüme hissini bu ikisi veriyor.
 const STEP_BOB = 0.06;
 const STEP_SWAY = 0.1;
 
@@ -38,6 +40,11 @@ export class Minion {
   // Karakterin çevresindeki kendi yeri (açı). Her minion farklı yerde dursun, üst üste binmesin.
   private readonly slotAngle: number;
   private readonly toTarget = new THREE.Vector3();
+  // Riglenmiş modelde animasyonları oynatan mixer ve iki animasyon. Çizilmiş iskelette null.
+  private readonly mixer: THREE.AnimationMixer | null = null;
+  private readonly idle: THREE.AnimationAction | null = null;
+  private readonly walk: THREE.AnimationAction | null = null;
+  private currentAction: THREE.AnimationAction | null = null;
 
   constructor(x: number, z: number, facing: number, slotAngle: number) {
     this.skeleton = createSkeleton();
@@ -45,11 +52,26 @@ export class Minion {
     this.object.position.set(x, -RISE_DEPTH, z);
     this.object.rotation.y = facing;
     this.slotAngle = slotAngle;
+
+    const { model, animations } = this.skeleton;
+    if (model && animations) {
+      // Her minionun kendi mixer'ı var: hepsi aynı animasyonu kendi zamanında oynar
+      this.mixer = new THREE.AnimationMixer(model);
+      this.idle = this.mixer.clipAction(animations.idle);
+      this.walk = this.mixer.clipAction(animations.walk);
+      // Yürüme animasyonunu minionun hızına uydur, ayaklar yerde kaymasın
+      this.walk.timeScale = MINION_SPEED / animations.walkSpeed;
+      // Bekleme animasyonu rastgele bir yerinden başlasın, minionlar aynı anda kıpırdamasın
+      this.idle.play();
+      this.idle.time = Math.random() * animations.idle.duration;
+      this.currentAction = this.idle;
+    }
   }
 
   update(delta: number, leader: THREE.Vector3, grid: Grid) {
     if (this.riseTime !== null) {
       this.updateRise(this.riseTime + delta);
+      this.mixer?.update(delta); // topraktan çıkarken bekleme animasyonu oynasın
       return;
     }
 
@@ -122,6 +144,18 @@ export class Minion {
   // Yürürken adım at: gövde zıplar ve yalpalar, (çizilmiş iskelette) kol ve bacaklar sallanır.
   // Dururken her şey yavaşça düz duruşa döner.
   private animateLimbs(delta: number, moving: boolean) {
+    if (this.mixer && this.idle && this.walk) {
+      // Riglenmiş model: yürüyorsa yürüme, duruyorsa bekleme animasyonuna yumuşakça geç
+      const wanted = moving ? this.walk : this.idle;
+      if (wanted !== this.currentAction) {
+        wanted.reset().fadeIn(ANIMATION_FADE).play();
+        this.currentAction?.fadeOut(ANIMATION_FADE);
+        this.currentAction = wanted;
+      }
+      this.mixer.update(delta);
+      return;
+    }
+
     // swing: -1..1 arası adım salınımı. Dururken sıfıra doğru sönümlenir (lerp).
     if (moving) {
       this.walkCycle += delta * STEP_RATE;
