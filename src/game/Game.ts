@@ -20,6 +20,23 @@ const CAMERA_OFFSET = new THREE.Vector3(20, 20, 20);
 // küçültürsen daha yumuşak ve gecikmeli gelir.
 const CAMERA_FOLLOW = 5;
 
+// Zoom sınırları (1 = normal; büyüdükçe yakınlaşır) ve tekerleğin hassasiyeti
+const MIN_ZOOM = 0.6;
+const MAX_ZOOM = 3;
+const ZOOM_SENSITIVITY = 0.0015;
+// Zoom'un hedef değere ne kadar hızlı yumuşakça ulaştığı
+const ZOOM_SMOOTH = 12;
+
+// Klavye ile yürüme: tuş → dünyadaki yön (x, z). Kamera izometrik olduğu için yönler
+// ekrana göre: ekranda "yukarı" dünyada (-x, -z) yönüne, "sağ" (+x, -z) yönüne denk gelir.
+// event.code klavyedeki fiziksel yeri verir; Türkçe klavyede de W-A-S-D aynı yerdedir.
+const KEY_DIRECTIONS: Record<string, [number, number]> = {
+  KeyW: [-1, -1], ArrowUp: [-1, -1],
+  KeyS: [1, 1], ArrowDown: [1, 1],
+  KeyA: [-1, 1], ArrowLeft: [-1, 1],
+  KeyD: [1, -1], ArrowRight: [1, -1],
+};
+
 // Mixamo'dan indirilen karakter (public/models içinde) ve oyundaki boyu (≈ metre)
 const CHARACTER_URL = '/models/nightshade.fbx';
 const CHARACTER_HEIGHT = 2;
@@ -152,6 +169,12 @@ export class Game {
   private readonly cameraFocus = new THREE.Vector3();
   // Kameranın bu karede ulaşmak istediği nokta: karakterin ayağının altı
   private readonly cameraGoal = new THREE.Vector3();
+  // Şu anki zoom ve tekerlekle istenen zoom; her karede birbirine yaklaşır
+  private zoom = 1;
+  private zoomTarget = 1;
+  // Şu an basılı tutulan yön tuşları ve karakterin klavyeyle yürüyüp yürümediği
+  private readonly pressedKeys = new Set<string>();
+  private keyboardWalking = false;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -181,6 +204,11 @@ export class Game {
 
     // Canvas'a tıklanınca dünyada nereye tıklandığını bul
     this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
+    // passive: false, ki preventDefault ile tarayıcının sayfayı kaydırması/büyütmesi engellensin
+    this.renderer.domElement.addEventListener('wheel', this.onWheel, { passive: false });
+    window.addEventListener('keydown', this.onKeyDown);
+    window.addEventListener('keyup', this.onKeyUp);
+    window.addEventListener('blur', this.onBlur);
 
     // Pencere boyutu değişince kamerayı ve canvas'ı güncelle
     this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -206,22 +234,107 @@ export class Game {
     // İleride menüye dönerken oyunu temizlemek için
     this.renderer.setAnimationLoop(null);
     this.renderer.domElement.removeEventListener('pointerdown', this.onPointerDown);
+    this.renderer.domElement.removeEventListener('wheel', this.onWheel);
+    window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener('keyup', this.onKeyUp);
+    window.removeEventListener('blur', this.onBlur);
     this.resizeObserver.disconnect();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }
 
   private update(elapsed: number, delta: number) {
+    this.updateKeyboardMovement(delta);
     this.updateMovement(delta);
     this.updateAttack(delta, elapsed);
     this.updateGraves(elapsed);
     this.updateAnimation(delta);
+    this.updateZoom(delta);
     this.updateCamera(delta); // karakter yürüdükten sonra, ki kamera güncel konumu izlesin
 
     // Nefes alma: döngünün çalıştığını gösteren küçük hareket
     // (sadece kapsülde; model gelince yerini animasyonlar alacak)
     const breath = 1 + Math.sin(elapsed * 2) * 0.03;
     this.placeholder.scale.set(1, breath, 1);
+  }
+
+  // WASD / ok tuşlarıyla yürüme. Yol bulma kullanmaz: karakter tuşun yönüne düz gider,
+  // engele çarparsa yanından kayar.
+  private updateKeyboardMovement(delta: number) {
+    // Basılı tuşların yönlerini topla (W + D birlikte = çapraz)
+    let dx = 0;
+    let dz = 0;
+    for (const key of this.pressedKeys) {
+      const direction = KEY_DIRECTIONS[key];
+      if (!direction) continue;
+      dx += direction[0];
+      dz += direction[1];
+    }
+
+    const length = Math.hypot(dx, dz);
+    // Tuş yoksa (ya da W ile S gibi zıt tuşlar birbirini sıfırladıysa) ya da savuruyorsa durur
+    this.keyboardWalking = length > 0 && this.swingTime === null;
+    if (!this.keyboardWalking) return;
+
+    // Klavye devraldı: tıklamayla başlamış yürüme ve saldırı iptal
+    this.path = [];
+    this.attackTarget = null;
+
+    const step = (MOVE_SPEED * delta) / length; // yönü 1 uzunluğa indirip adım boyuyla çarp
+    const position = this.player.position;
+    const nextX = position.x + dx * step;
+    const nextZ = position.z + dz * step;
+
+    // Çarpışma: gidilecek kare engelliyse önce sadece x'te, sonra sadece z'de dene.
+    // Böylece karakter engele çapraz çarptığında durmak yerine yüzeyi boyunca kayar.
+    if (this.canStand(nextX, nextZ)) {
+      position.x = nextX;
+      position.z = nextZ;
+    } else if (this.canStand(nextX, position.z)) {
+      position.x = nextX;
+    } else if (this.canStand(position.x, nextZ)) {
+      position.z = nextZ;
+    }
+
+    this.player.rotation.y = Math.atan2(dx, dz); // yüzü tuşun yönüne
+  }
+
+  // Karakter bu dünya noktasında durabilir mi (engelli kare ya da zeminin dışı değil mi)
+  private canStand(x: number, z: number): boolean {
+    const cell = this.grid.worldToCell(x, z);
+    return this.grid.isWalkable(cell.col, cell.row);
+  }
+
+  private readonly onKeyDown = (event: KeyboardEvent) => {
+    if (!Object.hasOwn(KEY_DIRECTIONS, event.code)) return;
+    event.preventDefault(); // ok tuşları sayfayı kaydırmasın
+    this.pressedKeys.add(event.code);
+  };
+
+  private readonly onKeyUp = (event: KeyboardEvent) => {
+    this.pressedKeys.delete(event.code);
+  };
+
+  // Pencere odağını kaybederse (Cmd+Tab gibi) tuş bırakma olayı gelmez; karakter sonsuza
+  // kadar yürümesin diye bütün tuşları bırakılmış say
+  private readonly onBlur = () => {
+    this.pressedKeys.clear();
+  };
+
+  // Fare tekerleği / trackpad sıkıştırma: zoom hedefini değiştir
+  private readonly onWheel = (event: WheelEvent) => {
+    event.preventDefault(); // sayfa kaymasın, tarayıcı kendi zoom'unu yapmasın
+    // Üstel değişim: her tekerlek adımı zoom'u aynı oranda değiştirir (yakında da uzakta da eşit his)
+    const next = this.zoomTarget * Math.exp(-event.deltaY * ZOOM_SENSITIVITY);
+    this.zoomTarget = THREE.MathUtils.clamp(next, MIN_ZOOM, MAX_ZOOM);
+  };
+
+  // Zoom'u hedefe yumuşakça yaklaştır. Kamera karakteri ortaladığı için zoom hep karaktere doğru.
+  private updateZoom(delta: number) {
+    if (Math.abs(this.zoom - this.zoomTarget) < 0.0001) return;
+    this.zoom = THREE.MathUtils.lerp(this.zoom, this.zoomTarget, 1 - Math.exp(-ZOOM_SMOOTH * delta));
+    this.camera.zoom = this.zoom;
+    this.camera.updateProjectionMatrix();
   }
 
   private updateMovement(delta: number) {
@@ -302,7 +415,7 @@ export class Game {
 
     const wanted =
       this.swingTime !== null ? this.actions.attack
-      : this.path.length > 0 ? this.actions.walk
+      : this.path.length > 0 || this.keyboardWalking ? this.actions.walk
       : this.actions.idle;
 
     if (wanted !== this.currentAction) {

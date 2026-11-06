@@ -40,6 +40,8 @@ parlıyor, vuruş sayısı tutuluyor.
 Taşların 3 vuruşluk canı var; kırılınca toprağa gömülüp siliniyor, ızgara yeniden kuruluyor.
 Karakter Mixamo modeli (Nightshade): idle, walk, attack animasyonları AnimationMixer ile;
 silah sağ el kemiğine bağlı: Meshy kılıcı (sword.glb), yoksa çizilmiş tırpan. Modeller public/models içinde, Git dışında (lisans).
+Kontroller: tıklayarak (A*) ya da WASD/ok tuşlarıyla (ekrana göre, çarpışmalı) yürüme;
+tekerlek/pinch ile karaktere doğru yumuşak zoom.
 Sıradaki: birlikte kararlaştırılacak (ilk minion ya da ilk düşman).
 Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 
