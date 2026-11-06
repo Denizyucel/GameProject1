@@ -6,8 +6,9 @@ import { findPath } from './findPath';
 // Kameranın dikeyde kaç dünya birimi gördüğü. Küçültürsen yakınlaşır.
 const VIEW_HEIGHT = 18;
 
-// Karakterin yürüme hızı: saniyede kaç dünya birimi (≈ metre)
-const MOVE_SPEED = 4;
+// Karakterin yürüme hızı: saniyede kaç dünya birimi (≈ metre).
+// Yürüme animasyonu bu hıza göre hızlandırılır; çok artırırsan bacaklar koşar gibi döner.
+const MOVE_SPEED = 3;
 
 // Kameranın karaktere göre konumu. Üç eksende eşit = izometrik açı.
 // Kamera hep bu kadar ötede durur; sadece kayar, hiç dönmez.
@@ -20,6 +21,24 @@ const CAMERA_FOLLOW = 5;
 // Mixamo'dan indirilen karakter (public/models içinde) ve oyundaki boyu (≈ metre)
 const CHARACTER_URL = '/models/nightshade.fbx';
 const CHARACTER_HEIGHT = 2;
+
+// Mixamo animasyonları (karakterin iskeletiyle aynı kemik isimlerini kullanırlar)
+type AnimationName = 'idle' | 'walk' | 'attack';
+const ANIMATION_URLS: Record<AnimationName, string> = {
+  idle: '/models/idle.fbx',
+  walk: '/models/walk.fbx',
+  attack: '/models/attack.fbx',
+};
+// Yürüme animasyonunun kendi hızı: ayak yerdeyken geriye kayma hızı (Mixamo birimi, cm/sn).
+// Animasyon ölçülerek bulundu. Yürüme animasyonu MOVE_SPEED'e uysun diye buna göre hızlandırılır,
+// böylece ayaklar zeminde kaymaz.
+const WALK_CLIP_SPEED = 219;
+// Vuruş animasyonu: kaç kat hızlı oynatılacağı ve darbenin animasyonun hangi anında (0..1) indiği.
+// Elin en hızlı aşağı indiği an ölçüldü: 1.73 sn'lik animasyonun 0.78. saniyesi ≈ %45.
+const ATTACK_TIME_SCALE = 1.3;
+const ATTACK_HIT_MOMENT = 0.45;
+// İki animasyon arasında yumuşak geçiş süresi (saniye)
+const ANIMATION_FADE = 0.2;
 
 // Kapsülün yarıçapı. Engeller bu kadar şişirilir ki kapsülün kenarı taşa sürtmesin.
 const PLAYER_RADIUS = 0.4;
@@ -91,6 +110,15 @@ export class Game {
   private swingTime: number | null = null;
   // Bu savurmanın darbesi taşa indi mi (her savurmada bir kez)
   private swingHasHit = false;
+  // Savurma süresi ve darbe anı. Kapsülde sabit; model gelince vuruş animasyonuna göre ayarlanır.
+  private swingDuration = SWING_DURATION;
+  private hitMoment = HIT_MOMENT;
+
+  // AnimationMixer: modelin animasyonlarını oynatan ve aralarında geçiş yapan Three.js parçası.
+  // Model yüklenene kadar null.
+  private mixer: THREE.AnimationMixer | null = null;
+  private actions: Record<AnimationName, THREE.AnimationAction> | null = null;
+  private currentAction: THREE.AnimationAction | null = null;
 
   // Hangi karelerin yürünebilir olduğunu bilen ızgara
   private readonly grid = new Grid(GROUND_SIZE, GROUND_SIZE, CELL_SIZE);
@@ -173,6 +201,7 @@ export class Game {
     this.updateMovement(delta);
     this.updateAttack(delta, elapsed);
     this.updateGraves(elapsed);
+    this.updateAnimation(delta);
     this.updateCamera(delta); // karakter yürüdükten sonra, ki kamera güncel konumu izlesin
 
     // Nefes alma: döngünün çalıştığını gösteren küçük hareket
@@ -233,13 +262,14 @@ export class Game {
 
     if (this.swingTime === null) return;
 
-    // 2. Savurmayı ilerlet. progress: 0 = başlangıç, 1 = bitiş
+    // 2. Savurmayı ilerlet. progress: 0 = başlangıç, 1 = bitiş.
+    //    Model varsa kolu vuruş animasyonu sallar; yoksa (kapsülde) tırpanı biz döndürürüz.
     this.swingTime += delta;
-    const progress = Math.min(this.swingTime / SWING_DURATION, 1);
-    this.weaponPivot.rotation.x = swingAngle(progress);
+    const progress = Math.min(this.swingTime / this.swingDuration, 1);
+    if (!this.mixer) this.weaponPivot.rotation.x = swingAngle(progress);
 
     // 3. Darbe anı geldiyse taşa vur (her savurmada bir kez)
-    if (!this.swingHasHit && progress >= HIT_MOMENT && this.attackTarget) {
+    if (!this.swingHasHit && progress >= this.hitMoment && this.attackTarget) {
       this.swingHasHit = true;
       this.hitGrave(this.attackTarget, elapsed);
     }
@@ -248,8 +278,27 @@ export class Game {
     if (progress >= 1) {
       this.swingTime = null;
       this.attackTarget = null;
-      this.weaponPivot.rotation.x = WEAPON_REST;
+      if (!this.mixer) this.weaponPivot.rotation.x = WEAPON_REST;
     }
+  }
+
+  // Karakterin o an ne yaptığına göre doğru animasyonu seç ve oynat
+  private updateAnimation(delta: number) {
+    if (!this.mixer || !this.actions) return;
+
+    const wanted =
+      this.swingTime !== null ? this.actions.attack
+      : this.path.length > 0 ? this.actions.walk
+      : this.actions.idle;
+
+    if (wanted !== this.currentAction) {
+      // Yumuşak geçiş: yeni animasyon başından başlayıp belirirken eskisi söner
+      wanted.reset().fadeIn(ANIMATION_FADE).play();
+      this.currentAction?.fadeOut(ANIMATION_FADE);
+      this.currentAction = wanted;
+    }
+
+    this.mixer.update(delta); // animasyonları delta kadar ilerlet, kemikleri hareket ettir
   }
 
   private hitGrave(grave: Grave, elapsed: number) {
@@ -571,7 +620,14 @@ export class Game {
   // Mixamo karakterini arka planda yükle; hazır olunca kapsülün yerine koy.
   // Yüklenirken oyun kapsülle oynanabilir kalır.
   private async loadCharacter() {
-    const model = await new FBXLoader().loadAsync(CHARACTER_URL);
+    // Model ve üç animasyon dosyasını aynı anda indir (sırayla beklemekten hızlı)
+    const loader = new FBXLoader();
+    const [model, idleFile, walkFile, attackFile] = await Promise.all([
+      loader.loadAsync(CHARACTER_URL),
+      loader.loadAsync(ANIMATION_URLS.idle),
+      loader.loadAsync(ANIMATION_URLS.walk),
+      loader.loadAsync(ANIMATION_URLS.attack),
+    ]);
 
     // Mixamo santimetre kullanır, biz metre. Boyu ölçüp CHARACTER_HEIGHT'a ölçekle.
     const box = new THREE.Box3().setFromObject(model);
@@ -591,6 +647,64 @@ export class Game {
 
     this.player.add(model);
     this.placeholder.visible = false; // artık kapsüle gerek yok
+
+    // Animasyonlar. Her dosyada tek bir animasyon klibi (clip) var.
+    const idleClip = lockRootMotion(idleFile.animations[0]);
+    const walkClip = lockRootMotion(walkFile.animations[0]);
+    const attackClip = lockRootMotion(attackFile.animations[0]);
+
+    const mixer = new THREE.AnimationMixer(model);
+    const idle = mixer.clipAction(idleClip);
+    const walk = mixer.clipAction(walkClip);
+    const attack = mixer.clipAction(attackClip);
+
+    // Yürüme animasyonunu karakterin gerçek hızına uydur: ayaklar zeminde kaymasın
+    walk.timeScale = MOVE_SPEED / (WALK_CLIP_SPEED * scale);
+    // Vuruş bir kez oynar ve son karesinde bekler (döngüye girmez)
+    attack.setLoop(THREE.LoopOnce, 1);
+    attack.clampWhenFinished = true;
+    attack.timeScale = ATTACK_TIME_SCALE;
+
+    // Savurmanın süresi ve darbe anı artık animasyondan geliyor
+    this.swingDuration = attackClip.duration / ATTACK_TIME_SCALE;
+    this.hitMoment = ATTACK_HIT_MOMENT;
+
+    idle.play();
+    this.mixer = mixer;
+    this.actions = { idle, walk, attack };
+    this.currentAction = idle;
+
+    this.attachWeaponToHand(model);
+  }
+
+  // Tırpanı sağ el kemiğine bağla; artık el nereye giderse tırpan da oraya gider
+  private attachWeaponToHand(model: THREE.Object3D) {
+    const hand = model.getObjectByName('mixamorigRightHand');
+    const index = model.getObjectByName('mixamorigRightHandIndex1'); // işaret parmağı dibi
+    const pinky = model.getObjectByName('mixamorigRightHandPinky1'); // serçe parmak dibi
+    if (!hand || !index || !pinky) return; // farklı bir iskelet: tırpan yanda kalsın
+
+    // Yumruğun içinden geçen sap, serçe parmak dibinden işaret parmağı dibine doğru uzanır:
+    // kılıç tutar gibi, uç öne bakar (seçilen animasyonlar kılıç tutuşuna göre yapılmış).
+    // Parmak kemikleri elin "çocuğu" olduğu için konumları zaten elin kendi ekseninde.
+    const shaftDirection = new THREE.Vector3().subVectors(index.position, pinky.position).normalize();
+    // Bıçak sapa dik, elin sırtı yönünde (parmakların tersi, elin -y ekseni).
+    // Kol aşağı sarkarken bıçak yukarı bakar; savururken tırpan gibi geriye kıvrık kalır.
+    const bladeDirection = new THREE.Vector3(0, -1, 0)
+      .addScaledVector(shaftDirection, shaftDirection.y) // sapa dik olsun diye sap yönünü çıkar
+      .normalize();
+    const side = new THREE.Vector3().crossVectors(shaftDirection, bladeDirection);
+
+    // Pivotun ekseni: x = yan, y = sap, z = bıçak (tırpan bu eksenlerde çizildi)
+    const basis = new THREE.Matrix4().makeBasis(side, shaftDirection, bladeDirection);
+    this.weaponPivot.quaternion.setFromRotationMatrix(basis);
+    // Tutulan yer: iki parmak dibinin ortası
+    this.weaponPivot.position.addVectors(index.position, pinky.position).multiplyScalar(0.5);
+    // Kemik santimetre ölçeğinde; tırpan metre ile çizildi, ölçeği geri al
+    model.updateMatrixWorld(true);
+    this.weaponPivot.scale.setScalar(1 / hand.getWorldScale(new THREE.Vector3()).x);
+
+    hand.add(this.weaponPivot); // eski yerinden (karakter grubundan) alınıp ele takılır
   }
 
   private resize() {
@@ -620,4 +734,20 @@ function swingAngle(progress: number): number {
     return lerp(WEAPON_WINDUP, WEAPON_STRIKE, (progress - windupEnd) / (HIT_MOMENT - windupEnd));
   }
   return lerp(WEAPON_STRIKE, WEAPON_REST, smoothstep((progress - HIT_MOMENT) / (1 - HIT_MOMENT), 0, 1));
+}
+
+// Animasyonun karakteri kendiliğinden ileri taşımasını (root motion) kaldır.
+// Örneğin vuruş animasyonu karakteri 3 metre öne atılıyor; biz konumu kendimiz yönetiyoruz.
+// Kalçanın yatay (x, z) konumu ilk karedeki değerde sabitlenir; yukarı-aşağı (y) kalır.
+function lockRootMotion(clip: THREE.AnimationClip): THREE.AnimationClip {
+  const hips = clip.tracks.find((track) => track.name === 'mixamorigHips.position');
+  if (!hips) return clip;
+  const values = hips.values; // [x, y, z, x, y, z, ...] her kare için üç sayı
+  const startX = values[0];
+  const startZ = values[2];
+  for (let i = 0; i < values.length; i += 3) {
+    values[i] = startX;
+    values[i + 2] = startZ;
+  }
+  return clip;
 }
