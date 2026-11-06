@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { Grid } from './Grid';
 import { findPath } from './findPath';
 
@@ -15,6 +16,10 @@ const CAMERA_OFFSET = new THREE.Vector3(20, 20, 20);
 // Kameranın karaktere ne kadar sıkı yapıştığı. Büyütürsen daha hızlı yetişir,
 // küçültürsen daha yumuşak ve gecikmeli gelir.
 const CAMERA_FOLLOW = 5;
+
+// Mixamo'dan indirilen karakter (public/models içinde) ve oyundaki boyu (≈ metre)
+const CHARACTER_URL = '/models/nightshade.fbx';
+const CHARACTER_HEIGHT = 2;
 
 // Kapsülün yarıçapı. Engeller bu kadar şişirilir ki kapsülün kenarı taşa sürtmesin.
 const PLAYER_RADIUS = 0.4;
@@ -62,7 +67,12 @@ export class Game {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
   private readonly camera: THREE.OrthographicCamera;
-  private readonly player: THREE.Mesh;
+  private readonly player: THREE.Group;
+  // Model yüklenene kadar görünen mor kapsül (yer tutucu)
+  private readonly placeholder = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.4, 1.2, 8, 16),
+    new THREE.MeshStandardMaterial({ color: 0x7b5ea7, roughness: 0.6 }),
+  );
   private readonly ground: THREE.Mesh;
   private readonly resizeObserver: ResizeObserver;
 
@@ -124,6 +134,7 @@ export class Game {
     this.ground = this.addGround();
     this.addGraves(); // mezar taşlarını hem sahneye hem ızgaraya engel olarak ekler
     this.player = this.createPlayer();
+    this.loadCharacter().catch((error) => console.error('Karakter modeli yüklenemedi:', error));
     if (SHOW_DEBUG) this.addDebugView();
 
     // Canvas'a tıklanınca dünyada nereye tıklandığını bul
@@ -165,8 +176,9 @@ export class Game {
     this.updateCamera(delta); // karakter yürüdükten sonra, ki kamera güncel konumu izlesin
 
     // Nefes alma: döngünün çalıştığını gösteren küçük hareket
+    // (sadece kapsülde; model gelince yerini animasyonlar alacak)
     const breath = 1 + Math.sin(elapsed * 2) * 0.03;
-    this.player.scale.set(1, breath, 1);
+    this.placeholder.scale.set(1, breath, 1);
   }
 
   private updateMovement(delta: number) {
@@ -511,13 +523,15 @@ export class Game {
     this.pathLine.visible = true;
   }
 
-  private createPlayer(): THREE.Mesh {
-    const body = new THREE.Mesh(
-      new THREE.CapsuleGeometry(0.4, 1.2, 8, 16),
-      new THREE.MeshStandardMaterial({ color: 0x7b5ea7, roughness: 0.6 }),
-    );
+  // Karakter: görünmez bir grup, ayakları zeminde (y = 0). Yürüme ve dönme bu grubu
+  // hareket ettirir. İçinde model yüklenene kadar görünen kapsül ve tırpan var.
+  private createPlayer(): THREE.Group {
+    const player = new THREE.Group();
+
+    const body = this.placeholder;
     body.position.y = 1; // kapsül 2 birim boyunda; yarısı kadar yukarı ki zemine bassın
     body.castShadow = true;
+    player.add(body);
 
     // Yüz işareti: kapsül yuvarlak olduğu için dönüşü görünmez; bu küçük
     // parça karakterin baktığı yönü (yerel +z) gösterir. Kapsülün "çocuğu"
@@ -545,13 +559,38 @@ export class Game {
     blade.rotation.x = 0.35; // hafif aşağı kıvrık
     for (const part of [shaft, blade]) part.castShadow = true;
 
-    this.weaponPivot.position.set(0.5, 0.1, 0.05); // sağ el hizası (kapsülün merkezine göre)
+    this.weaponPivot.position.set(0.5, 1.1, 0.05); // sağ el hizası (ayaklara göre)
     this.weaponPivot.rotation.x = WEAPON_REST;
     this.weaponPivot.add(shaft, blade);
-    body.add(this.weaponPivot);
+    player.add(this.weaponPivot);
 
-    this.scene.add(body);
-    return body;
+    this.scene.add(player);
+    return player;
+  }
+
+  // Mixamo karakterini arka planda yükle; hazır olunca kapsülün yerine koy.
+  // Yüklenirken oyun kapsülle oynanabilir kalır.
+  private async loadCharacter() {
+    const model = await new FBXLoader().loadAsync(CHARACTER_URL);
+
+    // Mixamo santimetre kullanır, biz metre. Boyu ölçüp CHARACTER_HEIGHT'a ölçekle.
+    const box = new THREE.Box3().setFromObject(model);
+    const scale = CHARACTER_HEIGHT / (box.max.y - box.min.y);
+    model.scale.setScalar(scale);
+    model.position.y = -box.min.y * scale; // ayak tabanı tam zemine otursun
+
+    model.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        // İskeletli modellerde Three.js'in "ekranda mı" hesabı T-pozuna göre yapılır
+        // ve animasyonda yanlışlıkla gizleyebilir; o yüzden bu kontrolü kapatıyoruz.
+        child.frustumCulled = false;
+      }
+    });
+
+    this.player.add(model);
+    this.placeholder.visible = false; // artık kapsüle gerek yok
   }
 
   private resize() {
