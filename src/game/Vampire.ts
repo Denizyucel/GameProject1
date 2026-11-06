@@ -1,13 +1,14 @@
 // Vampir modeli ve dövüş tarzları: public/models/Vampire A Lusth.fbx (Mixamo).
-// Animasyonlar: karakterin idle ve attack'ı (kemik adları aynı), vampirin kendi Walking.fbx'i ve
+// Animasyonlar: karakterin idle'ı (kemik adları aynı), vampirin kendi Walking.fbx'i ve
 // "Creature NPC Pack" (mutant idle, yürüme, koşma, pençe, kas gösterisi, ölüm).
+// Karakterin kılıç vuruşu (attack.fbx) bilerek kullanılmıyor: o sadece necromancer'a ait.
 // Her vampir rastgele bir dövüş tarzıyla doğar: hangi animasyonları kullandığı, ne kadar dayanıklı
 // ve güçlü olduğu, ne hızla kovaladığı tarza göre değişir. Davranış Enemy.ts'te.
 
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import { adaptClip } from './retarget';
+import { adaptClip, stripRootMotion } from './retarget';
 import { materialsOf, type GlowMaterial } from './Skeleton';
 
 // Dosya adlarında boşluk var; encodeURI onları adrese uygun hale getirir (boşluk → %20)
@@ -19,11 +20,10 @@ const VAMPIRE_HEIGHT = 2;
 // Vurulunca parlayacağı renk
 const HIT_COLOR = 0xff4a4a;
 
-// Saldırı animasyonlarında darbenin indiği an (0..1). Elin en hızlı hareket ettiği an ölçüldü.
-const SWORD_HIT_MOMENT = 0.45; // karakterin kılıç vuruşu
-const SWIPE_HIT_MOMENT = 0.53; // pençe: 2.43 sn'lik animasyonun 1.28. saniyesi
+// Pençe saldırısında darbenin indiği an (0..1). Elin en hızlı hareket ettiği an ölçüldü:
+// 2.43 sn'lik animasyonun 1.28. saniyesi.
+export const SWIPE_HIT_MOMENT = 0.53;
 
-type AttackName = 'sword' | 'swipe';
 type MoveName = 'walk' | 'mutantWalk' | 'run';
 
 /** Bir dövüş tarzı: vampirin nasıl dövüştüğünü belirleyen sayılar ve animasyon seçimleri */
@@ -35,36 +35,35 @@ interface FightStyle {
   wander: MoveName[]; // dolaşırken kullanabileceği yürüyüşler (biri rastgele seçilir)
   chase: MoveName; // kovalarken
   chaseSpeed: number; // kovalama hızı (metre/sn; karakter 3)
-  attacks: AttackName[]; // her vuruşta bunlardan biri rastgele seçilir
-  attackSpeed: number; // saldırı animasyonunun hız çarpanı
+  attackSpeed: number; // pençe animasyonunun hız çarpanı (büyük = hızlı vuruş)
   cooldown: number; // iki vuruş arası mola (saniye)
   taunts: boolean; // karakteri ilk fark edince kas gösterisi yapar mı
 }
 
 const STYLES: FightStyle[] = [
   {
-    name: 'Kılıççı', // dengeli: kılıçla vurur, yürüyerek kovalar
+    name: 'Avcı', // dengeli: yürüyerek kovalar, orta hızda vurur
     health: 30, damage: 6, size: 1,
     wander: ['walk', 'mutantWalk'], chase: 'walk', chaseSpeed: 2,
-    attacks: ['sword'], attackSpeed: 1, cooldown: 0.7, taunts: false,
+    attackSpeed: 1.15, cooldown: 0.7, taunts: false,
   },
   {
     name: 'Vahşi', // iri ve dayanıklı: kas gösterir, koşar, pençesi ağır ama yavaş
     health: 40, damage: 10, size: 1.12,
     wander: ['mutantWalk'], chase: 'run', chaseSpeed: 2.6,
-    attacks: ['swipe'], attackSpeed: 1, cooldown: 1.2, taunts: true,
+    attackSpeed: 0.85, cooldown: 1.2, taunts: true,
   },
   {
-    name: 'Çevik', // zayıf ama hızlı: koşar, kılıç ve pençeyi karışık, sık sık vurur
+    name: 'Çevik', // zayıf ama hızlı: koşar, kısa aralarla seri vurur
     health: 22, damage: 4, size: 0.92,
     wander: ['walk'], chase: 'run', chaseSpeed: 2.8,
-    attacks: ['sword', 'swipe'], attackSpeed: 1.4, cooldown: 0.3, taunts: false,
+    attackSpeed: 1.6, cooldown: 0.3, taunts: false,
   },
   {
-    name: 'Muhafız', // çok dayanıklı, yavaş: kas gösterir, iki saldırıyı karışık kullanır
+    name: 'Muhafız', // çok dayanıklı, yavaş: kas gösterir, ağır ağır vurur
     health: 50, damage: 7, size: 1.05,
     wander: ['mutantWalk'], chase: 'mutantWalk', chaseSpeed: 1.6,
-    attacks: ['sword', 'swipe'], attackSpeed: 0.9, cooldown: 0.9, taunts: true,
+    attackSpeed: 0.95, cooldown: 0.9, taunts: true,
   },
 ];
 
@@ -89,7 +88,7 @@ export interface VampireBody {
   chase: THREE.AnimationAction;
   chaseClipSpeed: number; // kovalama animasyonunun kendi hızı (m/sn)
   chaseSpeed: number; // gerçekte ne hızla kovaladığı (m/sn)
-  attacks: VampireAttack[]; // her vuruşta biri rastgele seçilir
+  attacks: VampireAttack[]; // her vuruşta biri rastgele seçilir (şimdilik sadece pençe)
   taunt: THREE.AnimationAction | null; // kas gösterisi; tarzı yapmıyorsa null
   death: THREE.AnimationAction | null; // ölüm animasyonu; dosya yoksa null (o zaman devrilir)
 }
@@ -105,16 +104,16 @@ let template: THREE.Object3D | null = null;
 let modelScale = 1;
 let idleClips: THREE.AnimationClip[] = [];
 let moveClips: Partial<Record<MoveName, MoveClip>> = {};
-let attackClips: Partial<Record<AttackName, THREE.AnimationClip>> = {};
+let swipeClip: THREE.AnimationClip | null = null;
 let tauntClip: THREE.AnimationClip | null = null;
 let deathClip: THREE.AnimationClip | null = null;
 
 /**
- * Vampir modelini ve animasyonlarını yükle. idle, attack: karakterin bekleme ve vuruş
- * animasyonları; hipsHeight: karakterin kalça yüksekliği (Mixamo birimi). Bu ikisi vampirin
- * boyuna bu oranla uydurulur. Paketten yüklenemeyen animasyon olursa o hareket kullanılmaz.
+ * Vampir modelini ve animasyonlarını yükle. idle: karakterin bekleme animasyonu;
+ * hipsHeight: karakterin kalça yüksekliği (Mixamo birimi). Bekleme animasyonu vampirin boyuna
+ * bu oranla uydurulur. Paketten yüklenemeyen animasyon olursa o hareket kullanılmaz.
  */
-export async function loadVampireModel(idle: THREE.AnimationClip, attack: THREE.AnimationClip, hipsHeight: number) {
+export async function loadVampireModel(idle: THREE.AnimationClip, hipsHeight: number) {
   const loader = new FBXLoader();
   const [model, walkFile] = await Promise.all([loader.loadAsync(VAMPIRE_URL), loader.loadAsync(WALK_URL)]);
   // Paket dosyaları: biri bozuksa diğerleri yine kullanılsın diye tek tek, hata yakalanarak
@@ -159,11 +158,8 @@ export async function loadVampireModel(idle: THREE.AnimationClip, attack: THREE.
   for (const [name, clip] of [['walk', walkFile.animations[0]], ['mutantWalk', mutantWalk], ['run', run]] as const) {
     if (clip) moveClips[name] = { speed: stripRootMotion(clip) * modelScale, clip: adaptClip(clip, model, 1) };
   }
-  attackClips = { sword: adaptClip(attack, model, ratio) };
-  if (swipe) {
-    stripRootMotion(swipe);
-    attackClips.swipe = adaptClip(swipe, model, 1);
-  }
+  if (swipe) stripRootMotion(swipe);
+  swipeClip = own(swipe);
   tauntClip = own(flex);
   deathClip = own(dying);
   template = model;
@@ -181,7 +177,8 @@ function nextStyle(): FightStyle {
 /** Bir sonraki dövüş tarzıyla yeni bir vampir. Model henüz yüklenmediyse (ya da hiç yoksa) null. */
 export function createVampire(): VampireBody | null {
   const fallbackMove = moveClips.walk ?? moveClips.mutantWalk;
-  if (!template || idleClips.length === 0 || !fallbackMove || !attackClips.sword) return null;
+  // Pençe yoksa vampir saldıramaz; o zaman yedek taş olarak kalsın
+  if (!template || idleClips.length === 0 || !fallbackMove || !swipeClip) return null;
   const style = nextStyle();
 
   // SkeletonUtils.clone kemikleri de kopyalar, ki her vampir kendi başına hareket etsin
@@ -214,10 +211,7 @@ export function createVampire(): VampireBody | null {
 
   const wander = moveClips[pick(style.wander)] ?? fallbackMove;
   const chase = moveClips[style.chase] ?? wander;
-  const attacks = style.attacks
-    .map((name) => attackClips[name] && { action: once(attackClips[name], style.attackSpeed), hitMoment: name === 'sword' ? SWORD_HIT_MOMENT : SWIPE_HIT_MOMENT })
-    .filter((attack) => !!attack);
-  if (attacks.length === 0) attacks.push({ action: once(attackClips.sword, style.attackSpeed), hitMoment: SWORD_HIT_MOMENT });
+  const attacks = [{ action: once(swipeClip, style.attackSpeed), hitMoment: SWIPE_HIT_MOMENT }];
 
   // Animasyonun kendi hızı boy çarpanıyla değişir: büyük vampirin adımı da büyük
   return {
@@ -238,20 +232,6 @@ export function createVampire(): VampireBody | null {
     taunt: style.taunts && tauntClip ? once(tauntClip, 1.5) : null,
     death: deathClip ? once(deathClip) : null,
   };
-}
-
-// Animasyonun karakteri kendiliğinden öne taşımasını (root motion) kaldır ve ne kadar taşıdığını
-// döndür (santimetre/saniye). Kalçanın yatay konumu ilk karedeki yerde sabitlenir.
-function stripRootMotion(clip: THREE.AnimationClip): number {
-  const hips = clip.tracks.find((track) => track.name === 'mixamorigHips.position');
-  if (!hips) return 0;
-  const v = hips.values;
-  const distance = Math.hypot(v[v.length - 3] - v[0], v[v.length - 1] - v[2]);
-  for (let i = 0; i < v.length; i += 3) {
-    v[i] = v[0];
-    v[i + 2] = v[2];
-  }
-  return distance / clip.duration;
 }
 
 // Listenin karıştırılmış kopyası (Fisher-Yates: sondan başa, her elemanı rastgele bir öncekiyle değiştir)

@@ -1,14 +1,19 @@
 // İskelet: hem yerde yatan ceset hem de dirilen minion bunu kullanır.
 // public/models/skeleton.fbx (Mixamo'da riglenmiş) yüklendiyse o model kopyalanır ve karakterin
-// yürüme/bekleme animasyonlarını oynatır. Yüklenmediyse basit şekillerden çizilmiş yedek iskelet kullanılır.
+// yürüme/bekleme animasyonlarını oynatır; vururken vampirin pençe animasyonunu kullanır
+// (karakterin kılıç vuruşu, attack.fbx, sadece necromancer'a ait). Yüklenmediyse basit şekillerden çizilmiş yedek iskelet kullanılır.
 // Ölçüler metre; ayaklar y = 0'da, yüz +z yönüne bakıyor.
 
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import { adaptClip } from './retarget';
+import { adaptClip, hipsHeightOf, stripRootMotion } from './retarget';
 
 const SKELETON_URL = '/models/skeleton.fbx';
+// Vuruş animasyonu: Creature NPC Pack'teki pençe (vampir için indirildi, kemik adları aynı)
+const ATTACK_URL = encodeURI('/models/Creature NPC Pack/mutant swiping.fbx');
+// Pençe darbesinin animasyonun hangi anında (0..1) indiği (elin en hızlı anı ölçüldü)
+const ATTACK_HIT_MOMENT = 0.53;
 // Oyundaki boyu (metre)
 const SKELETON_HEIGHT = 1.8;
 // Dirilirken yayılan ışığın rengi
@@ -21,7 +26,8 @@ export type GlowMaterial = THREE.MeshStandardMaterial | THREE.MeshPhongMaterial;
 export interface SkeletonAnimations {
   idle: THREE.AnimationClip;
   walk: THREE.AnimationClip;
-  attack: THREE.AnimationClip;
+  attack: THREE.AnimationClip | null; // pençe dosyası yüklenemezse null
+  attackHitMoment: number;
   // Yürüme animasyonu normal hızda oynarken iskeletin saniyede kaç metre yürüdüğü.
   // Minion bundan hızlı yürürse animasyon da o oranda hızlandırılır, ayaklar kaymasın.
   walkSpeed: number;
@@ -46,7 +52,6 @@ export interface Skeleton {
 export interface SourceAnimations {
   idle: THREE.AnimationClip;
   walk: THREE.AnimationClip;
-  attack: THREE.AnimationClip;
   hipsHeight: number; // karakterin kalça kemiğinin duruştaki yüksekliği (Mixamo birimi, cm)
   walkClipSpeed: number; // yürüme animasyonunda ayağın geriye kayma hızı (cm/sn)
 }
@@ -58,7 +63,15 @@ let templateLieHeight = 0;
 
 /** skeleton.fbx'i yükle ve karakterin animasyonlarını ona uyarla. Bitene kadar çizilmiş iskelet kullanılır. */
 export async function loadSkeletonModel(source: SourceAnimations) {
-  const model = await new FBXLoader().loadAsync(SKELETON_URL);
+  const loader = new FBXLoader();
+  const [model, attackFile] = await Promise.all([
+    loader.loadAsync(SKELETON_URL),
+    // Pençe yüklenemezse iskelet yine çalışsın, sadece vuruş animasyonsuz olsun
+    loader.loadAsync(ATTACK_URL).catch((error) => {
+      console.warn('İskeletin vuruş animasyonu yüklenemedi:', error);
+      return null;
+    }),
+  ]);
 
   // Mixamo santimetre kullanır; boyu ölçüp SKELETON_HEIGHT'a ölçekle, ayakları zemine koy
   const box = new THREE.Box3().setFromObject(model);
@@ -81,11 +94,20 @@ export async function loadSkeletonModel(source: SourceAnimations) {
   // Animasyonlar karakter için yapıldı. İskelet daha kısa: kalça konumunu boy oranıyla küçült,
   // yoksa iskelet havada yürür. Rotasyonlar (kemiklerin dönüşü) olduğu gibi kalır.
   const hips = model.getObjectByName('mixamorigHips');
-  const ratio = hips ? hips.position.y / source.hipsHeight : 1;
+  const skeletonHips = hips ? hips.position.y : source.hipsHeight;
+  const ratio = skeletonHips / source.hipsHeight;
+  // Pençe vampir için indirildi: oranı vampirin (dosyadaki iskeletin) kalçasına göre hesapla
+  let attack: THREE.AnimationClip | null = null;
+  if (attackFile) {
+    const clip = attackFile.animations[0];
+    stripRootMotion(clip);
+    attack = adaptClip(clip, model, skeletonHips / (hipsHeightOf(attackFile) ?? skeletonHips));
+  }
   templateAnimations = {
     idle: adaptClip(source.idle, model, ratio),
     walk: adaptClip(source.walk, model, ratio),
-    attack: adaptClip(source.attack, model, ratio),
+    attack,
+    attackHitMoment: ATTACK_HIT_MOMENT,
     walkSpeed: source.walkClipSpeed * ratio * scale,
   };
   template = model;

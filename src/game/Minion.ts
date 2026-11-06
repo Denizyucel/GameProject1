@@ -28,13 +28,14 @@ const LEASH_RANGE = 10;
 const SCAN_INTERVAL = 0.5;
 // Vurmaya başladığı uzaklık, darbe anında hedefin en fazla ne kadar uzakta olabileceği, hasarı
 // (vampirin canı 30, karakterinki 10: minion daha zayıf), vuruş animasyonunun hızı,
-// darbenin animasyonun hangi anında (0..1) indiği ve iki vuruş arası mola (saniye)
+// ve iki vuruş arası mola (saniye). Darbenin indiği an animasyondan gelir (Skeleton.ts).
 const ATTACK_RANGE = 1.5;
 const HIT_REACH = 2.1;
 const DAMAGE = 5;
-const ATTACK_TIME_SCALE = 1.3;
-const ATTACK_HIT_MOMENT = 0.45;
+const ATTACK_TIME_SCALE = 1.5;
 const ATTACK_COOLDOWN = 0.5;
+// Çizilmiş iskelette darbenin indiği an
+const DRAWN_HIT_MOMENT = 0.45;
 // Çizilmiş (animasyonsuz) iskelette bir vuruşun süresi (saniye)
 const DRAWN_ATTACK_DURATION = 0.8;
 
@@ -73,6 +74,7 @@ export class Minion {
   private readonly idle: THREE.AnimationAction | null = null;
   private readonly walk: THREE.AnimationAction | null = null;
   private readonly attack: THREE.AnimationAction | null = null;
+  private readonly hitMoment: number = DRAWN_HIT_MOMENT;
   private currentAction: THREE.AnimationAction | null = null;
   // Çizilmiş iskelet için yürüme döngüsü ve adım salınımı (-1..1)
   private walkCycle = 0;
@@ -91,13 +93,16 @@ export class Minion {
       this.mixer = new THREE.AnimationMixer(model);
       this.idle = this.mixer.clipAction(animations.idle);
       this.walk = this.mixer.clipAction(animations.walk);
-      this.attack = this.mixer.clipAction(animations.attack);
       // Yürüme animasyonunu minionun hızına uydur, ayaklar yerde kaymasın
       this.walk.timeScale = MINION_SPEED / animations.walkSpeed;
-      // Vuruş bir kez oynar ve son karesinde bekler
-      this.attack.setLoop(THREE.LoopOnce, 1);
-      this.attack.clampWhenFinished = true;
-      this.attack.timeScale = ATTACK_TIME_SCALE;
+      if (animations.attack) {
+        // Vuruş bir kez oynar ve son karesinde bekler
+        this.attack = this.mixer.clipAction(animations.attack);
+        this.attack.setLoop(THREE.LoopOnce, 1);
+        this.attack.clampWhenFinished = true;
+        this.attack.timeScale = ATTACK_TIME_SCALE;
+        this.hitMoment = animations.attackHitMoment;
+      }
       // Bekleme animasyonu rastgele bir yerinden başlasın, minionlar aynı anda kıpırdamasın
       this.idle.play();
       this.idle.time = Math.random() * animations.idle.duration;
@@ -198,7 +203,7 @@ export class Minion {
     if (limbs) limbs.rightArm.rotation.x = -Math.sin(Math.min(progress, 1) * Math.PI) * 2.2;
 
     const target = this.target;
-    if (!this.attackHasHit && progress >= ATTACK_HIT_MOMENT && target) {
+    if (!this.attackHasHit && progress >= this.hitMoment && target) {
       this.attackHasHit = true;
       if (target.alive && groundDistance(this.object.position, target.position) <= HIT_REACH) {
         target.hit(this.object.position, DAMAGE, elapsed);

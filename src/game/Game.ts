@@ -1059,16 +1059,15 @@ export class Game {
     this.attachWeaponToHand(model);
 
     // Vampir ve iskelet modelleri de aynı Mixamo kemiklerine sahip: karakterin bekleme ve yürüme
-    // animasyonlarını onlara veriyoruz. Kalça yüksekliği, animasyonu onların boyuna uydurmak için.
+    // animasyonlarını onlara veriyoruz (kılıç vuruşunu değil: o sadece necromancer'ın). Kalça yüksekliği, animasyonu onların boyuna uydurmak için.
     const hips = model.getObjectByName('mixamorigHips');
     const hipsHeight = hips ? hips.position.y : 100;
-    loadVampireModel(idleClip, attackClip, hipsHeight)
+    loadVampireModel(idleClip, hipsHeight)
       .then(() => this.dressEnemies())
       .catch((error) => console.error('Vampir modeli yüklenemedi:', error));
     loadSkeletonModel({
       idle: idleClip,
       walk: walkClip,
-      attack: attackClip,
       hipsHeight,
       walkClipSpeed: WALK_CLIP_SPEED,
     }).catch((error) => console.error('İskelet modeli yüklenemedi:', error));

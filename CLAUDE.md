@@ -39,9 +39,10 @@ Düşmanlar: 5 vampir (src/game/Enemy.ts davranış, src/game/Vampire.ts model; 
 "Vampire A Lusth.fbx" + Walking.fbx). Evlerinin çevresinde (5 m) rastgele dolaşıyorlar; beklerken
 karakterin idle animasyonu, yürürken Walking (root motion kaldırılıp hızına göre ayarlı).
 Model yoksa yedek olarak hareketsiz, zararsız mezar taşı.
-Dövüş tarzları (src/game/Vampire.ts, STYLES): Kılıççı, Vahşi, Çevik, Muhafız. Can, hasar, boy,
-kovalama hızı (yürüyerek ya da koşarak), saldırılar (kılıç = karakterin attack'ı, pençe = mutant
-swiping; her vuruşta rastgele biri), mola ve kas gösterisi (ilk fark edişte) tarza göre değişir.
+Dövüş tarzları (src/game/Vampire.ts, STYLES): Avcı, Vahşi, Çevik, Muhafız. Can, hasar, boy,
+kovalama hızı (yürüyerek ya da koşarak), pençe (mutant swiping) hızı, mola ve kas gösterisi
+(ilk fark edişte) tarza göre değişir.
+Kural: attack.fbx (kılıç vuruşu) sadece necromancer'a ait; vampirler ve iskeletler pençe kullanır.
 Tarzlar karıştırılmış bir torbadan dağıtılır: 5 vampirde 4 tarzın hepsi çıkar. Bekleme duruşu da
 rastgele (karakter idle, mutant idle, breathing idle). Animasyonlar "Creature NPC Pack"ten;
 mutant dying.fbx bozuk (FBXLoader okuyamıyor), yüklenemezse vampir eskisi gibi devrilir.
