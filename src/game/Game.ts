@@ -9,7 +9,13 @@ export class Game {
   private readonly scene = new THREE.Scene();
   private readonly camera: THREE.OrthographicCamera;
   private readonly player: THREE.Mesh;
+  private readonly ground: THREE.Mesh;
   private readonly resizeObserver: ResizeObserver;
+
+  // Raycaster: kameradan fare yönüne görünmez bir ışın gönderip neye çarptığını bulur
+  private readonly raycaster = new THREE.Raycaster();
+  // Farenin ekrandaki konumu, -1..1 aralığında (sol alt -1,-1; sağ üst 1,1)
+  private readonly pointer = new THREE.Vector2();
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -29,9 +35,12 @@ export class Game {
     // Sahne içeriği
     this.scene.background = new THREE.Color(0x121018);
     this.addLights();
-    this.addGround();
+    this.ground = this.addGround();
     this.addGraves();
     this.player = this.createPlayer();
+
+    // Canvas'a tıklanınca dünyada nereye tıklandığını bul
+    this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
 
     // Pencere boyutu değişince kamerayı ve canvas'ı güncelle
     this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -50,6 +59,7 @@ export class Game {
   dispose() {
     // İleride menüye dönerken oyunu temizlemek için
     this.renderer.setAnimationLoop(null);
+    this.renderer.domElement.removeEventListener('pointerdown', this.onPointerDown);
     this.resizeObserver.disconnect();
     this.renderer.dispose();
     this.renderer.domElement.remove();
@@ -60,6 +70,25 @@ export class Game {
     const breath = 1 + Math.sin(elapsed * 2) * 0.03;
     this.player.scale.set(1, breath, 1);
   }
+
+  // Ok fonksiyonu (=>) olarak yazıldı ki içindeki "this" her zaman Game'i göstersin
+  private readonly onPointerDown = (event: PointerEvent) => {
+    if (event.button !== 0) return; // sadece sol tık
+
+    // 1. Fare konumunu piksel cinsinden -1..1 aralığına çevir
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1; // ekranda y aşağı doğru artar, dünyada yukarı
+
+    // 2. Kameradan bu noktaya doğru ışın gönder, sadece zemine çarpıp çarpmadığına bak
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const hit = this.raycaster.intersectObject(this.ground)[0];
+    if (!hit) return; // zeminin dışına tıklandı
+
+    // 3. Çarptığı nokta: dünyada x (sağ-sol) ve z (ileri-geri); zemin düz olduğu için y hep 0
+    const { x, z } = hit.point;
+    console.log(`Zemine tıklandı: x=${x.toFixed(2)}, z=${z.toFixed(2)}`);
+  };
 
   private addLights() {
     // Gökyüzü ve zeminden gelen yumuşak genel ışık
@@ -80,7 +109,7 @@ export class Game {
     this.scene.add(moon);
   }
 
-  private addGround() {
+  private addGround(): THREE.Mesh {
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(30, 30),
       new THREE.MeshStandardMaterial({ color: 0x2a2433, roughness: 1 }),
@@ -92,6 +121,8 @@ export class Game {
     const grid = new THREE.GridHelper(30, 30, 0x4a3f5c, 0x352e42);
     grid.position.y = 0.01; // zeminle çakışıp titremesin
     this.scene.add(grid);
+
+    return ground; // tıklama ışını bu nesneye karşı test edilecek
   }
 
   private addGraves() {
