@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Grid } from './Grid';
 import { findPath } from './findPath';
 
@@ -21,6 +23,15 @@ const CAMERA_FOLLOW = 5;
 // Mixamo'dan indirilen karakter (public/models içinde) ve oyundaki boyu (≈ metre)
 const CHARACTER_URL = '/models/nightshade.fbx';
 const CHARACTER_HEIGHT = 2;
+
+// Meshy'den indirilen kılıç ve oyundaki boyu (uçtan kabzaya, metre)
+const SWORD_URL = '/models/sword.glb';
+const SWORD_LENGTH = 1.1;
+// Bu modelde bıçak -y yönüne, kabza +y yönüne bakıyor (model ölçülerek bulundu).
+// Elin tuttuğu yer: alttan (bıçak ucundan) üste doğru uzunluğun %89'u, kabzanın ortası.
+const SWORD_GRIP = 0.89;
+// Kılıcın ne kadar parlak yansıtacağı (0 = simsiyah metal, 1 = tam yansıma)
+const SWORD_SHINE = 0.8;
 
 // Mixamo animasyonları (karakterin iskeletiyle aynı kemik isimlerini kullanırlar)
 type AnimationName = 'idle' | 'walk' | 'attack';
@@ -104,6 +115,8 @@ export class Game {
   private readonly graves: Grave[] = [];
   // Tırpanın omuzdaki dönme noktası. Savurmak = bu grubu döndürmek.
   private readonly weaponPivot = new THREE.Group();
+  // Kendi çizdiğimiz tırpan; kılıç yüklenince gizlenir
+  private readonly scythe = new THREE.Group();
   // Saldırılacak taş (yanına yürünüyor ya da vuruluyor); null ise saldırı yok
   private attackTarget: Grave | null = null;
   // Savurma başladıysa kaç saniyedir sürdüğü; null ise savurmuyor
@@ -163,6 +176,7 @@ export class Game {
     this.addGraves(); // mezar taşlarını hem sahneye hem ızgaraya engel olarak ekler
     this.player = this.createPlayer();
     this.loadCharacter().catch((error) => console.error('Karakter modeli yüklenemedi:', error));
+    this.loadSword().catch((error) => console.error('Kılıç modeli yüklenemedi:', error));
     if (SHOW_DEBUG) this.addDebugView();
 
     // Canvas'a tıklanınca dünyada nereye tıklandığını bul
@@ -610,7 +624,8 @@ export class Game {
 
     this.weaponPivot.position.set(0.5, 1.1, 0.05); // sağ el hizası (ayaklara göre)
     this.weaponPivot.rotation.x = WEAPON_REST;
-    this.weaponPivot.add(shaft, blade);
+    this.scythe.add(shaft, blade);
+    this.weaponPivot.add(this.scythe);
     player.add(this.weaponPivot);
 
     this.scene.add(player);
@@ -675,6 +690,54 @@ export class Game {
     this.currentAction = idle;
 
     this.attachWeaponToHand(model);
+  }
+
+  // Kılıcı yükle ve tırpanın yerine silah pivotuna tak. Pivot ele bağlıysa kılıç da elde olur.
+  private async loadSword() {
+    const gltf = await new GLTFLoader().loadAsync(SWORD_URL);
+    const model = gltf.scene;
+
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+
+    // İç grup: modeli, tutulan nokta (kabzanın ortası) tam orijine gelecek şekilde kaydır
+    const grip = new THREE.Group();
+    model.position.set(-center.x, -(box.min.y + size.y * SWORD_GRIP), -center.z);
+    grip.add(model);
+
+    // Dış grup: döndür ve ölçekle. Pivotun ekseni: y = elden öne (bıçak bu yöne),
+    // z = savurma yönü (bıçağın keskin kenarı ve geniş balçak bu yöne).
+    // Modelde bıçak -y'de, geniş taraf x'te: model x → pivot z, model -y → pivot y, model z → pivot x.
+    const sword = new THREE.Group();
+    sword.quaternion.setFromRotationMatrix(
+      new THREE.Matrix4().makeBasis(
+        new THREE.Vector3(0, 0, 1), // modelin x ekseni nereye gidecek
+        new THREE.Vector3(0, -1, 0), // modelin y ekseni (bıçak ters dönsün)
+        new THREE.Vector3(1, 0, 0), // modelin z ekseni
+      ),
+    );
+    sword.scale.setScalar(SWORD_LENGTH / size.y);
+    sword.add(grip);
+
+    // Ortam haritası: metal yüzeyin yansıtacağı sanal bir oda. Sahnede yansıtacak bir şey
+    // olmadığı için metal kılıç yoksa simsiyah görünür. Sadece kılıca veriliyor ki
+    // sahnenin karanlık havası değişmesin.
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    const environment = pmrem.fromScene(new RoomEnvironment()).texture;
+    pmrem.dispose();
+
+    model.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return;
+      child.castShadow = true;
+      if (child.material instanceof THREE.MeshStandardMaterial) {
+        child.material.envMap = environment;
+        child.material.envMapIntensity = SWORD_SHINE;
+      }
+    });
+
+    this.weaponPivot.add(sword);
+    this.scythe.visible = false; // tırpana artık gerek yok
   }
 
   // Tırpanı sağ el kemiğine bağla; artık el nereye giderse tırpan da oraya gider

@@ -39,7 +39,7 @@ Karakterin tırpanı var: taşa tıklayınca yanına yürüyüp vuruyor, taş sa
 parlıyor, vuruş sayısı tutuluyor.
 Taşların 3 vuruşluk canı var; kırılınca toprağa gömülüp siliniyor, ızgara yeniden kuruluyor.
 Karakter Mixamo modeli (Nightshade): idle, walk, attack animasyonları AnimationMixer ile;
-tırpan sağ el kemiğine bağlı. Modeller public/models içinde, Git dışında (lisans).
+silah sağ el kemiğine bağlı: Meshy kılıcı (sword.glb), yoksa çizilmiş tırpan. Modeller public/models içinde, Git dışında (lisans).
 Sıradaki: birlikte kararlaştırılacak (ilk minion ya da ilk düşman).
 Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 
