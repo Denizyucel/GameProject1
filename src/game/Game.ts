@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { Grid } from './Grid';
+import { findPath } from './findPath';
 
 // Kameranın dikeyde kaç dünya birimi gördüğü. Küçültürsen yakınlaşır.
 const VIEW_HEIGHT = 18;
@@ -14,6 +16,16 @@ const CAMERA_OFFSET = new THREE.Vector3(20, 20, 20);
 // küçültürsen daha yumuşak ve gecikmeli gelir.
 const CAMERA_FOLLOW = 5;
 
+// Kapsülün yarıçapı. Engeller bu kadar şişirilir ki kapsülün kenarı taşa sürtmesin.
+const PLAYER_RADIUS = 0.4;
+
+// Zemin boyutu ve ızgara karesi (dünya birimi)
+const GROUND_SIZE = 30;
+const CELL_SIZE = 1;
+
+// true iken engelli kareler kırmızı, bulunan yol yeşil çizgi olarak görünür
+const SHOW_DEBUG = true;
+
 export class Game {
   private readonly container: HTMLElement;
   private readonly renderer: THREE.WebGLRenderer;
@@ -28,8 +40,15 @@ export class Game {
   // Farenin ekrandaki konumu, -1..1 aralığında (sol alt -1,-1; sağ üst 1,1)
   private readonly pointer = new THREE.Vector2();
 
-  // Yürüme hedefi; null ise karakter duruyor
-  private moveTarget: THREE.Vector3 | null = null;
+  // Hangi karelerin yürünebilir olduğunu bilen ızgara
+  private readonly grid = new Grid(GROUND_SIZE, GROUND_SIZE, CELL_SIZE);
+  // Sırayla gidilecek noktalar (A*'ın bulduğu yol). Boşsa karakter duruyor.
+  private path: THREE.Vector3[] = [];
+  // Debug: bulunan yolu zeminde gösteren çizgi
+  private readonly pathLine = new THREE.Line(
+    new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({ color: 0x9dffc8 }),
+  );
   // Her karede yeni vektör yaratmamak için tekrar kullanılan geçici vektör
   private readonly toTarget = new THREE.Vector3();
   // Bir önceki karenin zamanı (saniye); delta time bundan hesaplanır
@@ -59,8 +78,9 @@ export class Game {
     this.scene.background = new THREE.Color(0x121018);
     this.addLights();
     this.ground = this.addGround();
-    this.addGraves();
+    this.addGraves(); // mezar taşlarını hem sahneye hem ızgaraya engel olarak ekler
     this.player = this.createPlayer();
+    if (SHOW_DEBUG) this.addDebugView();
 
     // Canvas'a tıklanınca dünyada nereye tıklandığını bul
     this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
@@ -104,25 +124,35 @@ export class Game {
   }
 
   private updateMovement(delta: number) {
-    if (!this.moveTarget) return; // hedef yok, duruyoruz
+    let step = MOVE_SPEED * delta; // bu karede atılacak adımın boyu
 
-    // Karakterden hedefe giden vektör: uzunluğu kalan mesafe, yönü gidilecek yön
-    this.toTarget.subVectors(this.moveTarget, this.player.position);
-    const distance = this.toTarget.length();
-    const step = MOVE_SPEED * delta; // bu karede atılacak adımın boyu
+    // Adım bitene ya da yol bitene kadar sıradaki noktaya doğru ilerle.
+    // Döngü olmasının sebebi: bir noktaya varınca adımın kalanı bir sonrakine harcanır,
+    // böylece köşe dönüşlerinde karakter bir an duraklamaz.
+    while (step > 0 && this.path.length > 0) {
+      const next = this.path[0];
 
-    if (distance <= step) {
-      // Hedefe bir adımdan az kaldı: tam üstüne koy ve dur
-      this.player.position.copy(this.moveTarget);
-      this.moveTarget = null;
-      return;
+      // Karakterden sıradaki noktaya giden vektör: uzunluğu kalan mesafe, yönü gidilecek yön
+      this.toTarget.subVectors(next, this.player.position);
+      const distance = this.toTarget.length();
+
+      if (distance <= step) {
+        // Noktaya bu adımda varılıyor: üstüne koy, listeden çıkar, kalan adımla devam et
+        this.player.position.copy(next);
+        this.path.shift();
+        step -= distance;
+        continue;
+      }
+
+      // Yüzünü yürüdüğü yöne çevir. atan2, x ve z farkından açıyı (radyan) bulur.
+      this.player.rotation.y = Math.atan2(this.toTarget.x, this.toTarget.z);
+
+      // Yönü 1 birim uzunluğa indir (normalize), sonra adım boyu kadar ilerle
+      this.player.position.addScaledVector(this.toTarget.normalize(), step);
+      step = 0;
     }
 
-    // Yüzünü yürüdüğü yöne çevir. atan2, x ve z farkından açıyı (radyan) bulur.
-    this.player.rotation.y = Math.atan2(this.toTarget.x, this.toTarget.z);
-
-    // Yönü 1 birim uzunluğa indir (normalize), sonra adım boyu kadar ilerle
-    this.player.position.addScaledVector(this.toTarget.normalize(), step);
+    this.pathLine.visible = this.path.length > 0; // varınca yol çizgisini gizle
   }
 
   private updateCamera(delta: number) {
@@ -152,11 +182,39 @@ export class Game {
     const hit = this.raycaster.intersectObject(this.ground)[0];
     if (!hit) return; // zeminin dışına tıklandı
 
-    // 3. Çarptığı noktayı yürüme hedefi yap. Yükseklik (y) karakterinkiyle aynı
-    //    kalsın ki kapsül yere gömülmeye çalışmasın, sadece x ve z'de yürüsün.
+    // 3. Tıklanan noktaya giden yolu bul ve yürümeye başla
     const { x, z } = hit.point;
-    this.moveTarget = new THREE.Vector3(x, this.player.position.y, z);
+    this.walkTo(x, z);
   };
+
+  private walkTo(x: number, z: number) {
+    const grid = this.grid;
+    const y = this.player.position.y; // yürürken yükseklik değişmez, sadece x ve z
+
+    // Hedef kare: tıklanan kare boşsa o, mezar taşının üstüne tıklandıysa en yakın boş kare
+    const clicked = grid.worldToCell(x, z);
+    const clickedIsFree = grid.isWalkable(clicked.col, clicked.row);
+    const goal = clickedIsFree ? clicked : grid.nearestWalkable(x, z);
+    if (!goal) return;
+
+    const start = grid.worldToCell(this.player.position.x, this.player.position.z);
+    const cells = findPath(grid, start, goal);
+    if (!cells) return; // oraya giden yol yok
+
+    // Kareleri dünya noktalarına çevir. İlk kare karakterin zaten durduğu kare,
+    // son kare de aşağıda tam tıklanan noktayla değiştiriliyor; ikisi de atlanıyor.
+    const points = cells.slice(1, -1).map((cell) => {
+      const center = grid.cellCenter(cell);
+      return new THREE.Vector3(center.x, y, center.z);
+    });
+
+    // Son nokta: tıklanan yer boşsa tam orası, değilse en yakın boş karenin ortası
+    const end = clickedIsFree ? { x, z } : grid.cellCenter(goal);
+    points.push(new THREE.Vector3(end.x, y, end.z));
+
+    this.path = points;
+    if (SHOW_DEBUG) this.showPath();
+  }
 
   private addLights() {
     // Gökyüzü ve zeminden gelen yumuşak genel ışık
@@ -179,14 +237,14 @@ export class Game {
 
   private addGround(): THREE.Mesh {
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(30, 30),
+      new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE),
       new THREE.MeshStandardMaterial({ color: 0x2a2433, roughness: 1 }),
     );
     ground.rotation.x = -Math.PI / 2; // dik duran düzlemi yere yatır
     ground.receiveShadow = true;
     this.scene.add(ground);
 
-    const grid = new THREE.GridHelper(30, 30, 0x4a3f5c, 0x352e42);
+    const grid = new THREE.GridHelper(GROUND_SIZE, GROUND_SIZE / CELL_SIZE, 0x4a3f5c, 0x352e42);
     grid.position.y = 0.01; // zeminle çakışıp titremesin
     this.scene.add(grid);
 
@@ -206,7 +264,41 @@ export class Game {
       grave.castShadow = true;
       grave.receiveShadow = true;
       this.scene.add(grave);
+
+      // Taşın zemindeki izini (dönük haliyle) bul, kapsül yarıçapı kadar büyüt
+      // ve dokunduğu kareleri ızgarada engelli yap. Box3 = nesneyi saran kutu.
+      const footprint = new THREE.Box3().setFromObject(grave).expandByScalar(PLAYER_RADIUS);
+      this.grid.blockRect(footprint.min.x, footprint.min.z, footprint.max.x, footprint.max.z);
     }
+  }
+
+  // Debug: engelli kareleri yarı saydam kırmızı karolarla göster
+  private addDebugView() {
+    const tile = new THREE.PlaneGeometry(CELL_SIZE * 0.9, CELL_SIZE * 0.9);
+    tile.rotateX(-Math.PI / 2); // yere yatır
+    const material = new THREE.MeshBasicMaterial({ color: 0xff4d6d, transparent: true, opacity: 0.35 });
+
+    for (let row = 0; row < this.grid.rows; row++) {
+      for (let col = 0; col < this.grid.cols; col++) {
+        if (this.grid.isWalkable(col, row)) continue;
+        const center = this.grid.cellCenter({ col, row });
+        const mesh = new THREE.Mesh(tile, material);
+        mesh.position.set(center.x, 0.02, center.z); // ızgara çizgilerinin hemen üstü
+        this.scene.add(mesh);
+      }
+    }
+
+    this.pathLine.visible = false;
+    this.scene.add(this.pathLine);
+  }
+
+  // Debug: bulunan yolu karakterin ayağından başlayan bir çizgiyle çiz
+  private showPath() {
+    const feet = (p: THREE.Vector3) => new THREE.Vector3(p.x, 0.05, p.z);
+    const points = [feet(this.player.position), ...this.path.map(feet)];
+    this.pathLine.geometry.dispose(); // eski çizginin belleğini boşalt
+    this.pathLine.geometry = new THREE.BufferGeometry().setFromPoints(points);
+    this.pathLine.visible = true;
   }
 
   private createPlayer(): THREE.Mesh {

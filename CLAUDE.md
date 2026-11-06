@@ -32,8 +32,15 @@ Retina ekranlar hedeflenir.
 - Kapsamı büyütme; prototip dışındaki fikirleri "Sonra" listesine öner.
 
 ## Şu anki hedef
-Faz 1 sahnesi ve tıklayarak hareket tamam (raycaster ile tıklama, delta time
-ile yürüme, yumuşak kamera takibi).
-Sıradaki: grid + A* yol bulma ile engellerin etrafından dolaşma; mezar taşları
-ilk engeller.
+Faz 1 sahnesi, tıklayarak hareket ve A* yol bulma tamam. Karakter mezar
+taşlarının etrafından dolaşıyor (src/game/Grid.ts, src/game/findPath.ts;
+SHOW_DEBUG ile engelli kareler ve yol görünür).
+Sıradaki: bir sonraki faz birlikte kararlaştırılacak.
 Ayrıntılı plan: Necromancer-Baslangic-Plani.md
+
+## Sonra
+- Yol düzleştirme: ızgara yolundaki gereksiz kırılmaları kaldır (görüş hattı kontrolü)
+- Tıklanan yere kısa süreli işaret (Diablo'daki tıklama halkası)
+- Fare basılı tutulunca sürekli yürüme
+- Harita kenarı: siyah boşluk yerine duvar/sis; gölge alanı karakteri takip etsin
+- A* açık listesini öncelik kuyruğuna çevir (harita büyüyünce)
