@@ -1,6 +1,6 @@
-// Vampir: mezar taşlarının yerinde duran düşman. Model: public/models/Vampire A Lusth.fbx (Mixamo).
-// Kemik adları karakterle aynı olduğu için karakterin bekleme (idle) animasyonunu oynatır.
-// Şimdilik karşılık vermiyor; vurulunca sarsılıp kırmızı parlıyor, ölünce et yığını bırakıyor.
+// Vampir modeli: public/models/Vampire A Lusth.fbx (Mixamo). Kemik adları karakterle aynı olduğu için
+// karakterin bekleme (idle) animasyonunu oynatır; yürüme için kendi Walking.fbx animasyonu var.
+// Davranış (dolaşma, vurulma, ölme) Enemy.ts'te; bu dosya sadece görünüşü hazırlar.
 
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
@@ -10,28 +10,39 @@ import { materialsOf, type GlowMaterial } from './Skeleton';
 
 // Dosya adında boşluk var; encodeURI onu adrese uygun hale getirir (boşluk → %20)
 const VAMPIRE_URL = encodeURI('/models/Vampire A Lusth.fbx');
+// Vampir için indirilen yürüme animasyonu (Mixamo "Walking", vampir seçiliyken)
+const WALK_URL = '/models/Walking.fbx';
 // Oyundaki boyu (metre), karakterle aynı
 const VAMPIRE_HEIGHT = 2;
 // Vurulunca parlayacağı renk
 const HIT_COLOR = 0xff4a4a;
 
-/** Bir vampirin görünen kısmı: model, kendi malzemeleri ve animasyon oynatıcısı */
+/** Bir vampirin görünen kısmı: model, kendi malzemeleri ve animasyonları */
 export interface VampireBody {
   model: THREE.Object3D;
   materials: GlowMaterial[];
-  mixer: THREE.AnimationMixer | null;
+  mixer: THREE.AnimationMixer;
+  idle: THREE.AnimationAction;
+  walk: THREE.AnimationAction;
+  // Yürüme animasyonu normal hızda oynarken vampirin saniyede kaç metre yürüdüğü.
+  // Vampir başka hızda yürürse animasyon o oranda hızlandırılır, ayaklar kaymasın.
+  walkSpeed: number;
 }
 
-// Yüklenip hazırlanmış model ve ona uyarlanmış bekleme animasyonu
+// Yüklenip hazırlanmış model ve animasyonları
 let template: THREE.Object3D | null = null;
 let idleClip: THREE.AnimationClip | null = null;
+let walkClip: THREE.AnimationClip | null = null;
+let walkSpeed = 1;
 
 /**
- * Vampir modelini yükle. idle: karakterin bekleme animasyonu, hipsHeight: karakterin kalça
- * yüksekliği (Mixamo birimi). Animasyon vampirin boyuna bu oranla uydurulur.
+ * Vampir modelini ve yürüme animasyonunu yükle. idle: karakterin bekleme animasyonu,
+ * hipsHeight: karakterin kalça yüksekliği (Mixamo birimi). Bekleme animasyonu vampirin boyuna
+ * bu oranla uydurulur.
  */
 export async function loadVampireModel(idle: THREE.AnimationClip, hipsHeight: number) {
-  const model = await new FBXLoader().loadAsync(VAMPIRE_URL);
+  const loader = new FBXLoader();
+  const [model, walkFile] = await Promise.all([loader.loadAsync(VAMPIRE_URL), loader.loadAsync(WALK_URL)]);
 
   // Mixamo santimetre kullanır; boyu ölçüp VAMPIRE_HEIGHT'a ölçekle, ayakları zemine koy
   const box = new THREE.Box3().setFromObject(model);
@@ -52,12 +63,27 @@ export async function loadVampireModel(idle: THREE.AnimationClip, hipsHeight: nu
 
   const hips = model.getObjectByName('mixamorigHips');
   idleClip = adaptClip(idle, model, hips ? hips.position.y / hipsHeight : 1);
+
+  // Yürüme animasyonu vampiri kendiliğinden öne taşıyor (root motion). Önce ne kadar taşıdığını
+  // ölç (bu, animasyonun doğal hızı), sonra taşımayı kaldır: konumu biz yönetiyoruz.
+  const raw = walkFile.animations[0];
+  const hipsTrack = raw.tracks.find((track) => track.name === 'mixamorigHips.position');
+  if (hipsTrack) {
+    const v = hipsTrack.values;
+    const distance = Math.hypot(v[v.length - 3] - v[0], v[v.length - 1] - v[2]); // santimetre
+    walkSpeed = (distance / raw.duration) * scale; // metre/saniye
+    for (let i = 0; i < v.length; i += 3) {
+      v[i] = v[0]; // kalçanın yatay konumunu ilk karedeki yerde sabitle
+      v[i + 2] = v[2];
+    }
+  }
+  walkClip = adaptClip(raw, model, 1); // aynı vampir için indirildi: boy oranı 1
   template = model;
 }
 
 /** Yeni bir vampir. Model henüz yüklenmediyse (ya da hiç yoksa) null. */
 export function createVampire(): VampireBody | null {
-  if (!template) return null;
+  if (!template || !idleClip || !walkClip) return null;
 
   // SkeletonUtils.clone kemikleri de kopyalar, ki her vampir kendi başına hareket etsin
   const model = SkeletonUtils.clone(template);
@@ -70,12 +96,10 @@ export function createVampire(): VampireBody | null {
     materials.push(...copies);
   });
 
-  let mixer: THREE.AnimationMixer | null = null;
-  if (idleClip) {
-    mixer = new THREE.AnimationMixer(model);
-    const idle = mixer.clipAction(idleClip);
-    idle.play();
-    idle.time = Math.random() * idleClip.duration; // hepsi aynı anda kıpırdamasın
-  }
-  return { model, materials, mixer };
+  const mixer = new THREE.AnimationMixer(model);
+  const idle = mixer.clipAction(idleClip);
+  const walk = mixer.clipAction(walkClip);
+  idle.play();
+  idle.time = Math.random() * idleClip.duration; // hepsi aynı anda kıpırdamasın
+  return { model, materials, mixer, idle, walk, walkSpeed };
 }

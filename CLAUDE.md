@@ -32,14 +32,17 @@ Retina ekranlar hedeflenir.
 - Kapsamı büyütme; prototip dışındaki fikirleri "Sonra" listesine öner.
 
 ## Şu anki hedef
-Faz 1 sahnesi, tıklayarak hareket ve A* yol bulma tamam. Karakter düşmanların
-etrafından dolaşıyor (src/game/Grid.ts, src/game/findPath.ts;
-SHOW_DEBUG ile engelli kareler ve yol görünür).
-Düşmanlar: 5 vampir (Mixamo "Vampire A Lusth.fbx", src/game/Vampire.ts), karakterin idle
-animasyonunu oynuyor; model yoksa yedek olarak mezar taşı. Henüz karşılık vermiyorlar.
-Tıklamayı görünmez bir kutu (hitbox) yakalıyor. Vampire tıklayınca karakter yanına yürüyüp
-vuruyor; vampir sarsılıp kırmızı parlıyor. 3 vuruşta darbe yönüne devrilip toprağa gömülüyor,
-ızgara yeniden kuruluyor.
+Faz 1 sahnesi, tıklayarak hareket ve A* yol bulma tamam (src/game/Grid.ts, src/game/findPath.ts;
+SHOW_DEBUG ile engelli kareler görünür; şu an sabit engel yok, düşmanlar hareketli olduğu için
+ızgarayı engellemiyor).
+Düşmanlar: 5 vampir (src/game/Enemy.ts davranış, src/game/Vampire.ts model; Mixamo
+"Vampire A Lusth.fbx" + Walking.fbx). Evlerinin çevresinde (5 m) rastgele dolaşıyorlar; beklerken
+karakterin idle animasyonu, yürürken Walking (root motion kaldırılıp hızına göre ayarlı).
+Model yoksa yedek olarak hareketsiz mezar taşı. Henüz karşılık vermiyorlar.
+Tıklamayı görünmez bir kutu (hitbox) yakalıyor. Vampire bir kez tıklayınca karakter onu kovalıyor
+(yol 0.3 sn'de bir yenilenir), menzile girince vuruyor, ölene kadar vurmaya devam ediyor; zemine
+tıklamak ya da WASD saldırıyı bırakır. Vurulan vampir sarsılıp kırmızı parlıyor, saldırana dönüp
+1.6 sn duruyor. 3 vuruşta geriye devrilip toprağa gömülüyor.
 Karakter Mixamo modeli (Nightshade): idle, walk, attack animasyonları AnimationMixer ile;
 silah sağ el kemiğine bağlı: Meshy kılıcı (sword.glb), yoksa çizilmiş tırpan. Modeller public/models içinde, Git dışında (lisans).
 Kontroller: tıklayarak (A*) ya da WASD/ok tuşlarıyla (ekrana göre, çarpışmalı) yürüme;
@@ -65,5 +68,7 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - skeleton.fbx'i hafiflet (278 bin üçgen; çok minionda ağırlaşır)
 - Minion sayısı sınırı ve mana; yakında ceset yoksa HUD'da uyarı
 - Vampire kendi animasyonları (vurulma, ölüm) ve can barı
+- Hareketli çarpışma: karakter, vampir ve minionlar birbirinin içinden geçmesin
+- Walking.fbx'i Without Skin indir (15 MB → ~0.5 MB)
 - Diriltme büyüsü için ışık/parçacık efekti
 - Minionlar birbirinin ve karakterin içinden geçmesin

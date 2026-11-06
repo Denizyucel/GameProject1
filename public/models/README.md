@@ -15,6 +15,7 @@ yeniden indirip buraya koy:
 | `sword.glb` | Kılıç, [Meshy](https://www.meshy.ai) | GLB |
 | `skeleton.fbx` | İskelet (ceset ve minion): Meshy modeli, Mixamo'da Upload Character ile riglendi | FBX Binary, T-pose, With Skin |
 | `Vampire A Lusth.fbx` | Düşman: Vampire A Lusth (karakter) | FBX Binary, T-pose, With Skin |
+| `Walking.fbx` | Walking animasyonu, Vampire seçiliyken indirildi | With Skin (Without Skin da olur), In Place değil |
 | `flesh.glb` | Et yığını (kırılan taşın bıraktığı ceset), Meshy | GLB |
 | `Magic Spell Pack/` | Magic Spell Pack (paket, klasör adıyla) | Without Skin |
 

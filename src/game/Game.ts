@@ -8,6 +8,7 @@ import { Minion } from './Minion';
 import { createSkeleton, loadSkeletonModel, setGlow, type GlowMaterial } from './Skeleton';
 import { createFlesh, loadFleshModel } from './Flesh';
 import { createVampire, loadVampireModel } from './Vampire';
+import { Enemy } from './Enemy';
 
 // Kameranın dikeyde kaç dünya birimi gördüğü. Küçültürsen yakınlaşır.
 const VIEW_HEIGHT = 18;
@@ -72,9 +73,6 @@ const ATTACK_HIT_MOMENT = 0.45;
 // İki animasyon arasında yumuşak geçiş süresi (saniye)
 const ANIMATION_FADE = 0.2;
 
-// Kapsülün yarıçapı. Engeller bu kadar şişirilir ki kapsülün kenarı engele sürtmesin.
-const PLAYER_RADIUS = 0.4;
-
 // Zemin boyutu ve ızgara karesi (dünya birimi)
 const GROUND_SIZE = 30;
 const CELL_SIZE = 1;
@@ -96,24 +94,12 @@ const HIT_MOMENT = 0.55;
 const WEAPON_REST = 0.25;
 const WEAPON_WINDUP = -0.9;
 const WEAPON_STRIKE = 1.7;
-// Vurulan düşmanın sarsılıp parladığı süre (saniye)
-const HIT_FEEDBACK = 0.3;
-// Düşmanın canı: kaç vuruşta öldüğü
-const ENEMY_HEALTH = 3;
-// Ölen düşmanın devrilip toprağa gömülme süresi (saniye), ne kadar devrildiği (radyan, ≈80°)
-// ve ne kadar derine gömüldüğü (metre; vampir 2 m boyunda, tamamen girsin)
-const BREAK_DURATION = 1.1;
-const FALL_ANGLE = 1.4;
-const SINK_DEPTH = 2.3;
-// Düşmanın zeminde kapladığı yer (yarıçap, metre). Izgarada engel olarak işlenir.
-const ENEMY_RADIUS = 0.35;
-// Tıklamayı yakalayan görünmez kutu: genişlik, boy (metre). Ayrıntılı modele ışın atmak yavaş
-// ve ince yerlerden ıskalanır; bu kutu hem hızlı hem tıklaması kolay.
-const HITBOX_WIDTH = 0.9;
-const HITBOX_HEIGHT = 2;
-const HITBOX_GEOMETRY = new THREE.BoxGeometry(HITBOX_WIDTH, HITBOX_HEIGHT, HITBOX_WIDTH).translate(0, HITBOX_HEIGHT / 2, 0);
-// visible: false → çizilmez ama ışın yine çarpar
-const HITBOX_MATERIAL = new THREE.MeshBasicMaterial({ visible: false });
+// Darbe anında düşman bu kadar uzaklaşmış olsa da vuruş sayılır (yürüyen hedefe biraz tolerans)
+const HIT_REACH = ATTACK_RANGE + 0.5;
+// Kovalarken yolun kaç saniyede bir yenilendiği (hedef yürüdükçe yeri değişir)
+const CHASE_REPATH = 0.3;
+// Düşmanların başladığı yerler (eski mezar taşlarının yerleri)
+const ENEMY_SPOTS: [number, number][] = [[-4, -3], [-2, -5], [3, -4], [5, 2], [-5, 3]];
 
 // Ölü diriltme
 // Ölen her düşmandan düşen ceset sayısı (en az, en çok) ve ne kadar uzağa düştükleri
@@ -164,23 +150,6 @@ interface Corpse {
   sinkTime: number | null; // iskelet içinden çıktıysa kaç saniyedir gömüldüğü; null ise yerinde duruyor
 }
 
-// Sahnedeki bir düşman: vampir (model yoksa yedek olarak mezar taşı). Şimdilik karşılık vermiyor;
-// vurulunca sarsılıp parlıyor, ölünce devrilip gömülüyor ve yerine et yığını bırakıyor.
-interface Enemy {
-  // Görünen kısmın dış grubu, kökü ayak hizasında. Sarsılırken ve devrilirken bu hareket eder.
-  object: THREE.Group;
-  hitbox: THREE.Mesh; // tıklama ışınının çarptığı görünmez kutu
-  stone: THREE.Mesh; // yedek görünüm; vampir modeli gelince gizlenir
-  materials: GlowMaterial[]; // kendi malzemeleri, ki sadece vurulan parlasın
-  mixer: THREE.AnimationMixer | null; // vampirin bekleme animasyonu; taşta null
-  basePosition: THREE.Vector3; // sarsıntı bitince döneceği yer
-  hitDirection: THREE.Vector3; // darbenin geldiği yön; o yöne sarsılır ve devrilir
-  hitTime: number | null; // son darbenin zamanı (saniye)
-  hits: number; // toplam kaç kez vuruldu
-  footprint: THREE.Box3; // zemindeki izi (kapsül payı dahil); ızgarada engel olarak kullanılır
-  breakTime: number | null; // ölmeye başladığı zaman; null ise ayakta
-}
-
 export class Game {
   private readonly container: HTMLElement;
   private readonly renderer: THREE.WebGLRenderer;
@@ -208,6 +177,10 @@ export class Game {
   private readonly scythe = new THREE.Group();
   // Saldırılacak düşman (yanına yürünüyor ya da vuruluyor); null ise saldırı yok
   private attackTarget: Enemy | null = null;
+  // Şu anki savurmanın hedefi. Savurma başlayınca sabitlenir: oyuncu başka yere tıklasa da darbe ona iner.
+  private swingTarget: Enemy | null = null;
+  // Kovalarken yolun yenilenmesine kalan süre (saniye)
+  private chaseTimer = 0;
   // Savurma başladıysa kaç saniyedir sürdüğü; null ise savurmuyor
   private swingTime: number | null = null;
   // Bu savurmanın darbesi düşmana indi mi (her savurmada bir kez)
@@ -469,19 +442,30 @@ export class Game {
     this.pathLine.visible = SHOW_PATH_LINE && this.path.length > 0; // varınca yol çizgisini gizle
   }
 
+  // Saldırı: hedefi kovala, menzile girince vur, hedef ölene kadar vurmaya devam et
   private updateAttack(delta: number, elapsed: number) {
-    // 1. Hedef var, yürüme bitti, henüz savurmuyor: menzildeyse savurmaya başla
-    if (this.attackTarget && !this.isBusy() && this.path.length === 0) {
-      const target = this.attackTarget.basePosition;
+    // Hedef öldüyse saldırı biter
+    if (this.attackTarget && !this.attackTarget.alive) this.attackTarget = null;
+
+    // 1. Hedef var ve karakter boşta: menzildeyse savurmaya başla, değilse kovala
+    if (this.attackTarget && !this.isBusy()) {
+      const target = this.attackTarget.position;
       const dx = target.x - this.player.position.x;
       const dz = target.z - this.player.position.z;
 
       if (Math.hypot(dx, dz) <= ATTACK_RANGE) {
+        this.path = []; // menzilde: dur ve vur
         this.player.rotation.y = Math.atan2(dx, dz); // yüzünü düşmana çevir
         this.swingTime = 0;
         this.swingHasHit = false;
+        this.swingTarget = this.attackTarget;
       } else {
-        this.attackTarget = null; // düşmana yaklaşamadık (yol yoktu), saldırıdan vazgeç
+        // Hedef yürüyor: yolu belli aralıklarla (ya da yol bittiyse hemen) yenile
+        this.chaseTimer -= delta;
+        if (this.chaseTimer <= 0 || this.path.length === 0) {
+          this.chaseTimer = CHASE_REPATH;
+          if (!this.walkNear(target)) this.attackTarget = null; // yol yok: vazgeç
+        }
       }
     }
 
@@ -493,16 +477,24 @@ export class Game {
     const progress = Math.min(this.swingTime / this.swingDuration, 1);
     if (!this.mixer) this.weaponPivot.rotation.x = swingAngle(progress);
 
-    // 3. Darbe anı geldiyse düşmana vur (her savurmada bir kez)
-    if (!this.swingHasHit && progress >= this.hitMoment && this.attackTarget) {
+    // 3. Darbe anı geldiyse vur (her savurmada bir kez). Hedef bu arada uzaklaştıysa ıska.
+    const target = this.swingTarget;
+    if (!this.swingHasHit && progress >= this.hitMoment && target) {
       this.swingHasHit = true;
-      this.hitEnemy(this.attackTarget, elapsed);
+      const p = target.position;
+      const inReach = Math.hypot(p.x - this.player.position.x, p.z - this.player.position.z) <= HIT_REACH;
+      if (target.alive && inReach) {
+        const died = target.hit(this.player.position, elapsed);
+        console.log(died ? 'Vampir öldü' : 'Vampire vuruldu');
+      } else {
+        console.log('Iska');
+      }
     }
 
-    // 4. Savurma bitti: silahı dinlenme açısına bırak, saldırıyı bitir
+    // 4. Savurma bitti. Hedef yaşıyorsa bir sonraki karede yeni savurma (ya da kovalama) başlar.
     if (progress >= 1) {
       this.swingTime = null;
-      this.attackTarget = null;
+      this.swingTarget = null;
       if (!this.mixer) this.weaponPivot.rotation.x = WEAPON_REST;
     }
   }
@@ -527,80 +519,17 @@ export class Game {
     this.mixer.update(delta); // animasyonları delta kadar ilerlet, kemikleri hareket ettir
   }
 
-  private hitEnemy(enemy: Enemy, elapsed: number) {
-    if (enemy.breakTime !== null) return; // zaten ölüyor
-    enemy.hits += 1;
-    enemy.hitTime = elapsed;
-    // Darbe yönü: karakterden düşmana. Düşman bu yöne doğru sarsılacak (ve ölünce devrilecek).
-    enemy.hitDirection
-      .set(enemy.basePosition.x - this.player.position.x, 0, enemy.basePosition.z - this.player.position.z)
-      .normalize();
-    console.log(`Düşmana vuruldu (${enemy.hits}/${ENEMY_HEALTH})`);
-
-    if (enemy.hits >= ENEMY_HEALTH) {
-      enemy.breakTime = elapsed;
-      this.rebuildGrid(); // engel hemen kalksın, karakter oradan geçebilsin
-      console.log('Düşman öldü');
-    }
-  }
-
-  // Izgarayı ayaktaki düşmanlardan baştan kur. Sadece ölenin karelerini boşaltmak
-  // yerine baştan kuruyoruz ki iki engel aynı kareyi paylaşsa bile doğru kalsın.
-  private rebuildGrid() {
-    this.grid.clear();
-    for (const enemy of this.enemies) {
-      if (enemy.breakTime !== null) continue;
-      const { min, max } = enemy.footprint;
-      this.grid.blockRect(min.x, min.z, max.x, max.z);
-    }
-    if (SHOW_DEBUG) this.refreshDebugTiles();
-  }
-
-  // Vurulan düşmanları sars ve parlat; ölenleri devir, toprağa göm ve sahneden sil
+  // Düşmanları güncelle (dolaşma, vurulma, ölme); ölümü biten düşmanı silip yerine ceset bırak
   private updateEnemies(elapsed: number, delta: number) {
     // Sondan başa doğru dönüyoruz ki silinen düşman, sıradakilerin yerini kaydırmasın
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i];
-      enemy.mixer?.update(delta); // bekleme animasyonu
-
-      if (enemy.breakTime !== null) {
-        const t = (elapsed - enemy.breakTime) / BREAK_DURATION; // 0 → 1
-        if (t >= 1) {
-          // Gömülme bitti: sahneden ve listeden tamamen çıkar, malzemelerin belleğini boşalt.
-          // Yerinde et yığınları kalır.
-          this.dropCorpses(enemy.basePosition);
-          this.scene.remove(enemy.object);
-          for (const material of enemy.materials) material.dispose();
-          this.enemies.splice(i, 1);
-          continue;
-        }
-        // Önce darbe yönüne devril (ilk %55), sonra toprağa gömül (son %55; biraz üst üste biner)
-        const fall = THREE.MathUtils.smoothstep(t / 0.55, 0, 1);
-        const sink = Math.max(0, (t - 0.45) / 0.55) ** 2;
-        const object = enemy.object;
-        object.position.copy(enemy.basePosition).addScaledVector(enemy.hitDirection, fall * 0.3);
-        object.position.y = enemy.basePosition.y - sink * SINK_DEPTH;
-        // Devrilme: darbe yönüne dik eksen etrafında döndür. Kök ayakta olduğu için ayakları üstünde devrilir.
-        object.rotation.x = enemy.hitDirection.z * fall * FALL_ANGLE;
-        object.rotation.z = -enemy.hitDirection.x * fall * FALL_ANGLE;
-        setGlow(enemy, 1 - t);
-        continue;
-      }
-
-      if (enemy.hitTime === null) continue;
-
-      const t = (elapsed - enemy.hitTime) / HIT_FEEDBACK; // 0 → 1 arası ilerleme
-      if (t >= 1) {
-        enemy.object.position.copy(enemy.basePosition);
-        setGlow(enemy, 0);
-        enemy.hitTime = null;
-        continue;
-      }
-
-      const fade = 1 - t; // tepki zamanla sönümlenir
-      const shake = Math.sin(t * Math.PI * 6) * 0.08 * fade; // ileri-geri titreşim
-      enemy.object.position.copy(enemy.basePosition).addScaledVector(enemy.hitDirection, shake);
-      setGlow(enemy, fade); // anlık parlama, sonra söner
+      enemy.update(delta, elapsed, this.grid);
+      if (!enemy.finished) continue;
+      this.dropCorpses(enemy.position);
+      this.scene.remove(enemy.root);
+      enemy.dispose();
+      this.enemies.splice(i, 1);
     }
   }
 
@@ -775,7 +704,7 @@ export class Game {
     this.raycaster.setFromCamera(this.pointer, this.camera);
 
     // 2a. Önce düşmanlara bak: birine tıklandıysa ona saldır
-    const standing = this.enemies.filter((e) => e.breakTime === null); // ölenlere tıklanmaz
+    const standing = this.enemies.filter((e) => e.alive); // ölenlere tıklanmaz
     const enemyHit = this.raycaster.intersectObjects(standing.map((e) => e.hitbox), false)[0];
     const enemy = enemyHit && this.enemies.find((e) => e.hitbox === enemyHit.object);
     if (enemy) {
@@ -784,9 +713,9 @@ export class Game {
     }
 
     // 2b. Düşman değilse zemine bak
-    // Başka yere tıklandı: saldırıdan vazgeç. Ama savurma başladıysa darbe yine insin;
-    // yeni yürüme savurma bitince başlar.
-    if (this.swingTime === null) this.attackTarget = null;
+    // Başka yere tıklandı: saldırıdan vazgeç. Ama savurma başladıysa darbe yine insin
+    // (swingTarget'a); yeni yürüme savurma bitince başlar.
+    this.attackTarget = null;
     const hit = this.raycaster.intersectObject(this.ground)[0];
     if (!hit) return; // zeminin dışına tıklandı
 
@@ -795,27 +724,24 @@ export class Game {
     this.walkTo(x, z);
   };
 
+  // Düşmana saldır: updateAttack kovalar, menzile girince vurur, ölene kadar vurmaya devam eder
   private attack(enemy: Enemy) {
-    if (this.swingTime !== null) return; // zaten savuruyor; bitmeden yenisi başlamaz
     this.attackTarget = enemy;
-
-    const target = enemy.basePosition;
-    const player = this.player.position;
-    const distance = Math.hypot(target.x - player.x, target.z - player.z);
-
-    if (distance <= ATTACK_RANGE) {
-      this.path = []; // zaten menzilde: olduğu yerde vur
-      return;
-    }
-
-    // Düşmanın karaktere bakan tarafında, ondan 1 birim ötedeki noktaya yürü.
-    // Orası engelli kareye düşerse walkTo en yakın boş kareyi seçer.
-    const awayX = (player.x - target.x) / distance;
-    const awayZ = (player.z - target.z) / distance;
-    this.walkTo(target.x + awayX, target.z + awayZ);
+    this.chaseTimer = 0; // yolu hemen hesapla
   }
 
-  private walkTo(x: number, z: number) {
+  // Hedefin karaktere bakan tarafında, ondan 1 birim ötedeki noktaya yürü. Yol bulunamazsa false.
+  private walkNear(target: THREE.Vector3): boolean {
+    const player = this.player.position;
+    const distance = Math.hypot(target.x - player.x, target.z - player.z);
+    if (distance < 0.01) return true; // zaten üstünde
+    const awayX = (player.x - target.x) / distance;
+    const awayZ = (player.z - target.z) / distance;
+    return this.walkTo(target.x + awayX, target.z + awayZ);
+  }
+
+  // (x, z) noktasına giden yolu bul ve yürümeye başla. Yol bulunamazsa false.
+  private walkTo(x: number, z: number): boolean {
     const grid = this.grid;
     const y = this.player.position.y; // yürürken yükseklik değişmez, sadece x ve z
 
@@ -823,11 +749,11 @@ export class Game {
     const clicked = grid.worldToCell(x, z);
     const clickedIsFree = grid.isWalkable(clicked.col, clicked.row);
     const goal = clickedIsFree ? clicked : grid.nearestWalkable(x, z);
-    if (!goal) return;
+    if (!goal) return false;
 
     const start = grid.worldToCell(this.player.position.x, this.player.position.z);
     const cells = findPath(grid, start, goal);
-    if (!cells) return; // oraya giden yol yok
+    if (!cells) return false; // oraya giden yol yok
 
     // Kareleri dünya noktalarına çevir. İlk kare karakterin zaten durduğu kare,
     // son kare de aşağıda tam tıklanan noktayla değiştiriliyor; ikisi de atlanıyor.
@@ -842,6 +768,7 @@ export class Game {
 
     this.path = points;
     if (SHOW_PATH_LINE) this.showPath();
+    return true;
   }
 
   private addLights() {
@@ -881,67 +808,22 @@ export class Game {
 
   // Düşmanları yerleştir. Önce yedek görünüm (mezar taşı) ile başlarlar; vampir modeli
   // yüklenince dressEnemies taşları gizleyip yerlerine vampirleri koyar.
+  // Düşmanlar hareket ettiği için ızgarada engel değiller (ızgara sadece sabit engeller için).
   private addEnemies() {
-    // Taş şekli beş düşmanda ortak. Malzeme her birinde ayrı (clone), ki sadece vurulan parlasın.
-    const geometry = new THREE.BoxGeometry(0.8, 1.2, 0.25);
-    const baseMaterial = new THREE.MeshStandardMaterial({
-      color: 0x5c5866,
-      roughness: 0.9,
-      emissive: 0x9b6bff, // vurulunca parlayacağı renk
-      emissiveIntensity: 0, // normalde parlamaz
-    });
-    const spots: [number, number][] = [[-4, -3], [-2, -5], [3, -4], [5, 2], [-5, 3]];
-
-    for (const [x, z] of spots) {
-      const material = baseMaterial.clone();
-      const stone = new THREE.Mesh(geometry, material);
-      stone.position.y = 0.6; // taş 1.2 boyunda; yarısı kadar yukarı ki zemine otursun
-      stone.rotation.y = Math.random() * 0.4 - 0.2;
-      stone.castShadow = true;
-      stone.receiveShadow = true;
-
-      const hitbox = new THREE.Mesh(HITBOX_GEOMETRY, HITBOX_MATERIAL);
-      const object = new THREE.Group();
-      object.position.set(x, 0, z);
-      object.add(stone, hitbox);
-      this.scene.add(object);
-
-      // Zemindeki izi: ENEMY_RADIUS'lu kare, kapsül yarıçapı kadar büyütülmüş.
-      // Box3 = kutu. Izgarada bu izin dokunduğu kareler engelli olur.
-      const reach = ENEMY_RADIUS + PLAYER_RADIUS;
-      const footprint = new THREE.Box3(new THREE.Vector3(x - reach, 0, z - reach), new THREE.Vector3(x + reach, 0, z + reach));
-
-      this.enemies.push({
-        object,
-        hitbox,
-        stone,
-        materials: [material],
-        mixer: null,
-        basePosition: object.position.clone(),
-        hitDirection: new THREE.Vector3(),
-        hitTime: null,
-        hits: 0,
-        footprint,
-        breakTime: null,
-      });
+    for (const [x, z] of ENEMY_SPOTS) {
+      const enemy = new Enemy(x, z);
+      this.scene.add(enemy.root);
+      this.enemies.push(enemy);
     }
-
-    this.rebuildGrid(); // bütün düşmanları ızgaraya engel olarak işle
   }
 
   // Vampir modeli yüklendi: ayaktaki düşmanların taşını gizle, yerine vampir koy
   private dressEnemies() {
     for (const enemy of this.enemies) {
-      if (enemy.breakTime !== null) continue; // ölmekte olan taş olarak kalsın
+      if (!enemy.alive) continue; // ölmekte olan taş olarak kalsın
       const vampire = createVampire();
       if (!vampire) return;
-      // Haritanın ortasına (karakterin başladığı yere) dönük dursun
-      vampire.model.rotation.y = Math.atan2(-enemy.basePosition.x, -enemy.basePosition.z);
-      enemy.object.add(vampire.model);
-      enemy.stone.visible = false;
-      for (const material of enemy.materials) material.dispose(); // taşın malzemesi artık kullanılmıyor
-      enemy.materials = vampire.materials;
-      enemy.mixer = vampire.mixer;
+      enemy.dress(vampire);
     }
   }
 
