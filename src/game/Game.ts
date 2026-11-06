@@ -9,6 +9,7 @@ import { createSkeleton, loadSkeletonModel, materialsOf, setGlow, type GlowMater
 import { createFlesh, loadFleshModel } from './Flesh';
 import { createVampire, loadVampireModel } from './Vampire';
 import { Enemy } from './Enemy';
+import { Environment } from './Environment';
 import { gameStore } from '../state/gameStore';
 
 // Kameranın dikeyde kaç dünya birimi gördüğü. Küçültürsen yakınlaşır.
@@ -109,9 +110,15 @@ const RESPAWN_DELAY = 4;
 const HURT_COLOR = 0xff2a2a;
 // Kovalarken yolun kaç saniyede bir yenilendiği (hedef yürüdükçe yeri değişir)
 const CHASE_REPATH = 0.3;
-// Düşmanların başladığı yerler. Karakterin doğduğu yerden (0, 0) 8-9 m uzakta, ki doğar doğmaz
-// fark edilmesin (vampirler 5 m'den fark ediyor ve evlerinin 5 m çevresinde dolaşıyor)
-const ENEMY_SPOTS: [number, number][] = [[-7, -5], [-3, -8], [5, -7], [8, 3], [-8, 5]];
+// Karakter yapının arkasına geçince yapının saydamlığı (0 = görünmez, 1 = tam) ve
+// saydamlaşma/geri gelme hızı
+const HIDDEN_BUILDING_OPACITY = 0.3;
+const BUILDING_FADE_SPEED = 8;
+// Karakterin doğduğu yer: avlunun ön tarafı (haritanın ortasında yapı var)
+const PLAYER_SPAWN = new THREE.Vector3(3, 0, 11);
+// Düşmanların başladığı yerler: yapının çevresindeki avluda, doğuş noktasından en az 11 m uzakta,
+// ki doğar doğmaz fark edilmesin (vampirler 5 m'den fark ediyor ve evlerinin 5 m çevresinde dolaşıyor)
+const ENEMY_SPOTS: [number, number][] = [[-11, -10], [2, -11], [12, -4], [-12, 2], [-8, 11]];
 
 // Ölü diriltme
 // Ölen her düşmandan düşen ceset sayısı (en az, en çok) ve ne kadar uzağa düştükleri
@@ -250,6 +257,11 @@ export class Game {
   private readonly prey: { position: THREE.Vector3; alive: boolean; damage(amount: number): void };
   // Kameranın baktığı zemin noktası; karakteri yumuşakça takip eder
   private readonly cameraFocus = new THREE.Vector3();
+  // Düz zemin üstündeki ızgara çizgileri (ortam yüklenince gizlenir)
+  private readonly groundLines = new THREE.GridHelper(GROUND_SIZE, GROUND_SIZE / CELL_SIZE, 0x4a3f5c, 0x352e42);
+  // Savaş alanı (yüklenene kadar null) ve yapının şu anki saydamlığı
+  private environment: Environment | null = null;
+  private buildingOpacity = 1;
   // Kameranın bu karede ulaşmak istediği nokta: karakterin ayağının altı
   private readonly cameraGoal = new THREE.Vector3();
   // Şu anki zoom ve tekerlekle istenen zoom; her karede birbirine yaklaşır
@@ -286,6 +298,7 @@ export class Game {
     this.loadCharacter().catch((error) => console.error('Karakter modeli yüklenemedi:', error));
     this.loadSword().catch((error) => console.error('Kılıç modeli yüklenemedi:', error));
     loadFleshModel().catch((error) => console.error('Et yığını modeli yüklenemedi:', error));
+    this.loadEnvironment().catch((error) => console.error('Ortam modeli yüklenemedi:', error));
     if (SHOW_DEBUG) this.addDebugView();
 
     // Canvas'a tıklanınca dünyada nereye tıklandığını bul
@@ -340,6 +353,7 @@ export class Game {
     this.updateEnemies(elapsed, delta);
     for (const minion of this.minions) minion.update(delta, elapsed, this.player.position, this.grid, this.enemies);
     this.updateAnimation(delta);
+    this.updateBuildingFade(delta);
     this.updateZoom(delta);
     this.updateCamera(delta); // karakter yürüdükten sonra, ki kamera güncel konumu izlesin
 
@@ -432,7 +446,7 @@ export class Game {
     this.health = PLAYER_MAX_HEALTH;
     this.prey.alive = true;
     this.playerBody.rotation.x = 0;
-    this.player.position.set(0, 0, 0);
+    this.player.position.copy(PLAYER_SPAWN);
     gameStore.setState({ health: this.health, dead: false });
   }
 
@@ -481,6 +495,16 @@ export class Game {
     const next = this.zoomTarget * Math.exp(-event.deltaY * ZOOM_SENSITIVITY);
     this.zoomTarget = THREE.MathUtils.clamp(next, MIN_ZOOM, MAX_ZOOM);
   };
+
+  // Karakter yapının arkasındaysa yapıyı yumuşakça saydamlaştır, çıkınca geri getir
+  private updateBuildingFade(delta: number) {
+    const environment = this.environment;
+    if (!environment) return;
+    const target = environment.hides(this.player.position) ? HIDDEN_BUILDING_OPACITY : 1;
+    if (Math.abs(this.buildingOpacity - target) < 0.001) return;
+    this.buildingOpacity = THREE.MathUtils.lerp(this.buildingOpacity, target, 1 - Math.exp(-BUILDING_FADE_SPEED * delta));
+    environment.setBuildingOpacity(this.buildingOpacity);
+  }
 
   // Zoom'u hedefe yumuşakça yaklaştır. Kamera karakteri ortaladığı için zoom hep karaktere doğru.
   private updateZoom(delta: number) {
@@ -883,11 +907,21 @@ export class Game {
     ground.receiveShadow = true;
     this.scene.add(ground);
 
-    const grid = new THREE.GridHelper(GROUND_SIZE, GROUND_SIZE / CELL_SIZE, 0x4a3f5c, 0x352e42);
-    grid.position.y = 0.01; // zeminle çakışıp titremesin
-    this.scene.add(grid);
+    this.groundLines.position.y = 0.01; // zeminle çakışıp titremesin
+    this.scene.add(this.groundLines);
 
     return ground; // tıklama ışını bu nesneye karşı test edilecek
+  }
+
+  // Savaş alanını yükle. Gelince düz zemin ve ızgara çizgileri gizlenir; zemin düzlemi görünmez
+  // olarak kalır, çünkü tıklama ışını hâlâ ona çarpıyor (ortamın zemini y = 0'a oturtuldu).
+  private async loadEnvironment() {
+    const environment = await Environment.load(this.grid);
+    this.environment = environment;
+    this.scene.add(environment.object);
+    (this.ground.material as THREE.Material).visible = false;
+    this.groundLines.visible = false;
+    if (SHOW_DEBUG) this.refreshDebugTiles(); // yapının kareleri artık engelli
   }
 
   // Düşmanları yerleştir. Önce yedek görünüm (mezar taşı) ile başlarlar; vampir modeli
@@ -984,6 +1018,8 @@ export class Game {
     this.weaponPivot.add(this.scythe);
     player.add(this.weaponPivot);
 
+    player.position.copy(PLAYER_SPAWN);
+    this.cameraFocus.copy(PLAYER_SPAWN); // kamera da oradan başlasın, haritanın ortasından kaymasın
     this.scene.add(player);
     return player;
   }

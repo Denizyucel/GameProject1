@@ -67,6 +67,11 @@ export class Grid {
     }
   }
 
+  /** Tek bir kareyi engelli yap */
+  block(col: number, row: number) {
+    if (this.inBounds(col, row)) this.blocked[this.index(col, row)] = 1;
+  }
+
   /** Dünya noktasına en yakın yürünebilir kare (örneğin mezar taşının üstüne tıklanınca) */
   nearestWalkable(x: number, z: number): Cell | null {
     let best: Cell | null = null;

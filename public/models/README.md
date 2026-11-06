@@ -17,10 +17,11 @@ yeniden indirip buraya koy:
 | `Vampire A Lusth.fbx` | Düşman: Vampire A Lusth (karakter) | FBX Binary, T-pose, With Skin |
 | `Walking.fbx` | Walking animasyonu, Vampire seçiliyken indirildi | With Skin (Without Skin da olur), In Place değil |
 | `Creature NPC Pack/` | Creature NPC Pack, Vampire seçiliyken (klasör adıyla) | Without Skin |
+| `envoirement.glb` | Savaş alanı: taş avlu ve ortada gotik yapı, Meshy | GLB |
 | `flesh.glb` | Et yığını (kırılan taşın bıraktığı ceset), Meshy | GLB |
 | `Magic Spell Pack/` | Magic Spell Pack (paket, klasör adıyla) | Without Skin |
 
-Dosyalar yoksa oyun yine çalışır; karakter yerine mor kapsül, vampir yerine mezar taşı, kılıç yerine tırpan görünür,
+Dosyalar yoksa oyun yine çalışır; ortam yerine düz zemin, karakter yerine mor kapsül, vampir yerine mezar taşı, kılıç yerine tırpan görünür,
 et yığını yoksa yerde yatan iskelet, iskelet modeli yoksa çizilmiş iskelet,
 büyü animasyonları yoksa ceset yine dirilir ama karakter büyü hareketi yapmaz.
 

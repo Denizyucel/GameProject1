@@ -33,8 +33,12 @@ Retina ekranlar hedeflenir.
 
 ## Şu anki hedef
 Faz 1 sahnesi, tıklayarak hareket ve A* yol bulma tamam (src/game/Grid.ts, src/game/findPath.ts;
-SHOW_DEBUG ile engelli kareler görünür; şu an sabit engel yok, düşmanlar hareketli olduğu için
-ızgarayı engellemiyor).
+SHOW_DEBUG ile engelli kareler görünür; düşmanlar hareketli olduğu için ızgarayı engellemiyor).
+Savaş alanı: envoirement.glb (src/game/Environment.ts), taş avlu + ortada ~10 m'lik gotik yapı,
+haritayı (30 m) kaplıyor. Zemin yüksekliği karelerin ortanca yüksekliğinden bulunup y = 0'a
+oturtuluyor; zeminden 0.5 m'den yüksek kareler ızgarada engel. Model yüklenirken üçgenler zemin ve
+yapı diye iki gruba ayrılıyor: karakter yapının arkasındayken (kameraya doğru zeminde ilerleyip
+yükseklik haritası görüş çizgisini kesiyor mu) yapı %30 saydam oluyor. Doğuş noktası (3, 0, 11).
 Düşmanlar: 5 vampir (src/game/Enemy.ts davranış, src/game/Vampire.ts model; Mixamo
 "Vampire A Lusth.fbx" + Walking.fbx). Evlerinin çevresinde (5 m) rastgele dolaşıyorlar; beklerken
 karakterin idle animasyonu, yürürken Walking (root motion kaldırılıp hızına göre ayarlı).
@@ -77,6 +81,7 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Tıklanan yere kısa süreli işaret (Diablo'daki tıklama halkası)
 - Fare basılı tutulunca sürekli yürüme
 - Harita kenarı: siyah boşluk yerine duvar/sis; gölge alanı karakteri takip etsin
+- envoirement.glb'yi hafiflet (288 bin üçgen) ve yapının içine girilebilir yerleri ayır
 - A* açık listesini öncelik kuyruğuna çevir (harita büyüyünce)
 - Vuruşta kan/parça efekti, ekran sarsıntısı gibi vuruş hissi efektleri
 - İskelete yerden kalkma (Standing Up) ve kendine özgü (zombi) yürüme animasyonu
