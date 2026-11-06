@@ -13,7 +13,8 @@ const SKELETON_HEIGHT = 1.8;
 // Dirilirken yayılan ışığın rengi
 const GLOW_COLOR = 0x3cff9a;
 
-type GlowMaterial = THREE.MeshStandardMaterial | THREE.MeshPhongMaterial;
+/** Parlatılabilen malzeme (emissive özelliği olan) */
+export type GlowMaterial = THREE.MeshStandardMaterial | THREE.MeshPhongMaterial;
 
 /** İskeletin oynatabileceği animasyonlar, iskeletin boyuna uyarlanmış */
 export interface SkeletonAnimations {
@@ -91,9 +92,9 @@ export function createSkeleton(): Skeleton {
   return template ? cloneModel(template) : createDrawnSkeleton();
 }
 
-/** İskeletin yeşil parıltısını ayarla (0 = yok, 1 = tam) */
-export function setGlow(skeleton: Skeleton, intensity: number) {
-  for (const material of skeleton.materials) material.emissiveIntensity = intensity;
+/** Yeşil parıltıyı ayarla (0 = yok, 1 = tam). İskelette de et yığınında da çalışır. */
+export function setGlow(target: { materials: GlowMaterial[] }, intensity: number) {
+  for (const material of target.materials) material.emissiveIntensity = intensity;
 }
 
 // Animasyonu iskelete uydur: kalça konumunu oranla, iskelette olmayan kemiklerin izlerini at

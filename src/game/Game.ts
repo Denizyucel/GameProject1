@@ -5,7 +5,8 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Grid } from './Grid';
 import { findPath } from './findPath';
 import { Minion } from './Minion';
-import { createSkeleton, loadSkeletonModel, setGlow, type Skeleton } from './Skeleton';
+import { createSkeleton, loadSkeletonModel, setGlow, type GlowMaterial } from './Skeleton';
+import { createFlesh, loadFleshModel } from './Flesh';
 
 // Kameranın dikeyde kaç dünya birimi gördüğü. Küçültürsen yakınlaşır.
 const VIEW_HEIGHT = 18;
@@ -131,6 +132,11 @@ const SPELL_URLS = SPELL_NAMES.map((name) => encodeURI(`/models/Magic Spell Pack
 const SPELL_TIME_SCALE = 1.5;
 // Cesedin büyünün hangi anında (0..1) dirildiği
 const RAISE_MOMENT = 0.5;
+// İskelet içinden çıkarken et yığınının toprağa gömülme süresi (saniye) ve derinliği (metre)
+const CORPSE_SINK_DURATION = 1.2;
+const CORPSE_SINK_DEPTH = 0.45;
+// Büyü sırasında cesedin en fazla ne kadar parladığı (1 = düz yeşil, doku kaybolur)
+const CORPSE_GLOW = 0.5;
 // Model yüklenmeden (kapsüldeyken) bir büyünün süresi (saniye)
 const CAST_DURATION = 1;
 // Altın açı (≈137.5°): her yeni minion karakterin çevresinde bir öncekinden bu kadar
@@ -138,6 +144,14 @@ const CAST_DURATION = 1;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 
 // Sahnedeki bir mezar taşı ve vuruş tepkisi için gereken bilgiler
+// Yerdeki ceset: et yığını (flesh.glb) ya da o yoksa yatan iskelet
+interface Corpse {
+  root: THREE.Object3D;
+  materials: GlowMaterial[];
+  baseY: number; // yerdeki yüksekliği; gömülürken buradan aşağı iner
+  sinkTime: number | null; // iskelet içinden çıktıysa kaç saniyedir gömüldüğü; null ise yerinde duruyor
+}
+
 interface Grave {
   mesh: THREE.Mesh;
   material: THREE.MeshStandardMaterial; // her taşın kendi malzemesi, ki sadece vurulan parlasın
@@ -185,13 +199,13 @@ export class Game {
   private hitMoment = HIT_MOMENT;
 
   // Yerde diriltilmeyi bekleyen cesetler ve dirilmiş minionlar
-  private readonly corpses: Skeleton[] = [];
+  private readonly corpses: Corpse[] = [];
   private readonly minions: Minion[] = [];
   // Büyü başladıysa kaç saniyedir sürdüğü; null ise büyü yapmıyor
   private castTime: number | null = null;
   private castDuration = CAST_DURATION;
   // Bu büyüyle dirilecek ceset; dirilince null olur
-  private castTarget: Skeleton | null = null;
+  private castTarget: Corpse | null = null;
   // Bu büyüde oynayan animasyon ve yüklenen bütün büyü animasyonları
   private castAction: THREE.AnimationAction | null = null;
   private spellActions: THREE.AnimationAction[] = [];
@@ -252,6 +266,7 @@ export class Game {
     this.player = this.createPlayer();
     this.loadCharacter().catch((error) => console.error('Karakter modeli yüklenemedi:', error));
     this.loadSword().catch((error) => console.error('Kılıç modeli yüklenemedi:', error));
+    loadFleshModel().catch((error) => console.error('Et yığını modeli yüklenemedi:', error));
     if (SHOW_DEBUG) this.addDebugView();
 
     // Canvas'a tıklanınca dünyada nereye tıklandığını bul
@@ -300,6 +315,7 @@ export class Game {
     this.updateMovement(delta);
     this.updateAttack(delta, elapsed);
     this.updateCast(delta);
+    this.updateCorpses(delta);
     this.updateGraves(elapsed);
     for (const minion of this.minions) minion.update(delta, this.player.position, this.grid);
     this.updateAnimation(delta);
@@ -582,25 +598,55 @@ export class Game {
         z = around.z;
       }
 
-      const corpse = createSkeleton();
-      const { root } = corpse;
-      // Sırtüstü yatır. Önce yere yatır (x), sonra rastgele bir yöne çevir (y);
-      // "YXZ" sırası bu dönüşlerin hangi sırayla uygulanacağını söyler.
-      root.rotation.order = 'YXZ';
-      root.rotation.set(-Math.PI / 2, Math.random() * Math.PI * 2, 0);
-      root.position.set(x, corpse.lieHeight, z); // kemikler toprağa gömülmesin diye biraz yukarıda
-      // Çizilmiş iskelette kollar ve bacaklar iki yana açık, gözler sönük: ölü
-      if (corpse.limbs) {
-        corpse.limbs.leftArm.rotation.z = 0.5;
-        corpse.limbs.rightArm.rotation.z = -0.5;
-        corpse.limbs.leftLeg.rotation.z = 0.2;
-        corpse.limbs.rightLeg.rotation.z = -0.2;
-      }
-      if (corpse.eyes) corpse.eyes.visible = false;
-      for (const material of corpse.materials) material.color.multiplyScalar(0.75); // biraz daha soluk
-
-      this.scene.add(root);
+      const corpse = this.createCorpse();
+      corpse.root.position.set(x, corpse.baseY, z);
+      this.scene.add(corpse.root);
       this.corpses.push(corpse);
+    }
+  }
+
+  // Et yığını; model yoksa (ya da henüz yüklenmediyse) sırtüstü yatan bir iskelet
+  private createCorpse(): Corpse {
+    const yaw = Math.random() * Math.PI * 2; // her ceset rastgele bir yöne dönük
+    const flesh = createFlesh();
+    if (flesh) {
+      flesh.root.rotation.y = yaw;
+      return { root: flesh.root, materials: flesh.materials, baseY: 0, sinkTime: null };
+    }
+
+    const skeleton = createSkeleton();
+    const { root } = skeleton;
+    // Sırtüstü yatır. Önce yere yatır (x), sonra rastgele bir yöne çevir (y);
+    // "YXZ" sırası bu dönüşlerin hangi sırayla uygulanacağını söyler.
+    root.rotation.order = 'YXZ';
+    root.rotation.set(-Math.PI / 2, yaw, 0);
+    // Çizilmiş iskelette kollar ve bacaklar iki yana açık, gözler sönük: ölü
+    if (skeleton.limbs) {
+      skeleton.limbs.leftArm.rotation.z = 0.5;
+      skeleton.limbs.rightArm.rotation.z = -0.5;
+      skeleton.limbs.leftLeg.rotation.z = 0.2;
+      skeleton.limbs.rightLeg.rotation.z = -0.2;
+    }
+    if (skeleton.eyes) skeleton.eyes.visible = false;
+    for (const material of skeleton.materials) material.color.multiplyScalar(0.75); // biraz daha soluk
+    // lieHeight: kemikler toprağa gömülmesin diye biraz yukarıda
+    return { root, materials: skeleton.materials, baseY: skeleton.lieHeight, sinkTime: null };
+  }
+
+  // İskeleti çıkmış cesetleri yavaşça toprağa göm, bitince sahneden sil
+  private updateCorpses(delta: number) {
+    for (let i = this.corpses.length - 1; i >= 0; i--) {
+      const corpse = this.corpses[i];
+      if (corpse.sinkTime === null) continue;
+      corpse.sinkTime += delta;
+      const t = Math.min(corpse.sinkTime / CORPSE_SINK_DURATION, 1);
+      corpse.root.position.y = corpse.baseY - t * t * CORPSE_SINK_DEPTH; // yavaş başlayıp hızlanan gömülme
+      setGlow(corpse, (1 - t) * CORPSE_GLOW);
+      if (t >= 1) {
+        this.scene.remove(corpse.root);
+        for (const material of corpse.materials) material.dispose();
+        this.corpses.splice(i, 1);
+      }
     }
   }
 
@@ -634,10 +680,11 @@ export class Game {
   }
 
   // Karaktere RAISE_RANGE içindeki en yakın ceset; yoksa null
-  private nearestCorpse(): Skeleton | null {
-    let best: Skeleton | null = null;
+  private nearestCorpse(): Corpse | null {
+    let best: Corpse | null = null;
     let bestDistance = RAISE_RANGE;
     for (const corpse of this.corpses) {
+      if (corpse.sinkTime !== null) continue; // iskeleti zaten çıktı, gömülüyor
       const p = corpse.root.position;
       const distance = Math.hypot(p.x - this.player.position.x, p.z - this.player.position.z);
       if (distance <= bestDistance) {
@@ -655,7 +702,7 @@ export class Game {
     const progress = Math.min(this.castTime / this.castDuration, 1);
 
     if (this.castTarget) {
-      setGlow(this.castTarget, Math.min(progress / RAISE_MOMENT, 1));
+      setGlow(this.castTarget, Math.min(progress / RAISE_MOMENT, 1) * CORPSE_GLOW);
       if (progress >= RAISE_MOMENT) {
         this.raiseCorpse(this.castTarget);
         this.castTarget = null;
@@ -668,11 +715,9 @@ export class Game {
     }
   }
 
-  // Cesedi sahneden kaldır, yerinden topraktan yükselen bir minion çıkar
-  private raiseCorpse(corpse: Skeleton) {
-    this.corpses.splice(this.corpses.indexOf(corpse), 1);
-    this.scene.remove(corpse.root);
-    for (const material of corpse.materials) material.dispose();
+  // Cesedin içinden topraktan yükselen bir minion çıkar; ceset de yavaşça toprağa gömülsün
+  private raiseCorpse(corpse: Corpse) {
+    corpse.sinkTime = 0;
 
     const { x, z } = corpse.root.position;
     const player = this.player.position;
