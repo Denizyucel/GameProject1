@@ -26,6 +26,28 @@ const CELL_SIZE = 1;
 // true iken engelli kareler kırmızı, bulunan yol yeşil çizgi olarak görünür
 const SHOW_DEBUG = true;
 
+// Saldırı: karakter merkezi ile taş merkezi arasında en fazla bu mesafe varken vurabilir
+const ATTACK_RANGE = 2;
+// Bir savurmanın toplam süresi (saniye) ve darbenin savurmanın hangi anında (0..1) indiği
+const SWING_DURATION = 0.45;
+const HIT_MOMENT = 0.55;
+// Tırpanın açıları (radyan): duruş, geriye kaldırma, öne indirme
+const WEAPON_REST = 0.25;
+const WEAPON_WINDUP = -0.9;
+const WEAPON_STRIKE = 1.7;
+// Vurulan taşın sarsılıp parladığı süre (saniye)
+const HIT_FEEDBACK = 0.3;
+
+// Sahnedeki bir mezar taşı ve vuruş tepkisi için gereken bilgiler
+interface Grave {
+  mesh: THREE.Mesh;
+  material: THREE.MeshStandardMaterial; // her taşın kendi malzemesi, ki sadece vurulan parlasın
+  basePosition: THREE.Vector3; // sarsıntı bitince döneceği yer
+  hitDirection: THREE.Vector3; // darbenin geldiği yön; taş o yöne sarsılır
+  hitTime: number | null; // son darbenin zamanı (saniye)
+  hits: number; // toplam kaç kez vuruldu
+}
+
 export class Game {
   private readonly container: HTMLElement;
   private readonly renderer: THREE.WebGLRenderer;
@@ -39,6 +61,17 @@ export class Game {
   private readonly raycaster = new THREE.Raycaster();
   // Farenin ekrandaki konumu, -1..1 aralığında (sol alt -1,-1; sağ üst 1,1)
   private readonly pointer = new THREE.Vector2();
+
+  // Mezar taşları; tıklama ışını ve vuruş tepkisi bunları kullanır
+  private readonly graves: Grave[] = [];
+  // Tırpanın omuzdaki dönme noktası. Savurmak = bu grubu döndürmek.
+  private readonly weaponPivot = new THREE.Group();
+  // Saldırılacak taş (yanına yürünüyor ya da vuruluyor); null ise saldırı yok
+  private attackTarget: Grave | null = null;
+  // Savurma başladıysa kaç saniyedir sürdüğü; null ise savurmuyor
+  private swingTime: number | null = null;
+  // Bu savurmanın darbesi taşa indi mi (her savurmada bir kez)
+  private swingHasHit = false;
 
   // Hangi karelerin yürünebilir olduğunu bilen ızgara
   private readonly grid = new Grid(GROUND_SIZE, GROUND_SIZE, CELL_SIZE);
@@ -116,6 +149,8 @@ export class Game {
 
   private update(elapsed: number, delta: number) {
     this.updateMovement(delta);
+    this.updateAttack(delta, elapsed);
+    this.updateGraves(elapsed);
     this.updateCamera(delta); // karakter yürüdükten sonra, ki kamera güncel konumu izlesin
 
     // Nefes alma: döngünün çalıştığını gösteren küçük hareket
@@ -124,6 +159,8 @@ export class Game {
   }
 
   private updateMovement(delta: number) {
+    if (this.swingTime !== null) return; // savururken yürümez; savurma bitince yola devam eder
+
     let step = MOVE_SPEED * delta; // bu karede atılacak adımın boyu
 
     // Adım bitene ya da yol bitene kadar sıradaki noktaya doğru ilerle.
@@ -155,6 +192,73 @@ export class Game {
     this.pathLine.visible = this.path.length > 0; // varınca yol çizgisini gizle
   }
 
+  private updateAttack(delta: number, elapsed: number) {
+    // 1. Hedef var, yürüme bitti, henüz savurmuyor: menzildeyse savurmaya başla
+    if (this.attackTarget && this.swingTime === null && this.path.length === 0) {
+      const target = this.attackTarget.basePosition;
+      const dx = target.x - this.player.position.x;
+      const dz = target.z - this.player.position.z;
+
+      if (Math.hypot(dx, dz) <= ATTACK_RANGE) {
+        this.player.rotation.y = Math.atan2(dx, dz); // yüzünü taşa çevir
+        this.swingTime = 0;
+        this.swingHasHit = false;
+      } else {
+        this.attackTarget = null; // taşa yaklaşamadık (yol yoktu), saldırıdan vazgeç
+      }
+    }
+
+    if (this.swingTime === null) return;
+
+    // 2. Savurmayı ilerlet. progress: 0 = başlangıç, 1 = bitiş
+    this.swingTime += delta;
+    const progress = Math.min(this.swingTime / SWING_DURATION, 1);
+    this.weaponPivot.rotation.x = swingAngle(progress);
+
+    // 3. Darbe anı geldiyse taşa vur (her savurmada bir kez)
+    if (!this.swingHasHit && progress >= HIT_MOMENT && this.attackTarget) {
+      this.swingHasHit = true;
+      this.hitGrave(this.attackTarget, elapsed);
+    }
+
+    // 4. Savurma bitti: silahı dinlenme açısına bırak, saldırıyı bitir
+    if (progress >= 1) {
+      this.swingTime = null;
+      this.attackTarget = null;
+      this.weaponPivot.rotation.x = WEAPON_REST;
+    }
+  }
+
+  private hitGrave(grave: Grave, elapsed: number) {
+    grave.hits += 1;
+    grave.hitTime = elapsed;
+    // Darbe yönü: karakterden taşa. Taş bu yöne doğru sarsılacak.
+    grave.hitDirection
+      .set(grave.basePosition.x - this.player.position.x, 0, grave.basePosition.z - this.player.position.z)
+      .normalize();
+    console.log(`Mezar taşına vuruldu (${grave.hits}. vuruş)`);
+  }
+
+  // Vurulan taşları sars ve parlat; süre dolunca eski hallerine döndür
+  private updateGraves(elapsed: number) {
+    for (const grave of this.graves) {
+      if (grave.hitTime === null) continue;
+
+      const t = (elapsed - grave.hitTime) / HIT_FEEDBACK; // 0 → 1 arası ilerleme
+      if (t >= 1) {
+        grave.mesh.position.copy(grave.basePosition);
+        grave.material.emissiveIntensity = 0;
+        grave.hitTime = null;
+        continue;
+      }
+
+      const fade = 1 - t; // tepki zamanla sönümlenir
+      const shake = Math.sin(t * Math.PI * 6) * 0.08 * fade; // ileri-geri titreşim
+      grave.mesh.position.copy(grave.basePosition).addScaledVector(grave.hitDirection, shake);
+      grave.material.emissiveIntensity = fade; // anlık parlama, sonra söner
+    }
+  }
+
   private updateCamera(delta: number) {
     // Hedef: karakterin tam altındaki zemin noktası (y = 0)
     this.cameraGoal.set(this.player.position.x, 0, this.player.position.z);
@@ -177,8 +281,21 @@ export class Game {
     this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1; // ekranda y aşağı doğru artar, dünyada yukarı
 
-    // 2. Kameradan bu noktaya doğru ışın gönder, sadece zemine çarpıp çarpmadığına bak
+    // 2. Kameradan bu noktaya doğru ışın gönder
     this.raycaster.setFromCamera(this.pointer, this.camera);
+
+    // 2a. Önce mezar taşlarına bak: birine tıklandıysa ona saldır
+    const graveHit = this.raycaster.intersectObjects(this.graves.map((g) => g.mesh), false)[0];
+    const grave = graveHit && this.graves.find((g) => g.mesh === graveHit.object);
+    if (grave) {
+      this.attack(grave);
+      return;
+    }
+
+    // 2b. Taş değilse zemine bak
+    // Başka yere tıklandı: saldırıdan vazgeç. Ama savurma başladıysa darbe yine insin;
+    // yeni yürüme savurma bitince başlar.
+    if (this.swingTime === null) this.attackTarget = null;
     const hit = this.raycaster.intersectObject(this.ground)[0];
     if (!hit) return; // zeminin dışına tıklandı
 
@@ -186,6 +303,26 @@ export class Game {
     const { x, z } = hit.point;
     this.walkTo(x, z);
   };
+
+  private attack(grave: Grave) {
+    if (this.swingTime !== null) return; // zaten savuruyor; bitmeden yenisi başlamaz
+    this.attackTarget = grave;
+
+    const target = grave.basePosition;
+    const player = this.player.position;
+    const distance = Math.hypot(target.x - player.x, target.z - player.z);
+
+    if (distance <= ATTACK_RANGE) {
+      this.path = []; // zaten menzilde: olduğu yerde vur
+      return;
+    }
+
+    // Taşın karaktere bakan tarafında, taştan 1 birim ötedeki noktaya yürü.
+    // Orası engelli kareye düşerse walkTo en yakın boş kareyi seçer.
+    const awayX = (player.x - target.x) / distance;
+    const awayZ = (player.z - target.z) / distance;
+    this.walkTo(target.x + awayX, target.z + awayZ);
+  }
 
   private walkTo(x: number, z: number) {
     const grid = this.grid;
@@ -252,18 +389,32 @@ export class Game {
   }
 
   private addGraves() {
-    // Tek geometri ve tek malzeme, beş mezar taşında ortak kullanılıyor
+    // Geometri beş taşta ortak. Malzeme her taşta ayrı (clone), ki vurulan tek taş parlasın.
     const geometry = new THREE.BoxGeometry(0.8, 1.2, 0.25);
-    const material = new THREE.MeshStandardMaterial({ color: 0x5c5866, roughness: 0.9 });
+    const baseMaterial = new THREE.MeshStandardMaterial({
+      color: 0x5c5866,
+      roughness: 0.9,
+      emissive: 0x9b6bff, // vurulunca parlayacağı renk
+      emissiveIntensity: 0, // normalde parlamaz
+    });
     const spots: [number, number][] = [[-4, -3], [-2, -5], [3, -4], [5, 2], [-5, 3]];
 
     for (const [x, z] of spots) {
+      const material = baseMaterial.clone();
       const grave = new THREE.Mesh(geometry, material);
       grave.position.set(x, 0.6, z);
       grave.rotation.y = Math.random() * 0.4 - 0.2;
       grave.castShadow = true;
       grave.receiveShadow = true;
       this.scene.add(grave);
+      this.graves.push({
+        mesh: grave,
+        material,
+        basePosition: grave.position.clone(),
+        hitDirection: new THREE.Vector3(),
+        hitTime: null,
+        hits: 0,
+      });
 
       // Taşın zemindeki izini (dönük haliyle) bul, kapsül yarıçapı kadar büyüt
       // ve dokunduğu kareleri ızgarada engelli yap. Box3 = nesneyi saran kutu.
@@ -319,6 +470,27 @@ export class Game {
     face.position.set(0, 0.45, 0.38);
     body.add(face);
 
+    // Tırpan: sap + bıçak. Sağ omuzdaki pivot grubuna bağlı; savurma pivotu döndürür.
+    // Pivotun yerel ekseninde sap yukarı (+y), bıçak ileri (+z) bakıyor.
+    // Pivot x ekseninde pozitif dönünce sapın tepesi öne (+z) ve aşağı iner.
+    const weaponMaterial = new THREE.MeshStandardMaterial({ color: 0xb59d7a, roughness: 0.8 });
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 1.5, 8), weaponMaterial);
+    shaft.position.y = 0.45; // sapın ortası; tutulan yerin biraz altından başlayıp yukarı uzanır
+    // Not: metalness kullanılmıyor. Sahnede yansıtacak ortam görüntüsü olmadığı için
+    // metal yüzey koyu görünür; bunun yerine hafif kendi ışığı (emissive) var.
+    const blade = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 0.16, 0.8),
+      new THREE.MeshStandardMaterial({ color: 0xe6e9f2, roughness: 0.4, emissive: 0x3c4660 }),
+    );
+    blade.position.set(0, 1.15, 0.3); // sapın tepesinden öne doğru
+    blade.rotation.x = 0.35; // hafif aşağı kıvrık
+    for (const part of [shaft, blade]) part.castShadow = true;
+
+    this.weaponPivot.position.set(0.5, 0.1, 0.05); // sağ el hizası (kapsülün merkezine göre)
+    this.weaponPivot.rotation.x = WEAPON_REST;
+    this.weaponPivot.add(shaft, blade);
+    body.add(this.weaponPivot);
+
     this.scene.add(body);
     return body;
   }
@@ -336,4 +508,18 @@ export class Game {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
   }
+}
+
+// Savurmanın ilerlemesine (0..1) göre tırpanın açısı:
+// önce yavaşça geriye kaldırır, sonra hızla öne indirir, sonra dinlenmeye döner.
+function swingAngle(progress: number): number {
+  const { lerp, smoothstep } = THREE.MathUtils;
+  const windupEnd = 0.35;
+  if (progress < windupEnd) {
+    return lerp(WEAPON_REST, WEAPON_WINDUP, smoothstep(progress / windupEnd, 0, 1));
+  }
+  if (progress < HIT_MOMENT) {
+    return lerp(WEAPON_WINDUP, WEAPON_STRIKE, (progress - windupEnd) / (HIT_MOMENT - windupEnd));
+  }
+  return lerp(WEAPON_STRIKE, WEAPON_REST, smoothstep((progress - HIT_MOMENT) / (1 - HIT_MOMENT), 0, 1));
 }
