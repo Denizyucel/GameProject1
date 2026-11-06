@@ -1,25 +1,29 @@
 // Düşman: vampir (model yoksa yedek olarak hareketsiz, zararsız mezar taşı).
 // Hâlleri:
 //   dolaşma  → evinin çevresinde rastgele yürür
+//   gösteri  → bazı tarzlar karakteri ilk fark edince kas gösterisi yapar
 //   kovalama → karakter yakına gelince (ya da vampir vurulunca) peşine düşer
 //   saldırı  → menzildeyse vurur; vuruş bitince kısa bir ara verir
 //   şaşkınlık→ vurulunca bir an durur
-// Canı bitince geriye devrilip toprağa gömülür.
+// Canı bitince ölüm animasyonunu oynatır (yoksa geriye devrilir) ve toprağa gömülür.
+// Can, hasar, kovalama hızı ve hangi saldırıları kullandığı vampirin dövüş tarzından gelir (Vampire.ts).
 
 import * as THREE from 'three';
 import type { Grid } from './Grid';
 import { followPath, groundDistance, planPath } from './pathing';
 import type { GlowMaterial } from './Skeleton';
-import type { VampireBody } from './Vampire';
+import type { VampireAttack, VampireBody } from './Vampire';
 
-// Can: toplam kaç hasar alınca öldüğü
-const MAX_HEALTH = 30;
+// Yedek taşın canı (vampirin canı dövüş tarzından gelir)
+const STONE_HEALTH = 30;
 // Vurulunca sarsılıp parladığı süre ve sonrasında şaşkın durduğu süre (saniye)
 const HIT_FEEDBACK = 0.3;
 const STUN_TIME = 0.4;
-// Ölünce devrilip gömülme süresi (saniye), ne kadar devrildiği (radyan, ≈80°)
+// Ölüm animasyonu yoksa: devrilip gömülme süresi (saniye), ne kadar devrildiği (radyan, ≈80°)
 // ve ne kadar derine gömüldüğü (metre; vampir 2 m boyunda, tamamen girsin)
 const DEATH_DURATION = 1.1;
+// Ölüm animasyonu varsa: animasyon bittikten sonra toprağa gömülme süresi (saniye)
+const SINK_AFTER_ANIMATION = 0.8;
 const FALL_ANGLE = 1.4;
 const SINK_DEPTH = 2.3;
 
@@ -32,20 +36,16 @@ const WAIT_MAX = 4;
 
 // Kovalama: karakteri fark ettiği uzaklık; vurulduktan sonra kaç saniye "kızgın" kaldığı
 // (bu sürede daha uzaktan da kovalar) ve en fazla ne kadar uzağa kadar kovaladığı.
-// Kovalarken dolaşmaktan hızlı ama karakterden (3 m/sn) yavaş: kaçmak mümkün.
+// (Kovalama hızı dövüş tarzından gelir; hepsi karakterden (3 m/sn) yavaş: kaçmak mümkün.)
 const AGGRO_RANGE = 5;
 const ANGER_TIME = 6;
 const GIVE_UP_RANGE = 12;
-const CHASE_SPEED = 2;
 const CHASE_REPATH = 0.4; // hedef yürüdükçe yolu kaç saniyede bir yeniler
 
-// Saldırı: vurmaya başladığı uzaklık, darbe anında hedefin en fazla ne kadar uzakta olabileceği,
-// verdiği hasar, darbenin animasyonun hangi anında (0..1) indiği ve iki vuruş arası mola (saniye)
+// Saldırı: vurmaya başladığı uzaklık ve darbe anında hedefin en fazla ne kadar uzakta olabileceği.
+// (Hasar, mola ve hangi saldırılar: dövüş tarzından.)
 const ATTACK_RANGE = 1.6;
 const HIT_REACH = 2.2;
-const DAMAGE = 6;
-const ATTACK_HIT_MOMENT = 0.45;
-const ATTACK_COOLDOWN = 0.7;
 
 // Animasyonlar arasındaki yumuşak geçiş süresi (saniye)
 const ANIMATION_FADE = 0.2;
@@ -94,12 +94,14 @@ export class Enemy {
   private waitTime = THREE.MathUtils.randFloat(0, WAIT_MAX); // hepsi aynı anda yola çıkmasın
   private chasing = false;
   private repathTimer = 0;
-  private health = MAX_HEALTH;
+  private health = STONE_HEALTH;
   private hitTime: number | null = null; // son darbenin zamanı (saniye)
   private angryUntil = -Infinity; // bu zamana kadar kızgın: daha uzaktan da kovalar
   private stunTime = 0; // şaşkın kalacağı süre
   private attackTime: number | null = null; // vuruş başladıysa kaç saniyedir sürdüğü
+  private attack: VampireAttack | null = null; // şu anki vuruş (tarzın saldırılarından rastgele biri)
   private attackHasHit = false;
+  private tauntTime: number | null = null; // kas gösterisinin kalan süresi; null ise yapmıyor
   private cooldown = 0; // bir sonraki vuruşa kalan mola
   private deathTime: number | null = null; // ölmeye başladığı zaman; null ise ayakta
 
@@ -135,6 +137,8 @@ export class Enemy {
     this.body.add(vampire.model);
     this.vampire = vampire;
     this.currentAction = vampire.idle;
+    this.health = vampire.health;
+    console.log(`Vampir: ${vampire.style}`);
   }
 
   /** Hasar al. from: saldıranın konumu. Bu darbeyle öldüyse true döner. */
@@ -145,13 +149,16 @@ export class Enemy {
     this.angryUntil = elapsed + ANGER_TIME;
     // Vururken darbe almak vuruşu kesmez; yoksa sürekli vurulan vampir hiç karşılık veremezdi.
     // Vurmuyorsa saldırana döner ve bir an şaşırır.
+    // Kas gösterisi ise darbeyle yarıda kesilir.
     if (this.attackTime === null) {
       this.root.rotation.y = Math.atan2(from.x - this.position.x, from.z - this.position.z);
       this.path = [];
       this.stunTime = STUN_TIME;
+      this.tauntTime = null;
     }
     if (this.health > 0) return false;
     this.deathTime = elapsed;
+    if (this.vampire?.death) this.playAnimation(this.vampire.death);
     return true;
   }
 
@@ -173,6 +180,13 @@ export class Enemy {
       return;
     }
     this.cooldown -= delta;
+    if (this.tauntTime !== null) {
+      // Kas gösterisi: yerinde durup karaktere bakar
+      this.tauntTime -= delta;
+      this.face(prey.position);
+      if (this.tauntTime <= 0) this.tauntTime = null;
+      return;
+    }
     if (this.stunTime > 0) {
       this.stunTime -= delta;
       this.playAnimation(vampire.idle);
@@ -190,14 +204,24 @@ export class Enemy {
         this.path = planPath(grid, this.position, this.home.x, this.home.z) ?? [];
       }
       const moving = this.updateWander(delta, grid);
-      this.playWalkOrIdle(vampire, moving, WALK_SPEED);
+      this.playMove(moving, vampire.walk, WALK_SPEED, vampire.walkSpeed);
       return;
     }
 
-    this.chasing = true;
+    if (!this.chasing) {
+      this.chasing = true;
+      // Karakteri yeni fark etti. Gösteri yapan tarzsa (ve vurulup kızmadıysa) önce kaslarını göstersin.
+      if (vampire.taunt && elapsed >= this.angryUntil) {
+        this.path = [];
+        this.face(prey.position);
+        this.tauntTime = vampire.taunt.getClip().duration / vampire.taunt.timeScale;
+        this.playAnimation(vampire.taunt);
+        return;
+      }
+    }
     if (distance <= ATTACK_RANGE) {
       this.path = [];
-      this.root.rotation.y = Math.atan2(prey.position.x - this.position.x, prey.position.z - this.position.z);
+      this.face(prey.position);
       if (this.cooldown <= 0) this.startAttack();
       else this.playAnimation(vampire.idle);
       return;
@@ -212,8 +236,8 @@ export class Enemy {
       const z = prey.position.z + (this.position.z - prey.position.z) * away;
       this.path = planPath(grid, this.position, x, z) ?? [];
     }
-    const moving = followPath(this.root, this.path, CHASE_SPEED * delta);
-    this.playWalkOrIdle(vampire, moving, CHASE_SPEED);
+    const moving = followPath(this.root, this.path, vampire.chaseSpeed * delta);
+    this.playMove(moving, vampire.chase, vampire.chaseSpeed, vampire.chaseClipSpeed);
   }
 
   /** Sahneden silinince malzemelerin belleğini boşalt */
@@ -221,25 +245,38 @@ export class Enemy {
     for (const material of this.materials) material.dispose();
   }
 
+  private face(point: THREE.Vector3) {
+    this.root.rotation.y = Math.atan2(point.x - this.position.x, point.z - this.position.z);
+  }
+
+  // Tarzın saldırılarından rastgele birini seç ve başlat
   private startAttack() {
+    const vampire = this.vampire;
+    if (!vampire) return;
+    this.attack = vampire.attacks[Math.floor(Math.random() * vampire.attacks.length)];
     this.attackTime = 0;
     this.attackHasHit = false;
-    if (this.vampire) this.playAnimation(this.vampire.attack);
+    // Aynı saldırı art arda seçilirse playAnimation onu yeniden başlatmaz; bu yüzden önce sıfırla
+    if (this.attack.action === this.currentAction) this.currentAction = null;
+    this.playAnimation(this.attack.action);
   }
 
   // Vuruşu ilerlet; darbe anında hedef hâlâ yakındaysa hasar ver
   private updateAttack(attackTime: number, vampire: VampireBody, prey: Prey) {
+    const attack = this.attack;
+    if (!attack) return;
     this.attackTime = attackTime;
-    const duration = vampire.attack.getClip().duration / vampire.attack.timeScale;
+    const duration = attack.action.getClip().duration / attack.action.timeScale;
     const progress = attackTime / duration;
 
-    if (!this.attackHasHit && progress >= ATTACK_HIT_MOMENT) {
+    if (!this.attackHasHit && progress >= attack.hitMoment) {
       this.attackHasHit = true;
-      if (prey.alive && groundDistance(this.position, prey.position) <= HIT_REACH) prey.damage(DAMAGE);
+      if (prey.alive && groundDistance(this.position, prey.position) <= HIT_REACH) prey.damage(vampire.damage);
     }
     if (progress >= 1) {
       this.attackTime = null;
-      this.cooldown = ATTACK_COOLDOWN;
+      this.attack = null;
+      this.cooldown = vampire.cooldown;
     }
   }
 
@@ -260,10 +297,13 @@ export class Enemy {
     return followPath(this.root, this.path, WALK_SPEED * delta);
   }
 
-  // Yürüyorsa yürüme animasyonunu hızına uydurup oynat, duruyorsa bekleme animasyonunu
-  private playWalkOrIdle(vampire: VampireBody, moving: boolean, speed: number) {
-    if (moving) vampire.walk.timeScale = speed / vampire.walkSpeed; // ayaklar yerde kaymasın
-    this.playAnimation(moving ? vampire.walk : vampire.idle);
+  // Yürüyorsa yürüme/koşma animasyonunu gerçek hızına uydurup oynat, duruyorsa bekleme animasyonunu.
+  // clipSpeed: animasyonun normal hızda oynarken kaç m/sn yürüttüğü. Oran tutarsa ayaklar kaymaz.
+  private playMove(moving: boolean, move: THREE.AnimationAction, speed: number, clipSpeed: number) {
+    const vampire = this.vampire;
+    if (!vampire) return;
+    if (moving) move.timeScale = speed / clipSpeed;
+    this.playAnimation(moving ? move : vampire.idle);
   }
 
   private playAnimation(wanted: THREE.AnimationAction) {
@@ -289,8 +329,19 @@ export class Enemy {
     this.glow(fade);
   }
 
-  // Ölüm: önce geriye devril (ilk %55), sonra toprağa gömül (son %55; biraz üst üste biner)
+  // Ölüm. Animasyon varsa: animasyon oynar, bitince toprağa gömülür.
+  // Yoksa: önce geriye devril (ilk %55), sonra toprağa gömül (son %55; biraz üst üste biner).
   private updateDeath(sinceDeath: number) {
+    const death = this.vampire?.death;
+    if (death) {
+      const animation = death.getClip().duration / death.timeScale;
+      const t = (sinceDeath - animation) / SINK_AFTER_ANIMATION; // animasyon bitene kadar eksi
+      if (t >= 1) this.finished = true;
+      else if (t > 0) this.body.position.y = -t * t * SINK_DEPTH * 0.5; // yerde yatıyor: yarısı yeter
+      this.glow(Math.max(0, 1 - sinceDeath / 0.5) * 0.6);
+      return;
+    }
+
     const t = sinceDeath / DEATH_DURATION; // 0 → 1
     if (t >= 1) {
       this.finished = true;

@@ -39,9 +39,15 @@ Düşmanlar: 5 vampir (src/game/Enemy.ts davranış, src/game/Vampire.ts model; 
 "Vampire A Lusth.fbx" + Walking.fbx). Evlerinin çevresinde (5 m) rastgele dolaşıyorlar; beklerken
 karakterin idle animasyonu, yürürken Walking (root motion kaldırılıp hızına göre ayarlı).
 Model yoksa yedek olarak hareketsiz, zararsız mezar taşı.
+Dövüş tarzları (src/game/Vampire.ts, STYLES): Kılıççı, Vahşi, Çevik, Muhafız. Can, hasar, boy,
+kovalama hızı (yürüyerek ya da koşarak), saldırılar (kılıç = karakterin attack'ı, pençe = mutant
+swiping; her vuruşta rastgele biri), mola ve kas gösterisi (ilk fark edişte) tarza göre değişir.
+Tarzlar karıştırılmış bir torbadan dağıtılır: 5 vampirde 4 tarzın hepsi çıkar. Bekleme duruşu da
+rastgele (karakter idle, mutant idle, breathing idle). Animasyonlar "Creature NPC Pack"ten;
+mutant dying.fbx bozuk (FBXLoader okuyamıyor), yüklenemezse vampir eskisi gibi devrilir.
 Vampirler karşılık veriyor: karakteri 5 m'den fark edip (vurulunca 6 sn kızgın, 12 m'ye kadar)
-kovalıyor, karakterin attack animasyonuyla 6 hasar vuruyor; vururken darbe almak vuruşu kesmiyor.
-Can puanla: vampir 30, karakterin vuruşu 10, minionunki 5. Karakterin 100 canı var; HUD'da can
+kovalıyor ve vuruyor; vururken darbe almak vuruşu kesmiyor (kas gösterisini kesiyor).
+Can puanla: vampir 22-50 (tarza göre), karakterin vuruşu 10, minionunki 5. Karakterin 100 canı var; HUD'da can
 barı ve iskelet sayısı. Can bitince geriye devriliyor, "Öldün" yazısı, 4 sn sonra (0, 0)'da tam
 canla doğuyor; vampirler evlerine dönüyor.
 Tıklamayı görünmez bir kutu (hitbox) yakalıyor. Vampire bir kez tıklayınca karakter onu kovalıyor
