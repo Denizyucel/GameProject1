@@ -32,23 +32,26 @@ Retina ekranlar hedeflenir.
 - Kapsamı büyütme; prototip dışındaki fikirleri "Sonra" listesine öner.
 
 ## Şu anki hedef
-Faz 1 sahnesi, tıklayarak hareket ve A* yol bulma tamam. Karakter mezar
-taşlarının etrafından dolaşıyor (src/game/Grid.ts, src/game/findPath.ts;
+Faz 1 sahnesi, tıklayarak hareket ve A* yol bulma tamam. Karakter düşmanların
+etrafından dolaşıyor (src/game/Grid.ts, src/game/findPath.ts;
 SHOW_DEBUG ile engelli kareler ve yol görünür).
-Karakterin tırpanı var: taşa tıklayınca yanına yürüyüp vuruyor, taş sarsılıp
-parlıyor, vuruş sayısı tutuluyor.
-Taşların 3 vuruşluk canı var; kırılınca toprağa gömülüp siliniyor, ızgara yeniden kuruluyor.
+Düşmanlar: 5 vampir (Mixamo "Vampire A Lusth.fbx", src/game/Vampire.ts), karakterin idle
+animasyonunu oynuyor; model yoksa yedek olarak mezar taşı. Henüz karşılık vermiyorlar.
+Tıklamayı görünmez bir kutu (hitbox) yakalıyor. Vampire tıklayınca karakter yanına yürüyüp
+vuruyor; vampir sarsılıp kırmızı parlıyor. 3 vuruşta darbe yönüne devrilip toprağa gömülüyor,
+ızgara yeniden kuruluyor.
 Karakter Mixamo modeli (Nightshade): idle, walk, attack animasyonları AnimationMixer ile;
 silah sağ el kemiğine bağlı: Meshy kılıcı (sword.glb), yoksa çizilmiş tırpan. Modeller public/models içinde, Git dışında (lisans).
 Kontroller: tıklayarak (A*) ya da WASD/ok tuşlarıyla (ekrana göre, çarpışmalı) yürüme;
 tekerlek/pinch ile karaktere doğru yumuşak zoom.
-Ölü diriltme: kırılan taş 1-2 et yığını (flesh.glb, src/game/Flesh.ts) bırakır; 1 tuşu en yakın
+Ölü diriltme: ölen vampir 1-2 et yığını (flesh.glb, src/game/Flesh.ts) bırakır; 1 tuşu en yakın
 yığını (8 m içinde) diriltir. Karakter Magic Spell Pack'ten rastgele bir büyü animasyonu oynar,
 yığın yeşil parlar, içinden iskelet minion topraktan çıkar, yığın toprağa gömülür; minion karakteri A* ile takip eder
-(src/game/Skeleton.ts: Mixamo'da riglenmiş skeleton.fbx; karakterin idle/walk animasyonlarını
-kalça yüksekliği oranıyla uyarlayıp oynatır; flesh.glb yoksa ceset olarak T-pozunda yatar; model yoksa çizilmiş iskelet.
-src/game/Minion.ts: takip, kendi AnimationMixer'ı).
-Sıradaki: birlikte kararlaştırılacak (ilk düşman olabilir).
+(src/game/Skeleton.ts: Mixamo'da riglenmiş skeleton.fbx; flesh.glb yoksa ceset olarak T-pozunda yatar;
+model yoksa çizilmiş iskelet. src/game/Minion.ts: takip, kendi AnimationMixer'ı).
+Başka Mixamo modellerine karakterin animasyonları src/game/retarget.ts (adaptClip) ile uyarlanır:
+kalça konumu boy oranıyla ölçeklenir.
+Sıradaki: birlikte kararlaştırılacak (vampirler karşılık versin mi, minionlar saldırsın mı).
 Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 
 ## Sonra
@@ -57,9 +60,10 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Fare basılı tutulunca sürekli yürüme
 - Harita kenarı: siyah boşluk yerine duvar/sis; gölge alanı karakteri takip etsin
 - A* açık listesini öncelik kuyruğuna çevir (harita büyüyünce)
-- Kırılan taştan saçılan parçalar, ekran sarsıntısı gibi vuruş hissi efektleri
+- Vuruşta kan/parça efekti, ekran sarsıntısı gibi vuruş hissi efektleri
 - İskelete yerden kalkma (Standing Up) ve kendine özgü (zombi) yürüme animasyonu
 - skeleton.fbx'i hafiflet (278 bin üçgen; çok minionda ağırlaşır)
 - Minion sayısı sınırı ve mana; yakında ceset yoksa HUD'da uyarı
+- Vampire kendi animasyonları (vurulma, ölüm) ve can barı
 - Diriltme büyüsü için ışık/parçacık efekti
 - Minionlar birbirinin ve karakterin içinden geçmesin

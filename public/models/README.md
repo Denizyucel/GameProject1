@@ -14,10 +14,11 @@ yeniden indirip buraya koy:
 | `attack.fbx` | Sword And Shield Attack | Without Skin |
 | `sword.glb` | Kılıç, [Meshy](https://www.meshy.ai) | GLB |
 | `skeleton.fbx` | İskelet (ceset ve minion): Meshy modeli, Mixamo'da Upload Character ile riglendi | FBX Binary, T-pose, With Skin |
+| `Vampire A Lusth.fbx` | Düşman: Vampire A Lusth (karakter) | FBX Binary, T-pose, With Skin |
 | `flesh.glb` | Et yığını (kırılan taşın bıraktığı ceset), Meshy | GLB |
 | `Magic Spell Pack/` | Magic Spell Pack (paket, klasör adıyla) | Without Skin |
 
-Dosyalar yoksa oyun yine çalışır; karakter yerine mor kapsül, kılıç yerine tırpan görünür,
+Dosyalar yoksa oyun yine çalışır; karakter yerine mor kapsül, vampir yerine mezar taşı, kılıç yerine tırpan görünür,
 et yığını yoksa yerde yatan iskelet, iskelet modeli yoksa çizilmiş iskelet,
 büyü animasyonları yoksa ceset yine dirilir ama karakter büyü hareketi yapmaz.
 

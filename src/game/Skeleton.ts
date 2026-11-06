@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { adaptClip } from './retarget';
 
 const SKELETON_URL = '/models/skeleton.fbx';
 // Oyundaki boyu (metre)
@@ -97,17 +98,8 @@ export function setGlow(target: { materials: GlowMaterial[] }, intensity: number
   for (const material of target.materials) material.emissiveIntensity = intensity;
 }
 
-// Animasyonu iskelete uydur: kalça konumunu oranla, iskelette olmayan kemiklerin izlerini at
-// (karakterin pelerin kemikleri gibi; kalsalar konsolda uyarı verirler)
-function adaptClip(clip: THREE.AnimationClip, model: THREE.Object3D, ratio: number): THREE.AnimationClip {
-  const adapted = clip.clone(); // karakterin kendi animasyonu bozulmasın diye kopya
-  adapted.tracks = adapted.tracks.filter((track) => model.getObjectByName(track.name.split('.')[0]));
-  const hips = adapted.tracks.find((track) => track.name === 'mixamorigHips.position');
-  if (hips) for (let i = 0; i < hips.values.length; i++) hips.values[i] *= ratio;
-  return adapted;
-}
-
-function materialsOf(mesh: THREE.Mesh): GlowMaterial[] {
+/** Bir mesh'in parlatılabilen malzemeleri (tek ya da liste olabilir) */
+export function materialsOf(mesh: THREE.Mesh): GlowMaterial[] {
   const list = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
   return list.filter((m): m is GlowMaterial => m instanceof THREE.MeshStandardMaterial || m instanceof THREE.MeshPhongMaterial);
 }

@@ -7,6 +7,7 @@ import { findPath } from './findPath';
 import { Minion } from './Minion';
 import { createSkeleton, loadSkeletonModel, setGlow, type GlowMaterial } from './Skeleton';
 import { createFlesh, loadFleshModel } from './Flesh';
+import { createVampire, loadVampireModel } from './Vampire';
 
 // Kameranın dikeyde kaç dünya birimi gördüğü. Küçültürsen yakınlaşır.
 const VIEW_HEIGHT = 18;
@@ -71,7 +72,7 @@ const ATTACK_HIT_MOMENT = 0.45;
 // İki animasyon arasında yumuşak geçiş süresi (saniye)
 const ANIMATION_FADE = 0.2;
 
-// Kapsülün yarıçapı. Engeller bu kadar şişirilir ki kapsülün kenarı taşa sürtmesin.
+// Kapsülün yarıçapı. Engeller bu kadar şişirilir ki kapsülün kenarı engele sürtmesin.
 const PLAYER_RADIUS = 0.4;
 
 // Zemin boyutu ve ızgara karesi (dünya birimi)
@@ -86,7 +87,7 @@ const SHOW_PATH_LINE = false;
 const DEBUG_TILE_GEOMETRY = new THREE.PlaneGeometry(CELL_SIZE * 0.9, CELL_SIZE * 0.9).rotateX(-Math.PI / 2);
 const DEBUG_TILE_MATERIAL = new THREE.MeshBasicMaterial({ color: 0xff4d6d, transparent: true, opacity: 0.35 });
 
-// Saldırı: karakter merkezi ile taş merkezi arasında en fazla bu mesafe varken vurabilir
+// Saldırı: karakter merkezi ile düşman merkezi arasında en fazla bu mesafe varken vurabilir
 const ATTACK_RANGE = 2;
 // Bir savurmanın toplam süresi (saniye) ve darbenin savurmanın hangi anında (0..1) indiği
 const SWING_DURATION = 0.45;
@@ -95,15 +96,27 @@ const HIT_MOMENT = 0.55;
 const WEAPON_REST = 0.25;
 const WEAPON_WINDUP = -0.9;
 const WEAPON_STRIKE = 1.7;
-// Vurulan taşın sarsılıp parladığı süre (saniye)
+// Vurulan düşmanın sarsılıp parladığı süre (saniye)
 const HIT_FEEDBACK = 0.3;
-// Bir taşın canı: kaç vuruşta kırıldığı
-const GRAVE_HEALTH = 3;
-// Kırılan taşın toprağa gömülme süresi (saniye)
-const BREAK_DURATION = 0.5;
+// Düşmanın canı: kaç vuruşta öldüğü
+const ENEMY_HEALTH = 3;
+// Ölen düşmanın devrilip toprağa gömülme süresi (saniye), ne kadar devrildiği (radyan, ≈80°)
+// ve ne kadar derine gömüldüğü (metre; vampir 2 m boyunda, tamamen girsin)
+const BREAK_DURATION = 1.1;
+const FALL_ANGLE = 1.4;
+const SINK_DEPTH = 2.3;
+// Düşmanın zeminde kapladığı yer (yarıçap, metre). Izgarada engel olarak işlenir.
+const ENEMY_RADIUS = 0.35;
+// Tıklamayı yakalayan görünmez kutu: genişlik, boy (metre). Ayrıntılı modele ışın atmak yavaş
+// ve ince yerlerden ıskalanır; bu kutu hem hızlı hem tıklaması kolay.
+const HITBOX_WIDTH = 0.9;
+const HITBOX_HEIGHT = 2;
+const HITBOX_GEOMETRY = new THREE.BoxGeometry(HITBOX_WIDTH, HITBOX_HEIGHT, HITBOX_WIDTH).translate(0, HITBOX_HEIGHT / 2, 0);
+// visible: false → çizilmez ama ışın yine çarpar
+const HITBOX_MATERIAL = new THREE.MeshBasicMaterial({ visible: false });
 
 // Ölü diriltme
-// Kırılan her taştan düşen ceset sayısı (en az, en çok) ve taştan ne kadar uzağa düştükleri
+// Ölen her düşmandan düşen ceset sayısı (en az, en çok) ve ne kadar uzağa düştükleri
 const CORPSES_MIN = 1;
 const CORPSES_MAX = 2;
 const CORPSE_SCATTER = 1.2;
@@ -143,7 +156,6 @@ const CAST_DURATION = 1;
 // dönük bir yere yerleşir. Böylece kaç minion olursa olsun çembere eşit dağılırlar.
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 
-// Sahnedeki bir mezar taşı ve vuruş tepkisi için gereken bilgiler
 // Yerdeki ceset: et yığını (flesh.glb) ya da o yoksa yatan iskelet
 interface Corpse {
   root: THREE.Object3D;
@@ -152,15 +164,21 @@ interface Corpse {
   sinkTime: number | null; // iskelet içinden çıktıysa kaç saniyedir gömüldüğü; null ise yerinde duruyor
 }
 
-interface Grave {
-  mesh: THREE.Mesh;
-  material: THREE.MeshStandardMaterial; // her taşın kendi malzemesi, ki sadece vurulan parlasın
+// Sahnedeki bir düşman: vampir (model yoksa yedek olarak mezar taşı). Şimdilik karşılık vermiyor;
+// vurulunca sarsılıp parlıyor, ölünce devrilip gömülüyor ve yerine et yığını bırakıyor.
+interface Enemy {
+  // Görünen kısmın dış grubu, kökü ayak hizasında. Sarsılırken ve devrilirken bu hareket eder.
+  object: THREE.Group;
+  hitbox: THREE.Mesh; // tıklama ışınının çarptığı görünmez kutu
+  stone: THREE.Mesh; // yedek görünüm; vampir modeli gelince gizlenir
+  materials: GlowMaterial[]; // kendi malzemeleri, ki sadece vurulan parlasın
+  mixer: THREE.AnimationMixer | null; // vampirin bekleme animasyonu; taşta null
   basePosition: THREE.Vector3; // sarsıntı bitince döneceği yer
-  hitDirection: THREE.Vector3; // darbenin geldiği yön; taş o yöne sarsılır
+  hitDirection: THREE.Vector3; // darbenin geldiği yön; o yöne sarsılır ve devrilir
   hitTime: number | null; // son darbenin zamanı (saniye)
   hits: number; // toplam kaç kez vuruldu
   footprint: THREE.Box3; // zemindeki izi (kapsül payı dahil); ızgarada engel olarak kullanılır
-  breakTime: number | null; // kırılmaya başladığı zaman; null ise sağlam
+  breakTime: number | null; // ölmeye başladığı zaman; null ise ayakta
 }
 
 export class Game {
@@ -182,17 +200,17 @@ export class Game {
   // Farenin ekrandaki konumu, -1..1 aralığında (sol alt -1,-1; sağ üst 1,1)
   private readonly pointer = new THREE.Vector2();
 
-  // Mezar taşları; tıklama ışını ve vuruş tepkisi bunları kullanır
-  private readonly graves: Grave[] = [];
+  // Düşmanlar (vampirler); tıklama ışını ve vuruş tepkisi bunları kullanır
+  private readonly enemies: Enemy[] = [];
   // Tırpanın omuzdaki dönme noktası. Savurmak = bu grubu döndürmek.
   private readonly weaponPivot = new THREE.Group();
   // Kendi çizdiğimiz tırpan; kılıç yüklenince gizlenir
   private readonly scythe = new THREE.Group();
-  // Saldırılacak taş (yanına yürünüyor ya da vuruluyor); null ise saldırı yok
-  private attackTarget: Grave | null = null;
+  // Saldırılacak düşman (yanına yürünüyor ya da vuruluyor); null ise saldırı yok
+  private attackTarget: Enemy | null = null;
   // Savurma başladıysa kaç saniyedir sürdüğü; null ise savurmuyor
   private swingTime: number | null = null;
-  // Bu savurmanın darbesi taşa indi mi (her savurmada bir kez)
+  // Bu savurmanın darbesi düşmana indi mi (her savurmada bir kez)
   private swingHasHit = false;
   // Savurma süresi ve darbe anı. Kapsülde sabit; model gelince vuruş animasyonuna göre ayarlanır.
   private swingDuration = SWING_DURATION;
@@ -262,7 +280,7 @@ export class Game {
     this.scene.background = new THREE.Color(0x121018);
     this.addLights();
     this.ground = this.addGround();
-    this.addGraves(); // mezar taşlarını hem sahneye hem ızgaraya engel olarak ekler
+    this.addEnemies(); // düşmanları hem sahneye hem ızgaraya engel olarak ekler
     this.player = this.createPlayer();
     this.loadCharacter().catch((error) => console.error('Karakter modeli yüklenemedi:', error));
     this.loadSword().catch((error) => console.error('Kılıç modeli yüklenemedi:', error));
@@ -316,7 +334,7 @@ export class Game {
     this.updateAttack(delta, elapsed);
     this.updateCast(delta);
     this.updateCorpses(delta);
-    this.updateGraves(elapsed);
+    this.updateEnemies(elapsed, delta);
     for (const minion of this.minions) minion.update(delta, this.player.position, this.grid);
     this.updateAnimation(delta);
     this.updateZoom(delta);
@@ -459,11 +477,11 @@ export class Game {
       const dz = target.z - this.player.position.z;
 
       if (Math.hypot(dx, dz) <= ATTACK_RANGE) {
-        this.player.rotation.y = Math.atan2(dx, dz); // yüzünü taşa çevir
+        this.player.rotation.y = Math.atan2(dx, dz); // yüzünü düşmana çevir
         this.swingTime = 0;
         this.swingHasHit = false;
       } else {
-        this.attackTarget = null; // taşa yaklaşamadık (yol yoktu), saldırıdan vazgeç
+        this.attackTarget = null; // düşmana yaklaşamadık (yol yoktu), saldırıdan vazgeç
       }
     }
 
@@ -475,10 +493,10 @@ export class Game {
     const progress = Math.min(this.swingTime / this.swingDuration, 1);
     if (!this.mixer) this.weaponPivot.rotation.x = swingAngle(progress);
 
-    // 3. Darbe anı geldiyse taşa vur (her savurmada bir kez)
+    // 3. Darbe anı geldiyse düşmana vur (her savurmada bir kez)
     if (!this.swingHasHit && progress >= this.hitMoment && this.attackTarget) {
       this.swingHasHit = true;
-      this.hitGrave(this.attackTarget, elapsed);
+      this.hitEnemy(this.attackTarget, elapsed);
     }
 
     // 4. Savurma bitti: silahı dinlenme açısına bırak, saldırıyı bitir
@@ -509,91 +527,94 @@ export class Game {
     this.mixer.update(delta); // animasyonları delta kadar ilerlet, kemikleri hareket ettir
   }
 
-  private hitGrave(grave: Grave, elapsed: number) {
-    if (grave.breakTime !== null) return; // zaten kırılıyor
-    grave.hits += 1;
-    grave.hitTime = elapsed;
-    // Darbe yönü: karakterden taşa. Taş bu yöne doğru sarsılacak.
-    grave.hitDirection
-      .set(grave.basePosition.x - this.player.position.x, 0, grave.basePosition.z - this.player.position.z)
+  private hitEnemy(enemy: Enemy, elapsed: number) {
+    if (enemy.breakTime !== null) return; // zaten ölüyor
+    enemy.hits += 1;
+    enemy.hitTime = elapsed;
+    // Darbe yönü: karakterden düşmana. Düşman bu yöne doğru sarsılacak (ve ölünce devrilecek).
+    enemy.hitDirection
+      .set(enemy.basePosition.x - this.player.position.x, 0, enemy.basePosition.z - this.player.position.z)
       .normalize();
-    console.log(`Mezar taşına vuruldu (${grave.hits}/${GRAVE_HEALTH})`);
+    console.log(`Düşmana vuruldu (${enemy.hits}/${ENEMY_HEALTH})`);
 
-    if (grave.hits >= GRAVE_HEALTH) {
-      grave.breakTime = elapsed;
+    if (enemy.hits >= ENEMY_HEALTH) {
+      enemy.breakTime = elapsed;
       this.rebuildGrid(); // engel hemen kalksın, karakter oradan geçebilsin
-      console.log('Mezar taşı kırıldı');
+      console.log('Düşman öldü');
     }
   }
 
-  // Izgarayı sağlam taşlardan baştan kur. Sadece kırılan taşın karelerini boşaltmak
+  // Izgarayı ayaktaki düşmanlardan baştan kur. Sadece ölenin karelerini boşaltmak
   // yerine baştan kuruyoruz ki iki engel aynı kareyi paylaşsa bile doğru kalsın.
   private rebuildGrid() {
     this.grid.clear();
-    for (const grave of this.graves) {
-      if (grave.breakTime !== null) continue;
-      const { min, max } = grave.footprint;
+    for (const enemy of this.enemies) {
+      if (enemy.breakTime !== null) continue;
+      const { min, max } = enemy.footprint;
       this.grid.blockRect(min.x, min.z, max.x, max.z);
     }
     if (SHOW_DEBUG) this.refreshDebugTiles();
   }
 
-  // Vurulan taşları sars ve parlat; kırılanları toprağa göm ve sahneden sil
-  private updateGraves(elapsed: number) {
-    // Sondan başa doğru dönüyoruz ki silinen taş, sıradaki taşların yerini kaydırmasın
-    for (let i = this.graves.length - 1; i >= 0; i--) {
-      const grave = this.graves[i];
+  // Vurulan düşmanları sars ve parlat; ölenleri devir, toprağa göm ve sahneden sil
+  private updateEnemies(elapsed: number, delta: number) {
+    // Sondan başa doğru dönüyoruz ki silinen düşman, sıradakilerin yerini kaydırmasın
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      const enemy = this.enemies[i];
+      enemy.mixer?.update(delta); // bekleme animasyonu
 
-      if (grave.breakTime !== null) {
-        const t = (elapsed - grave.breakTime) / BREAK_DURATION; // 0 → 1
+      if (enemy.breakTime !== null) {
+        const t = (elapsed - enemy.breakTime) / BREAK_DURATION; // 0 → 1
         if (t >= 1) {
-          // Gömülme bitti: sahneden ve listeden tamamen çıkar, malzemenin belleğini boşalt.
-          // Taşın yerinde cesetler kalır.
-          this.dropCorpses(grave.basePosition);
-          this.scene.remove(grave.mesh);
-          grave.material.dispose();
-          this.graves.splice(i, 1);
+          // Gömülme bitti: sahneden ve listeden tamamen çıkar, malzemelerin belleğini boşalt.
+          // Yerinde et yığınları kalır.
+          this.dropCorpses(enemy.basePosition);
+          this.scene.remove(enemy.object);
+          for (const material of enemy.materials) material.dispose();
+          this.enemies.splice(i, 1);
           continue;
         }
-        const eased = t * t; // yavaş başlayıp hızlanan gömülme
-        grave.mesh.position.copy(grave.basePosition).addScaledVector(grave.hitDirection, eased * 0.3);
-        grave.mesh.position.y = grave.basePosition.y - eased * 1.3; // taş 1.2 boyunda: tamamen girsin
-        // Darbe yönüne doğru devril: yön vektörüne dik eksen etrafında döndür
-        grave.mesh.rotation.x = grave.hitDirection.z * eased * 0.9;
-        grave.mesh.rotation.z = -grave.hitDirection.x * eased * 0.9;
-        grave.mesh.scale.setScalar(1 - eased * 0.3);
-        grave.material.emissiveIntensity = 1 - t;
+        // Önce darbe yönüne devril (ilk %55), sonra toprağa gömül (son %55; biraz üst üste biner)
+        const fall = THREE.MathUtils.smoothstep(t / 0.55, 0, 1);
+        const sink = Math.max(0, (t - 0.45) / 0.55) ** 2;
+        const object = enemy.object;
+        object.position.copy(enemy.basePosition).addScaledVector(enemy.hitDirection, fall * 0.3);
+        object.position.y = enemy.basePosition.y - sink * SINK_DEPTH;
+        // Devrilme: darbe yönüne dik eksen etrafında döndür. Kök ayakta olduğu için ayakları üstünde devrilir.
+        object.rotation.x = enemy.hitDirection.z * fall * FALL_ANGLE;
+        object.rotation.z = -enemy.hitDirection.x * fall * FALL_ANGLE;
+        setGlow(enemy, 1 - t);
         continue;
       }
 
-      if (grave.hitTime === null) continue;
+      if (enemy.hitTime === null) continue;
 
-      const t = (elapsed - grave.hitTime) / HIT_FEEDBACK; // 0 → 1 arası ilerleme
+      const t = (elapsed - enemy.hitTime) / HIT_FEEDBACK; // 0 → 1 arası ilerleme
       if (t >= 1) {
-        grave.mesh.position.copy(grave.basePosition);
-        grave.material.emissiveIntensity = 0;
-        grave.hitTime = null;
+        enemy.object.position.copy(enemy.basePosition);
+        setGlow(enemy, 0);
+        enemy.hitTime = null;
         continue;
       }
 
       const fade = 1 - t; // tepki zamanla sönümlenir
       const shake = Math.sin(t * Math.PI * 6) * 0.08 * fade; // ileri-geri titreşim
-      grave.mesh.position.copy(grave.basePosition).addScaledVector(grave.hitDirection, shake);
-      grave.material.emissiveIntensity = fade; // anlık parlama, sonra söner
+      enemy.object.position.copy(enemy.basePosition).addScaledVector(enemy.hitDirection, shake);
+      setGlow(enemy, fade); // anlık parlama, sonra söner
     }
   }
 
-  // Kırılan taşın çevresine 1-2 ceset bırak
+  // Ölen düşmanın çevresine 1-2 ceset bırak
   private dropCorpses(around: THREE.Vector3) {
     const count = THREE.MathUtils.randInt(CORPSES_MIN, CORPSES_MAX);
     const startAngle = Math.random() * Math.PI * 2;
     for (let i = 0; i < count; i++) {
-      // Cesetler taşın çevresine eşit aralıklı dağılsın (2 cesetse karşılıklı)
+      // Cesetler düşmanın çevresine eşit aralıklı dağılsın (2 cesetse karşılıklı)
       const angle = startAngle + (i * Math.PI * 2) / count;
       let x = around.x + Math.sin(angle) * CORPSE_SCATTER;
       let z = around.z + Math.cos(angle) * CORPSE_SCATTER;
       if (!this.canStand(x, z)) {
-        // Düşeceği yer başka bir taşın dibi ya da haritanın dışı: taşın kendi yerine koy
+        // Düşeceği yer başka bir düşmanın dibi ya da haritanın dışı: ölenin kendi yerine koy
         x = around.x;
         z = around.z;
       }
@@ -753,16 +774,16 @@ export class Game {
     // 2. Kameradan bu noktaya doğru ışın gönder
     this.raycaster.setFromCamera(this.pointer, this.camera);
 
-    // 2a. Önce mezar taşlarına bak: birine tıklandıysa ona saldır
-    const standing = this.graves.filter((g) => g.breakTime === null); // kırılanlara tıklanmaz
-    const graveHit = this.raycaster.intersectObjects(standing.map((g) => g.mesh), false)[0];
-    const grave = graveHit && this.graves.find((g) => g.mesh === graveHit.object);
-    if (grave) {
-      this.attack(grave);
+    // 2a. Önce düşmanlara bak: birine tıklandıysa ona saldır
+    const standing = this.enemies.filter((e) => e.breakTime === null); // ölenlere tıklanmaz
+    const enemyHit = this.raycaster.intersectObjects(standing.map((e) => e.hitbox), false)[0];
+    const enemy = enemyHit && this.enemies.find((e) => e.hitbox === enemyHit.object);
+    if (enemy) {
+      this.attack(enemy);
       return;
     }
 
-    // 2b. Taş değilse zemine bak
+    // 2b. Düşman değilse zemine bak
     // Başka yere tıklandı: saldırıdan vazgeç. Ama savurma başladıysa darbe yine insin;
     // yeni yürüme savurma bitince başlar.
     if (this.swingTime === null) this.attackTarget = null;
@@ -774,11 +795,11 @@ export class Game {
     this.walkTo(x, z);
   };
 
-  private attack(grave: Grave) {
+  private attack(enemy: Enemy) {
     if (this.swingTime !== null) return; // zaten savuruyor; bitmeden yenisi başlamaz
-    this.attackTarget = grave;
+    this.attackTarget = enemy;
 
-    const target = grave.basePosition;
+    const target = enemy.basePosition;
     const player = this.player.position;
     const distance = Math.hypot(target.x - player.x, target.z - player.z);
 
@@ -787,7 +808,7 @@ export class Game {
       return;
     }
 
-    // Taşın karaktere bakan tarafında, taştan 1 birim ötedeki noktaya yürü.
+    // Düşmanın karaktere bakan tarafında, ondan 1 birim ötedeki noktaya yürü.
     // Orası engelli kareye düşerse walkTo en yakın boş kareyi seçer.
     const awayX = (player.x - target.x) / distance;
     const awayZ = (player.z - target.z) / distance;
@@ -798,7 +819,7 @@ export class Game {
     const grid = this.grid;
     const y = this.player.position.y; // yürürken yükseklik değişmez, sadece x ve z
 
-    // Hedef kare: tıklanan kare boşsa o, mezar taşının üstüne tıklandıysa en yakın boş kare
+    // Hedef kare: tıklanan kare boşsa o, engelli kareye tıklandıysa en yakın boş kare
     const clicked = grid.worldToCell(x, z);
     const clickedIsFree = grid.isWalkable(clicked.col, clicked.row);
     const goal = clickedIsFree ? clicked : grid.nearestWalkable(x, z);
@@ -858,8 +879,10 @@ export class Game {
     return ground; // tıklama ışını bu nesneye karşı test edilecek
   }
 
-  private addGraves() {
-    // Geometri beş taşta ortak. Malzeme her taşta ayrı (clone), ki vurulan tek taş parlasın.
+  // Düşmanları yerleştir. Önce yedek görünüm (mezar taşı) ile başlarlar; vampir modeli
+  // yüklenince dressEnemies taşları gizleyip yerlerine vampirleri koyar.
+  private addEnemies() {
+    // Taş şekli beş düşmanda ortak. Malzeme her birinde ayrı (clone), ki sadece vurulan parlasın.
     const geometry = new THREE.BoxGeometry(0.8, 1.2, 0.25);
     const baseMaterial = new THREE.MeshStandardMaterial({
       color: 0x5c5866,
@@ -871,20 +894,30 @@ export class Game {
 
     for (const [x, z] of spots) {
       const material = baseMaterial.clone();
-      const grave = new THREE.Mesh(geometry, material);
-      grave.position.set(x, 0.6, z);
-      grave.rotation.y = Math.random() * 0.4 - 0.2;
-      grave.castShadow = true;
-      grave.receiveShadow = true;
-      this.scene.add(grave);
-      // Taşın zemindeki izi (dönük haliyle), kapsül yarıçapı kadar büyütülmüş.
-      // Box3 = nesneyi saran kutu. Izgarada bu izin dokunduğu kareler engelli olur.
-      const footprint = new THREE.Box3().setFromObject(grave).expandByScalar(PLAYER_RADIUS);
+      const stone = new THREE.Mesh(geometry, material);
+      stone.position.y = 0.6; // taş 1.2 boyunda; yarısı kadar yukarı ki zemine otursun
+      stone.rotation.y = Math.random() * 0.4 - 0.2;
+      stone.castShadow = true;
+      stone.receiveShadow = true;
 
-      this.graves.push({
-        mesh: grave,
-        material,
-        basePosition: grave.position.clone(),
+      const hitbox = new THREE.Mesh(HITBOX_GEOMETRY, HITBOX_MATERIAL);
+      const object = new THREE.Group();
+      object.position.set(x, 0, z);
+      object.add(stone, hitbox);
+      this.scene.add(object);
+
+      // Zemindeki izi: ENEMY_RADIUS'lu kare, kapsül yarıçapı kadar büyütülmüş.
+      // Box3 = kutu. Izgarada bu izin dokunduğu kareler engelli olur.
+      const reach = ENEMY_RADIUS + PLAYER_RADIUS;
+      const footprint = new THREE.Box3(new THREE.Vector3(x - reach, 0, z - reach), new THREE.Vector3(x + reach, 0, z + reach));
+
+      this.enemies.push({
+        object,
+        hitbox,
+        stone,
+        materials: [material],
+        mixer: null,
+        basePosition: object.position.clone(),
         hitDirection: new THREE.Vector3(),
         hitTime: null,
         hits: 0,
@@ -893,7 +926,23 @@ export class Game {
       });
     }
 
-    this.rebuildGrid(); // bütün taşları ızgaraya engel olarak işle
+    this.rebuildGrid(); // bütün düşmanları ızgaraya engel olarak işle
+  }
+
+  // Vampir modeli yüklendi: ayaktaki düşmanların taşını gizle, yerine vampir koy
+  private dressEnemies() {
+    for (const enemy of this.enemies) {
+      if (enemy.breakTime !== null) continue; // ölmekte olan taş olarak kalsın
+      const vampire = createVampire();
+      if (!vampire) return;
+      // Haritanın ortasına (karakterin başladığı yere) dönük dursun
+      vampire.model.rotation.y = Math.atan2(-enemy.basePosition.x, -enemy.basePosition.z);
+      enemy.object.add(vampire.model);
+      enemy.stone.visible = false;
+      for (const material of enemy.materials) material.dispose(); // taşın malzemesi artık kullanılmıyor
+      enemy.materials = vampire.materials;
+      enemy.mixer = vampire.mixer;
+    }
   }
 
   // Debug görünümünü sahneye ekle: engelli kareler ve (açıksa) yol çizgisi
@@ -1032,13 +1081,17 @@ export class Game {
 
     this.attachWeaponToHand(model);
 
-    // İskelet modeli de aynı Mixamo kemiklerine sahip: karakterin bekleme ve yürüme
-    // animasyonlarını ona veriyoruz. Kalça yüksekliği, animasyonu iskeletin boyuna uydurmak için.
+    // Vampir ve iskelet modelleri de aynı Mixamo kemiklerine sahip: karakterin bekleme ve yürüme
+    // animasyonlarını onlara veriyoruz. Kalça yüksekliği, animasyonu onların boyuna uydurmak için.
     const hips = model.getObjectByName('mixamorigHips');
+    const hipsHeight = hips ? hips.position.y : 100;
+    loadVampireModel(idleClip, hipsHeight)
+      .then(() => this.dressEnemies())
+      .catch((error) => console.error('Vampir modeli yüklenemedi:', error));
     loadSkeletonModel({
       idle: idleClip,
       walk: walkClip,
-      hipsHeight: hips ? hips.position.y : 100,
+      hipsHeight,
       walkClipSpeed: WALK_CLIP_SPEED,
     }).catch((error) => console.error('İskelet modeli yüklenemedi:', error));
     this.loadSpells(mixer).catch((error) => console.error('Büyü animasyonları yüklenemedi:', error));

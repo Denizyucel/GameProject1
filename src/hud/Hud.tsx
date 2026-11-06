@@ -7,7 +7,7 @@ export function Hud() {
         <span>Faz 1 · sahne</span>
       </div>
       <div className="hud-controls">
-        Tıkla veya WASD: yürü · Taşa tıkla: vur · 1: ceset dirilt · Tekerlek: yakınlaş
+        Tıkla veya WASD: yürü · Vampire tıkla: vur · 1: ceset dirilt · Tekerlek: yakınlaş
       </div>
     </>
   );
