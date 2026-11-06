@@ -42,7 +42,11 @@ Karakter Mixamo modeli (Nightshade): idle, walk, attack animasyonları Animation
 silah sağ el kemiğine bağlı: Meshy kılıcı (sword.glb), yoksa çizilmiş tırpan. Modeller public/models içinde, Git dışında (lisans).
 Kontroller: tıklayarak (A*) ya da WASD/ok tuşlarıyla (ekrana göre, çarpışmalı) yürüme;
 tekerlek/pinch ile karaktere doğru yumuşak zoom.
-Sıradaki: birlikte kararlaştırılacak (ilk minion ya da ilk düşman).
+Ölü diriltme: kırılan taş 1-2 ceset bırakır; 1 tuşu en yakın cesedi (8 m içinde) diriltir.
+Karakter Magic Spell Pack'ten rastgele bir büyü animasyonu oynar, ceset yeşil parlayıp
+iskelet minion olarak topraktan çıkar ve karakteri A* ile takip eder
+(src/game/Skeleton.ts: basit şekillerden iskelet, src/game/Minion.ts: takip).
+Sıradaki: birlikte kararlaştırılacak (ilk düşman ya da minion'a gerçek model).
 Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 
 ## Sonra
@@ -52,3 +56,7 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Harita kenarı: siyah boşluk yerine duvar/sis; gölge alanı karakteri takip etsin
 - A* açık listesini öncelik kuyruğuna çevir (harita büyüyünce)
 - Kırılan taştan saçılan parçalar, ekran sarsıntısı gibi vuruş hissi efektleri
+- Minion için gerçek model (Mixamo'da iskelet/zombi karakteri) ve animasyonları
+- Minion sayısı sınırı ve mana; yakında ceset yoksa HUD'da uyarı
+- Diriltme büyüsü için ışık/parçacık efekti
+- Minionlar birbirinin ve karakterin içinden geçmesin

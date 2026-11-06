@@ -4,6 +4,8 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Grid } from './Grid';
 import { findPath } from './findPath';
+import { Minion } from './Minion';
+import { createSkeleton, type Skeleton } from './Skeleton';
 
 // Kameranın dikeyde kaç dünya birimi gördüğü. Küçültürsen yakınlaşır.
 const VIEW_HEIGHT = 18;
@@ -99,6 +101,42 @@ const GRAVE_HEALTH = 3;
 // Kırılan taşın toprağa gömülme süresi (saniye)
 const BREAK_DURATION = 0.5;
 
+// Ölü diriltme
+// Kırılan her taştan düşen ceset sayısı (en az, en çok) ve taştan ne kadar uzağa düştükleri
+const CORPSES_MIN = 1;
+const CORPSES_MAX = 2;
+const CORPSE_SCATTER = 1.2;
+// Diriltme tuşu: üst sıradaki 1 ve sayı tuş takımındaki 1
+const RAISE_KEYS = ['Digit1', 'Numpad1'];
+// Karakterden en fazla bu uzaklıktaki ceset diriltilebilir (en yakını seçilir)
+const RAISE_RANGE = 8;
+// Diriltirken rastgele biri seçilen büyü animasyonları (Mixamo "Magic Spell Pack")
+const SPELL_NAMES = [
+  'Standing 1H Magic Attack 01',
+  'Standing 1H Magic Attack 02',
+  'Standing 1H Magic Attack 03',
+  'standing 1H cast spell 01',
+  'Standing 2H Cast Spell 01',
+  'Standing 2H Magic Area Attack 01',
+  'Standing 2H Magic Area Attack 02',
+  'Standing 2H Magic Attack 01',
+  'Standing 2H Magic Attack 02',
+  'Standing 2H Magic Attack 03',
+  'Standing 2H Magic Attack 04',
+  'Standing 2H Magic Attack 05',
+];
+// Dosya adlarında boşluk var; encodeURI onları adrese uygun hale getirir (boşluk → %20)
+const SPELL_URLS = SPELL_NAMES.map((name) => encodeURI(`/models/Magic Spell Pack/${name}.fbx`));
+// Büyü animasyonları 2–4 sn sürüyor; oyunda kaç kat hızlı oynatılacakları
+const SPELL_TIME_SCALE = 1.5;
+// Cesedin büyünün hangi anında (0..1) dirildiği
+const RAISE_MOMENT = 0.5;
+// Model yüklenmeden (kapsüldeyken) bir büyünün süresi (saniye)
+const CAST_DURATION = 1;
+// Altın açı (≈137.5°): her yeni minion karakterin çevresinde bir öncekinden bu kadar
+// dönük bir yere yerleşir. Böylece kaç minion olursa olsun çembere eşit dağılırlar.
+const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+
 // Sahnedeki bir mezar taşı ve vuruş tepkisi için gereken bilgiler
 interface Grave {
   mesh: THREE.Mesh;
@@ -145,6 +183,18 @@ export class Game {
   // Savurma süresi ve darbe anı. Kapsülde sabit; model gelince vuruş animasyonuna göre ayarlanır.
   private swingDuration = SWING_DURATION;
   private hitMoment = HIT_MOMENT;
+
+  // Yerde diriltilmeyi bekleyen cesetler ve dirilmiş minionlar
+  private readonly corpses: Skeleton[] = [];
+  private readonly minions: Minion[] = [];
+  // Büyü başladıysa kaç saniyedir sürdüğü; null ise büyü yapmıyor
+  private castTime: number | null = null;
+  private castDuration = CAST_DURATION;
+  // Bu büyüyle dirilecek ceset; dirilince null olur
+  private castTarget: Skeleton | null = null;
+  // Bu büyüde oynayan animasyon ve yüklenen bütün büyü animasyonları
+  private castAction: THREE.AnimationAction | null = null;
+  private spellActions: THREE.AnimationAction[] = [];
 
   // AnimationMixer: modelin animasyonlarını oynatan ve aralarında geçiş yapan Three.js parçası.
   // Model yüklenene kadar null.
@@ -249,7 +299,9 @@ export class Game {
     this.updateKeyboardMovement(delta);
     this.updateMovement(delta);
     this.updateAttack(delta, elapsed);
+    this.updateCast(delta);
     this.updateGraves(elapsed);
+    for (const minion of this.minions) minion.update(delta, this.player.position, this.grid);
     this.updateAnimation(delta);
     this.updateZoom(delta);
     this.updateCamera(delta); // karakter yürüdükten sonra, ki kamera güncel konumu izlesin
@@ -274,8 +326,8 @@ export class Game {
     }
 
     const length = Math.hypot(dx, dz);
-    // Tuş yoksa (ya da W ile S gibi zıt tuşlar birbirini sıfırladıysa) ya da savuruyorsa durur
-    this.keyboardWalking = length > 0 && this.swingTime === null;
+    // Tuş yoksa (ya da W ile S gibi zıt tuşlar birbirini sıfırladıysa) ya da savuruyor/büyü yapıyorsa durur
+    this.keyboardWalking = length > 0 && !this.isBusy();
     if (!this.keyboardWalking) return;
 
     // Klavye devraldı: tıklamayla başlamış yürüme ve saldırı iptal
@@ -307,7 +359,17 @@ export class Game {
     return this.grid.isWalkable(cell.col, cell.row);
   }
 
+  // Karakter şu an bir hareketin ortasında mı (vuruş ya da büyü). O sırada yürümez, yenisini başlatmaz.
+  private isBusy(): boolean {
+    return this.swingTime !== null || this.castTime !== null;
+  }
+
   private readonly onKeyDown = (event: KeyboardEvent) => {
+    if (RAISE_KEYS.includes(event.code)) {
+      // event.repeat: tuş basılı tutulunca tarayıcının tekrar gönderdiği olay; onları sayma
+      if (!event.repeat) this.raiseDead();
+      return;
+    }
     if (!Object.hasOwn(KEY_DIRECTIONS, event.code)) return;
     event.preventDefault(); // ok tuşları sayfayı kaydırmasın
     this.pressedKeys.add(event.code);
@@ -340,7 +402,7 @@ export class Game {
   }
 
   private updateMovement(delta: number) {
-    if (this.swingTime !== null) return; // savururken yürümez; savurma bitince yola devam eder
+    if (this.isBusy()) return; // savururken/büyü yaparken yürümez; bitince yola devam eder
 
     let step = MOVE_SPEED * delta; // bu karede atılacak adımın boyu
 
@@ -375,7 +437,7 @@ export class Game {
 
   private updateAttack(delta: number, elapsed: number) {
     // 1. Hedef var, yürüme bitti, henüz savurmuyor: menzildeyse savurmaya başla
-    if (this.attackTarget && this.swingTime === null && this.path.length === 0) {
+    if (this.attackTarget && !this.isBusy() && this.path.length === 0) {
       const target = this.attackTarget.basePosition;
       const dx = target.x - this.player.position.x;
       const dz = target.z - this.player.position.z;
@@ -416,7 +478,8 @@ export class Game {
     if (!this.mixer || !this.actions) return;
 
     const wanted =
-      this.swingTime !== null ? this.actions.attack
+      this.castTime !== null ? (this.castAction ?? this.actions.idle)
+      : this.swingTime !== null ? this.actions.attack
       : this.path.length > 0 || this.keyboardWalking ? this.actions.walk
       : this.actions.idle;
 
@@ -468,7 +531,9 @@ export class Game {
       if (grave.breakTime !== null) {
         const t = (elapsed - grave.breakTime) / BREAK_DURATION; // 0 → 1
         if (t >= 1) {
-          // Gömülme bitti: sahneden ve listeden tamamen çıkar, malzemenin belleğini boşalt
+          // Gömülme bitti: sahneden ve listeden tamamen çıkar, malzemenin belleğini boşalt.
+          // Taşın yerinde cesetler kalır.
+          this.dropCorpses(grave.basePosition);
           this.scene.remove(grave.mesh);
           grave.material.dispose();
           this.graves.splice(i, 1);
@@ -500,6 +565,120 @@ export class Game {
       grave.mesh.position.copy(grave.basePosition).addScaledVector(grave.hitDirection, shake);
       grave.material.emissiveIntensity = fade; // anlık parlama, sonra söner
     }
+  }
+
+  // Kırılan taşın çevresine 1-2 ceset bırak
+  private dropCorpses(around: THREE.Vector3) {
+    const count = THREE.MathUtils.randInt(CORPSES_MIN, CORPSES_MAX);
+    const startAngle = Math.random() * Math.PI * 2;
+    for (let i = 0; i < count; i++) {
+      // Cesetler taşın çevresine eşit aralıklı dağılsın (2 cesetse karşılıklı)
+      const angle = startAngle + (i * Math.PI * 2) / count;
+      let x = around.x + Math.sin(angle) * CORPSE_SCATTER;
+      let z = around.z + Math.cos(angle) * CORPSE_SCATTER;
+      if (!this.canStand(x, z)) {
+        // Düşeceği yer başka bir taşın dibi ya da haritanın dışı: taşın kendi yerine koy
+        x = around.x;
+        z = around.z;
+      }
+
+      const corpse = createSkeleton();
+      const { root } = corpse;
+      // Sırtüstü yatır. Önce yere yatır (x), sonra rastgele bir yöne çevir (y);
+      // "YXZ" sırası bu dönüşlerin hangi sırayla uygulanacağını söyler.
+      root.rotation.order = 'YXZ';
+      root.rotation.set(-Math.PI / 2, Math.random() * Math.PI * 2, 0);
+      root.position.set(x, 0.13, z); // kemikler toprağa gömülmesin diye biraz yukarıda
+      // Kollar ve bacaklar iki yana açık, gözler sönük: ölü
+      corpse.leftArm.rotation.z = 0.5;
+      corpse.rightArm.rotation.z = -0.5;
+      corpse.leftLeg.rotation.z = 0.2;
+      corpse.rightLeg.rotation.z = -0.2;
+      corpse.eyes.visible = false;
+      corpse.material.color.multiplyScalar(0.75); // biraz daha soluk
+
+      this.scene.add(root);
+      this.corpses.push(corpse);
+    }
+  }
+
+  // 1 tuşu: en yakın cesedi dirilten büyüyü başlat
+  private raiseDead() {
+    if (this.isBusy()) return; // vuruş ya da önceki büyü bitmeden yenisi başlamaz
+    const corpse = this.nearestCorpse();
+    if (!corpse) {
+      console.log('Yakında diriltilecek ceset yok');
+      return;
+    }
+
+    // Yürümeyi ve saldırıyı bırak, yüzünü cesede çevir
+    this.path = [];
+    this.attackTarget = null;
+    const target = corpse.root.position;
+    const player = this.player.position;
+    this.player.rotation.y = Math.atan2(target.x - player.x, target.z - player.z);
+
+    this.castTarget = corpse;
+    this.castTime = 0;
+    // Yüklenen büyü animasyonlarından rastgele birini seç; süre o animasyondan gelir
+    if (this.spellActions.length > 0) {
+      const action = this.spellActions[Math.floor(Math.random() * this.spellActions.length)];
+      this.castAction = action;
+      this.castDuration = action.getClip().duration / SPELL_TIME_SCALE;
+    } else {
+      this.castAction = null;
+      this.castDuration = CAST_DURATION;
+    }
+  }
+
+  // Karaktere RAISE_RANGE içindeki en yakın ceset; yoksa null
+  private nearestCorpse(): Skeleton | null {
+    let best: Skeleton | null = null;
+    let bestDistance = RAISE_RANGE;
+    for (const corpse of this.corpses) {
+      const p = corpse.root.position;
+      const distance = Math.hypot(p.x - this.player.position.x, p.z - this.player.position.z);
+      if (distance <= bestDistance) {
+        best = corpse;
+        bestDistance = distance;
+      }
+    }
+    return best;
+  }
+
+  // Büyüyü ilerlet: ceset gittikçe yeşil parlar, dirilme anında minion olarak kalkar
+  private updateCast(delta: number) {
+    if (this.castTime === null) return;
+    this.castTime += delta;
+    const progress = Math.min(this.castTime / this.castDuration, 1);
+
+    if (this.castTarget) {
+      this.castTarget.material.emissiveIntensity = Math.min(progress / RAISE_MOMENT, 1);
+      if (progress >= RAISE_MOMENT) {
+        this.raiseCorpse(this.castTarget);
+        this.castTarget = null;
+      }
+    }
+
+    if (progress >= 1) {
+      this.castTime = null;
+      this.castAction = null;
+    }
+  }
+
+  // Cesedi sahneden kaldır, yerinden topraktan yükselen bir minion çıkar
+  private raiseCorpse(corpse: Skeleton) {
+    this.corpses.splice(this.corpses.indexOf(corpse), 1);
+    this.scene.remove(corpse.root);
+    corpse.material.dispose();
+
+    const { x, z } = corpse.root.position;
+    const player = this.player.position;
+    const facing = Math.atan2(player.x - x, player.z - z); // efendisine dönük kalksın
+    const minion = new Minion(x, z, facing, this.minions.length * GOLDEN_ANGLE);
+    this.scene.add(minion.object);
+    this.minions.push(minion);
+    console.log(`Ceset dirildi (${this.minions.length} minion)`);
   }
 
   private updateCamera(delta: number) {
@@ -805,6 +984,21 @@ export class Game {
     this.currentAction = idle;
 
     this.attachWeaponToHand(model);
+    this.loadSpells(mixer).catch((error) => console.error('Büyü animasyonları yüklenemedi:', error));
+  }
+
+  // Büyü animasyonlarını yükle. Yüklenmezse diriltme yine çalışır, sadece animasyonsuz.
+  private async loadSpells(mixer: THREE.AnimationMixer) {
+    const loader = new FBXLoader();
+    const files = await Promise.all(SPELL_URLS.map((url) => loader.loadAsync(url)));
+    this.spellActions = files.map((file) => {
+      const action = mixer.clipAction(lockRootMotion(file.animations[0]));
+      // Vuruş gibi: bir kez oynar, son karesinde bekler
+      action.setLoop(THREE.LoopOnce, 1);
+      action.clampWhenFinished = true;
+      action.timeScale = SPELL_TIME_SCALE;
+      return action;
+    });
   }
 
   // Kılıcı yükle ve tırpanın yerine silah pivotuna tak. Pivot ele bağlıysa kılıç da elde olur.
