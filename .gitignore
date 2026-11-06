@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Mixamo modelleri: lisans ham dosyaların dağıtılmasına izin vermiyor, repoya girmesin
+public/models/*
+!public/models/README.md
