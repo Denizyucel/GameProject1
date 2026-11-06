@@ -46,3 +46,63 @@ html, body {
   font-size: 12px;
   opacity: 0.55;
 }
+
+/* Can barı ve minion sayısı: sol alt, kontrol ipucunun üstünde */
+.hud-status {
+  position: absolute;
+  bottom: 40px;
+  left: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.hud-health {
+  position: relative;
+  width: 220px;
+  height: 16px;
+  border-radius: 8px;
+  background: rgba(20, 10, 16, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.hud-health-fill {
+  height: 100%;
+  background: linear-gradient(#d23a3a, #8e1c26);
+  transition: width 0.2s ease-out; /* can azalınca bar yumuşakça kısalsın */
+}
+
+.hud-health-text {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.hud-minions {
+  opacity: 0.8;
+}
+
+/* Ölünce ekranın ortasında çıkan mesaj */
+.hud-death {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(60, 0, 0, 0.25);
+  font-size: 13px;
+}
+
+.hud-death strong {
+  font-size: 32px;
+  letter-spacing: 0.2em;
+  color: #e04848;
+}

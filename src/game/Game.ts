@@ -5,10 +5,11 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Grid } from './Grid';
 import { findPath } from './findPath';
 import { Minion } from './Minion';
-import { createSkeleton, loadSkeletonModel, setGlow, type GlowMaterial } from './Skeleton';
+import { createSkeleton, loadSkeletonModel, materialsOf, setGlow, type GlowMaterial } from './Skeleton';
 import { createFlesh, loadFleshModel } from './Flesh';
 import { createVampire, loadVampireModel } from './Vampire';
 import { Enemy } from './Enemy';
+import { gameStore } from '../state/gameStore';
 
 // Kameranın dikeyde kaç dünya birimi gördüğü. Küçültürsen yakınlaşır.
 const VIEW_HEIGHT = 18;
@@ -96,10 +97,21 @@ const WEAPON_WINDUP = -0.9;
 const WEAPON_STRIKE = 1.7;
 // Darbe anında düşman bu kadar uzaklaşmış olsa da vuruş sayılır (yürüyen hedefe biraz tolerans)
 const HIT_REACH = ATTACK_RANGE + 0.5;
+// Karakterin bir vuruşunun hasarı (vampirin canı 30: üç vuruş)
+const PLAYER_DAMAGE = 10;
+
+// Karakterin canı, hasar alınca kırmızı parladığı süre (saniye),
+// ölünce yere devrilme süresi ve kaç saniye sonra yeniden doğduğu
+const PLAYER_MAX_HEALTH = 100;
+const HURT_FLASH = 0.3;
+const PLAYER_FALL_DURATION = 0.6;
+const RESPAWN_DELAY = 4;
+const HURT_COLOR = 0xff2a2a;
 // Kovalarken yolun kaç saniyede bir yenilendiği (hedef yürüdükçe yeri değişir)
 const CHASE_REPATH = 0.3;
-// Düşmanların başladığı yerler (eski mezar taşlarının yerleri)
-const ENEMY_SPOTS: [number, number][] = [[-4, -3], [-2, -5], [3, -4], [5, 2], [-5, 3]];
+// Düşmanların başladığı yerler. Karakterin doğduğu yerden (0, 0) 8-9 m uzakta, ki doğar doğmaz
+// fark edilmesin (vampirler 5 m'den fark ediyor ve evlerinin 5 m çevresinde dolaşıyor)
+const ENEMY_SPOTS: [number, number][] = [[-7, -5], [-3, -8], [5, -7], [8, 3], [-8, 5]];
 
 // Ölü diriltme
 // Ölen her düşmandan düşen ceset sayısı (en az, en çok) ve ne kadar uzağa düştükleri
@@ -159,7 +171,7 @@ export class Game {
   // Model yüklenene kadar görünen mor kapsül (yer tutucu)
   private readonly placeholder = new THREE.Mesh(
     new THREE.CapsuleGeometry(0.4, 1.2, 8, 16),
-    new THREE.MeshStandardMaterial({ color: 0x7b5ea7, roughness: 0.6 }),
+    new THREE.MeshStandardMaterial({ color: 0x7b5ea7, roughness: 0.6, emissive: HURT_COLOR, emissiveIntensity: 0 }),
   );
   private readonly ground: THREE.Mesh;
   private readonly resizeObserver: ResizeObserver;
@@ -222,6 +234,20 @@ export class Game {
   private readonly toTarget = new THREE.Vector3();
   // Bir önceki karenin zamanı (saniye); delta time bundan hesaplanır
   private lastTime: number | null = null;
+  // Şu anki oyun zamanı (saniye); her karenin başında güncellenir
+  private now = 0;
+
+  // Karakterin canı ve durumu
+  private health = PLAYER_MAX_HEALTH;
+  private hurtTime: number | null = null; // son hasarın zamanı (kırmızı parlama için)
+  private deathTime: number | null = null; // öldüyse ne zaman; null ise hayatta
+  // Hasar alınca parlayan malzemeler (kapsül, model gelince modelinkiler)
+  private playerMaterials: GlowMaterial[] = [];
+  // Ölünce yere devrilen kısım (kapsül, model gelince model)
+  private playerBody: THREE.Object3D = this.placeholder;
+  // Vampirlerin saldırdığı hedef: karakterin konumu, yaşayıp yaşamadığı ve hasar alma yolu
+  // (Prey ile aynı şekil, ama burada alive değiştirilebilir; vampirler Prey üzerinden sadece okur)
+  private readonly prey: { position: THREE.Vector3; alive: boolean; damage(amount: number): void };
   // Kameranın baktığı zemin noktası; karakteri yumuşakça takip eder
   private readonly cameraFocus = new THREE.Vector3();
   // Kameranın bu karede ulaşmak istediği nokta: karakterin ayağının altı
@@ -255,6 +281,8 @@ export class Game {
     this.ground = this.addGround();
     this.addEnemies(); // düşmanları hem sahneye hem ızgaraya engel olarak ekler
     this.player = this.createPlayer();
+    this.playerMaterials = materialsOf(this.placeholder);
+    this.prey = { position: this.player.position, alive: true, damage: (amount) => this.damagePlayer(amount) };
     this.loadCharacter().catch((error) => console.error('Karakter modeli yüklenemedi:', error));
     this.loadSword().catch((error) => console.error('Kılıç modeli yüklenemedi:', error));
     loadFleshModel().catch((error) => console.error('Et yığını modeli yüklenemedi:', error));
@@ -302,6 +330,8 @@ export class Game {
   }
 
   private update(elapsed: number, delta: number) {
+    this.now = elapsed;
+    this.updatePlayerHealth();
     this.updateKeyboardMovement(delta);
     this.updateMovement(delta);
     this.updateAttack(delta, elapsed);
@@ -366,9 +396,61 @@ export class Game {
     return this.grid.isWalkable(cell.col, cell.row);
   }
 
-  // Karakter şu an bir hareketin ortasında mı (vuruş ya da büyü). O sırada yürümez, yenisini başlatmaz.
+  // Karakter şu an bir şeyin ortasında mı (vuruş, büyü ya da ölü). O sırada yürümez, yenisini başlatmaz.
   private isBusy(): boolean {
-    return this.swingTime !== null || this.castTime !== null;
+    return this.swingTime !== null || this.castTime !== null || this.deathTime !== null;
+  }
+
+  // Vampir vurdu: canı azalt, kırmızı parla; can bittiyse öl
+  private damagePlayer(amount: number) {
+    if (this.deathTime !== null) return;
+    this.health = Math.max(0, this.health - amount);
+    this.hurtTime = this.now;
+    gameStore.setState({ health: this.health });
+    if (this.health === 0) this.die();
+  }
+
+  private die() {
+    this.deathTime = this.now;
+    this.prey.alive = false; // vampirler artık saldırmasın
+    // Yarım kalan her şeyi bırak
+    this.path = [];
+    this.attackTarget = null;
+    this.swingTime = null;
+    this.swingTarget = null;
+    if (this.castTarget) setGlow(this.castTarget, 0);
+    this.castTarget = null;
+    this.castTime = null;
+    this.castAction = null;
+    gameStore.setState({ dead: true });
+    console.log('Karakter öldü');
+  }
+
+  // Başlangıç noktasında, tam canla yeniden doğ
+  private respawn() {
+    this.deathTime = null;
+    this.health = PLAYER_MAX_HEALTH;
+    this.prey.alive = true;
+    this.playerBody.rotation.x = 0;
+    this.player.position.set(0, 0, 0);
+    gameStore.setState({ health: this.health, dead: false });
+  }
+
+  // Hasar parlaması, ölünce yere devrilme ve yeniden doğma
+  private updatePlayerHealth() {
+    if (this.hurtTime !== null) {
+      const t = (this.now - this.hurtTime) / HURT_FLASH; // 0 → 1
+      const intensity = t >= 1 ? 0 : (1 - t) * 0.8;
+      for (const material of this.playerMaterials) material.emissiveIntensity = intensity;
+      if (t >= 1) this.hurtTime = null;
+    }
+
+    if (this.deathTime === null) return;
+    const sinceDeath = this.now - this.deathTime;
+    // Geriye devril: x ekseni etrafında eksi yönde dönünce tepe geriye (-z) yatar
+    const fall = THREE.MathUtils.smoothstep(sinceDeath / PLAYER_FALL_DURATION, 0, 1);
+    this.playerBody.rotation.x = -fall * 1.45;
+    if (sinceDeath >= RESPAWN_DELAY) this.respawn();
   }
 
   private readonly onKeyDown = (event: KeyboardEvent) => {
@@ -484,7 +566,7 @@ export class Game {
       const p = target.position;
       const inReach = Math.hypot(p.x - this.player.position.x, p.z - this.player.position.z) <= HIT_REACH;
       if (target.alive && inReach) {
-        const died = target.hit(this.player.position, elapsed);
+        const died = target.hit(this.player.position, PLAYER_DAMAGE, elapsed);
         console.log(died ? 'Vampir öldü' : 'Vampire vuruldu');
       } else {
         console.log('Iska');
@@ -524,7 +606,7 @@ export class Game {
     // Sondan başa doğru dönüyoruz ki silinen düşman, sıradakilerin yerini kaydırmasın
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i];
-      enemy.update(delta, elapsed, this.grid);
+      enemy.update(delta, elapsed, this.grid, this.prey);
       if (!enemy.finished) continue;
       this.dropCorpses(enemy.position);
       this.scene.remove(enemy.root);
@@ -675,6 +757,7 @@ export class Game {
     const minion = new Minion(x, z, facing, this.minions.length * GOLDEN_ANGLE);
     this.scene.add(minion.object);
     this.minions.push(minion);
+    gameStore.setState({ minions: this.minions.length });
     console.log(`Ceset dirildi (${this.minions.length} minion)`);
   }
 
@@ -694,6 +777,7 @@ export class Game {
   // Ok fonksiyonu (=>) olarak yazıldı ki içindeki "this" her zaman Game'i göstersin
   private readonly onPointerDown = (event: PointerEvent) => {
     if (event.button !== 0) return; // sadece sol tık
+    if (this.deathTime !== null) return; // ölüyken tıklama işe yaramaz
 
     // 1. Fare konumunu piksel cinsinden -1..1 aralığına çevir
     const rect = this.renderer.domElement.getBoundingClientRect();
@@ -934,6 +1018,17 @@ export class Game {
 
     this.player.add(model);
     this.placeholder.visible = false; // artık kapsüle gerek yok
+    this.playerBody = model;
+    // Hasar alınca kırmızı parlasın: modelin malzemelerine kırmızı ışık ver, normalde kapalı
+    this.playerMaterials = [];
+    model.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return;
+      for (const material of materialsOf(child)) {
+        material.emissive.set(HURT_COLOR);
+        material.emissiveIntensity = 0;
+        this.playerMaterials.push(material);
+      }
+    });
 
     // Animasyonlar. Her dosyada tek bir animasyon klibi (clip) var.
     const idleClip = lockRootMotion(idleFile.animations[0]);
@@ -967,7 +1062,7 @@ export class Game {
     // animasyonlarını onlara veriyoruz. Kalça yüksekliği, animasyonu onların boyuna uydurmak için.
     const hips = model.getObjectByName('mixamorigHips');
     const hipsHeight = hips ? hips.position.y : 100;
-    loadVampireModel(idleClip, hipsHeight)
+    loadVampireModel(idleClip, attackClip, hipsHeight)
       .then(() => this.dressEnemies())
       .catch((error) => console.error('Vampir modeli yüklenemedi:', error));
     loadSkeletonModel({
