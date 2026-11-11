@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 860" font-family="-apple-system, Helvetica, Arial, sans-serif">
+<rect width="1080" height="860" fill="#141414"/>
+<g id="plan" transform="translate(30,30)">
+<rect id="zemin" width="800" height="800" fill="#2b2927" stroke="#55514b"/>
+<path id="kilavuz-2m" d="M40 0V800M0 40H800M80 0V800M0 80H800M120 0V800M0 120H800M160 0V800M0 160H800M200 0V800M0 200H800M240 0V800M0 240H800M280 0V800M0 280H800M320 0V800M0 320H800M360 0V800M0 360H800M400 0V800M0 400H800M440 0V800M0 440H800M480 0V800M0 480H800M520 0V800M0 520H800M560 0V800M0 560H800M600 0V800M0 600H800M640 0V800M0 640H800M680 0V800M0 680H800M720 0V800M0 720H800M760 0V800M0 760H800" stroke="#ffffff" stroke-opacity="0.05"/>
+<path id="yol" d="M400 215 L400 300 L430 400 L400 538 L400 760" fill="none" stroke="#e8e2d2" stroke-opacity="0.45" stroke-width="2" stroke-dasharray="6 6"/>
+<rect id="yikik-duvar-01" x="200.0" y="120.0" width="80" height="12" rx="2" fill="#8a8478"/>
+<rect id="yikik-duvar-02" x="280.0" y="120.0" width="80" height="12" rx="2" fill="#8a8478"/>
+<rect id="yikik-duvar-03" x="360.0" y="120.0" width="80" height="12" rx="2" fill="#8a8478"/>
+<rect id="yikik-duvar-04" x="440.0" y="120.0" width="80" height="12" rx="2" fill="#8a8478"/>
+<rect id="yikik-duvar-05" x="520.0" y="120.0" width="80" height="12" rx="2" fill="#8a8478"/>
+<rect id="yikik-duvar-06" x="166.0" y="166.0" width="80" height="12" rx="2" fill="#8a8478" transform="rotate(90 206 172)"/>
+<rect id="yikik-duvar-07" x="166.0" y="246.0" width="80" height="12" rx="2" fill="#8a8478" transform="rotate(90 206 252)"/>
+<rect id="yikik-duvar-08" x="166.0" y="406.0" width="80" height="12" rx="2" fill="#8a8478" transform="rotate(90 206 412)"/>
+<rect id="yikik-duvar-09" x="166.0" y="486.0" width="80" height="12" rx="2" fill="#8a8478" transform="rotate(90 206 492)"/>
+<rect id="yikik-duvar-10" x="554.0" y="166.0" width="80" height="12" rx="2" fill="#8a8478" transform="rotate(90 594 172)"/>
+<rect id="yikik-duvar-11" x="554.0" y="246.0" width="80" height="12" rx="2" fill="#8a8478" transform="rotate(90 594 252)"/>
+<rect id="yikik-duvar-12" x="554.0" y="326.0" width="80" height="12" rx="2" fill="#8a8478" transform="rotate(90 594 332)"/>
+<rect id="yikik-duvar-13" x="554.0" y="406.0" width="80" height="12" rx="2" fill="#8a8478" transform="rotate(90 594 412)"/>
+<rect id="yikik-duvar-14" x="554.0" y="486.0" width="80" height="12" rx="2" fill="#8a8478" transform="rotate(90 594 492)"/>
+<rect id="yikik-duvar-15" x="200.0" y="532.0" width="80" height="12" rx="2" fill="#8a8478"/>
+<rect id="yikik-duvar-16" x="280.0" y="532.0" width="80" height="12" rx="2" fill="#8a8478"/>
+<rect id="yikik-duvar-17" x="440.0" y="532.0" width="80" height="12" rx="2" fill="#8a8478"/>
+<rect id="yikik-duvar-18" x="520.0" y="532.0" width="80" height="12" rx="2" fill="#8a8478"/>
+<rect id="kemer-kapi-01" x="360.0" y="530.0" width="80" height="16" rx="2" fill="#d9b25f"/>
+<rect id="sutun-01" x="292.0" y="202.0" width="16" height="16" rx="2" fill="#b9b2a3"/>
+<rect id="kirik-sutun-01" x="492.0" y="202.0" width="16" height="16" rx="2" fill="#6f6a60"/>
+<rect id="sutun-02" x="292.0" y="292.0" width="16" height="16" rx="2" fill="#b9b2a3"/>
+<rect id="sutun-03" x="492.0" y="292.0" width="16" height="16" rx="2" fill="#b9b2a3"/>
+<rect id="kirik-sutun-02" x="292.0" y="382.0" width="16" height="16" rx="2" fill="#6f6a60"/>
+<rect id="sutun-04" x="492.0" y="382.0" width="16" height="16" rx="2" fill="#b9b2a3"/>
+<rect id="sutun-05" x="292.0" y="462.0" width="16" height="16" rx="2" fill="#b9b2a3"/>
+<rect id="sutun-06" x="492.0" y="462.0" width="16" height="16" rx="2" fill="#b9b2a3"/>
+<rect id="yanmis-raf-01" x="230.0" y="225.0" width="40" height="10" rx="2" fill="#7a4a2b"/>
+<rect id="yanmis-raf-02" x="230.0" y="275.0" width="40" height="10" rx="2" fill="#7a4a2b"/>
+<rect id="yanmis-raf-03" x="230.0" y="355.0" width="40" height="10" rx="2" fill="#7a4a2b"/>
+<rect id="yanmis-raf-04" x="230.0" y="435.0" width="40" height="10" rx="2" fill="#7a4a2b"/>
+<rect id="yanmis-raf-05" x="530.0" y="245.0" width="40" height="10" rx="2" fill="#7a4a2b"/>
+<rect id="yanmis-raf-06" x="530.0" y="305.0" width="40" height="10" rx="2" fill="#7a4a2b"/>
+<rect id="yanmis-raf-07" x="530.0" y="415.0" width="40" height="10" rx="2" fill="#7a4a2b"/>
+<rect id="yanmis-raf-08" x="530.0" y="465.0" width="40" height="10" rx="2" fill="#7a4a2b"/>
+<rect id="muhur-kaidesi-01" x="385.0" y="150.0" width="30" height="30" rx="2" fill="#7fb4ff"/>
+<rect id="kitap-yigini-01" x="335.0" y="170.0" width="20" height="20" rx="2" fill="#c98a4b"/>
+<rect id="kitap-yigini-02" x="445.0" y="175.0" width="20" height="20" rx="2" fill="#c98a4b"/>
+<rect id="kitap-yigini-03" x="430.0" y="320.0" width="20" height="20" rx="2" fill="#c98a4b"/>
+<rect id="kitap-yigini-04" x="320.0" y="460.0" width="20" height="20" rx="2" fill="#c98a4b"/>
+<rect id="kitap-yigini-05" x="525.0" y="355.0" width="20" height="20" rx="2" fill="#c98a4b"/>
+<rect id="moloz-01" x="160.0" y="315.0" width="40" height="40" rx="2" fill="#5c5750"/>
+<rect id="moloz-02" x="535.0" y="140.0" width="40" height="40" rx="2" fill="#5c5750"/>
+<rect id="moloz-03" x="430.0" y="480.0" width="40" height="40" rx="2" fill="#5c5750"/>
+<rect id="moloz-04" x="620.0" y="580.0" width="40" height="40" rx="2" fill="#5c5750"/>
+<circle id="kuru-agac-01" cx="90" cy="110" r="20" fill="#3f5a45"/>
+<circle id="kuru-agac-02" cx="700" cy="90" r="20" fill="#3f5a45"/>
+<circle id="kuru-agac-03" cx="120" cy="420" r="20" fill="#3f5a45"/>
+<circle id="kuru-agac-04" cx="690" cy="380" r="20" fill="#3f5a45"/>
+<circle id="kuru-agac-05" cx="150" cy="660" r="20" fill="#3f5a45"/>
+<circle id="kuru-agac-06" cx="610" cy="720" r="20" fill="#3f5a45"/>
+<circle id="kuru-agac-07" cx="280" cy="640" r="20" fill="#3f5a45"/>
+<circle id="dogus" cx="400" cy="215" r="12" fill="none" stroke="#ff5a3c" stroke-width="3"/>
+<circle cx="400" cy="215" r="4" fill="#ff5a3c"/>
+<circle id="cikis" cx="400" cy="772" r="12" fill="none" stroke="#6ee08a" stroke-width="3"/>
+<path d="M400 764v14m-5-5 5 5 5-5" fill="none" stroke="#6ee08a" stroke-width="2"/>
+<text x="400" y="22" fill="#8d877a" font-size="12" text-anchor="middle">KUZEY · kameradan uzak · yüksek parçalar burada</text>
+<text x="400" y="795" fill="#8d877a" font-size="12" text-anchor="middle">GÜNEY · kameraya yakın · alçak parçalar</text>
+<text x="420" y="219" fill="#ff5a3c" font-size="12" text-anchor="start">dogus</text>
+<text x="420" y="776" fill="#6ee08a" font-size="12" text-anchor="start">cikis → Kül Yolu</text>
+<text x="400" y="150" fill="#7fb4ff" font-size="10" text-anchor="middle">muhur-kaidesi</text>
+<text x="128" y="340" fill="#8d877a" font-size="10" text-anchor="start">gedik</text>
+<text x="400" y="562" fill="#d9b25f" font-size="10" text-anchor="middle">kemer-kapi</text>
+<path d="M40 760h100M40 755v10M140 755v10" stroke="#cfc9bb" fill="none"/>
+<text x="90" y="750" fill="#cfc9bb" font-size="11" text-anchor="middle">5 m = 100 px</text>
+</g>
+<text x="860" y="52" fill="#f1ece0" font-size="18" text-anchor="start">Yanık Kütüphane</text>
+<text x="860" y="72" fill="#8d877a" font-size="11" text-anchor="start">örnek plan · 800 × 800 px = 40 × 40 m</text>
+<rect x="860" y="100" width="14" height="14" rx="2" fill="#8a8478"/>
+<text x="884" y="111" fill="#cfc9bb" font-size="12" text-anchor="start">yikik-duvar</text>
+<text x="1050" y="111" fill="#8d877a" font-size="11" text-anchor="end">80×12 px</text>
+<rect x="860" y="128" width="14" height="14" rx="2" fill="#d9b25f"/>
+<text x="884" y="139" fill="#cfc9bb" font-size="12" text-anchor="start">kemer-kapi</text>
+<text x="1050" y="139" fill="#8d877a" font-size="11" text-anchor="end">80×16 px</text>
+<rect x="860" y="156" width="14" height="14" rx="2" fill="#b9b2a3"/>
+<text x="884" y="167" fill="#cfc9bb" font-size="12" text-anchor="start">sutun</text>
+<text x="1050" y="167" fill="#8d877a" font-size="11" text-anchor="end">16×16 px</text>
+<rect x="860" y="184" width="14" height="14" rx="2" fill="#6f6a60"/>
+<text x="884" y="195" fill="#cfc9bb" font-size="12" text-anchor="start">kirik-sutun</text>
+<text x="1050" y="195" fill="#8d877a" font-size="11" text-anchor="end">16×16 px</text>
+<rect x="860" y="212" width="14" height="14" rx="2" fill="#7a4a2b"/>
+<text x="884" y="223" fill="#cfc9bb" font-size="12" text-anchor="start">yanmis-raf</text>
+<text x="1050" y="223" fill="#8d877a" font-size="11" text-anchor="end">40×10 px</text>
+<rect x="860" y="268" width="14" height="14" rx="2" fill="#7fb4ff"/>
+<text x="884" y="279" fill="#cfc9bb" font-size="12" text-anchor="start">muhur-kaidesi</text>
+<text x="1050" y="279" fill="#8d877a" font-size="11" text-anchor="end">30×30 px</text>
+<rect x="860" y="296" width="14" height="14" rx="2" fill="#c98a4b"/>
+<text x="884" y="307" fill="#cfc9bb" font-size="12" text-anchor="start">kitap-yigini</text>
+<text x="1050" y="307" fill="#8d877a" font-size="11" text-anchor="end">20×20 px</text>
+<rect x="860" y="324" width="14" height="14" rx="2" fill="#5c5750"/>
+<text x="884" y="335" fill="#cfc9bb" font-size="12" text-anchor="start">moloz</text>
+<text x="1050" y="335" fill="#8d877a" font-size="11" text-anchor="end">40×40 px</text>
+<rect x="860" y="352" width="14" height="14" rx="2" fill="#3f5a45"/>
+<text x="884" y="363" fill="#cfc9bb" font-size="12" text-anchor="start">kuru-agac</text>
+<text x="1050" y="363" fill="#8d877a" font-size="11" text-anchor="end">40×40 px</text>
+<text x="860" y="404" fill="#8d877a" font-size="11" text-anchor="start">Katman adı = dosya adı</text>
+<text x="860" y="424" fill="#8d877a" font-size="11" text-anchor="start">20 px = 1 metre</text>
+<text x="860" y="444" fill="#8d877a" font-size="11" text-anchor="start">Geçitler en az 40 px</text>
+<text x="860" y="464" fill="#8d877a" font-size="11" text-anchor="start">Kesik çizgi: oyuncunun yolu</text>
+<text x="860" y="484" fill="#8d877a" font-size="11" text-anchor="start">(yol çizmek zorunlu değil)</text>
+</svg>

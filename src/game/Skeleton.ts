@@ -1,19 +1,40 @@
 // İskelet: hem yerde yatan ceset hem de dirilen minion bunu kullanır.
 // public/models/skeleton.fbx (Mixamo'da riglenmiş) yüklendiyse o model kopyalanır ve karakterin
 // yürüme/bekleme animasyonlarını oynatır; vururken vampirin pençe animasyonunu kullanır
-// (karakterin kılıç vuruşu, attack.fbx, sadece necromancer'a ait). Yüklenmediyse basit şekillerden çizilmiş yedek iskelet kullanılır.
+// Sağ elinde kılıç (sword2.glb), sol elinde kalkan (kalkan.glb) taşır; vururken kılıç
+// vuruşlarından (weapon.ts) rastgele birini oynar. Kılıç ya da kalkan yüklenemezse onsuz kalır. Kılıç vuruşları yüklenemezse vampirin pençe animasyonuna döner.
+// Yüklenmediyse basit şekillerden çizilmiş yedek iskelet kullanılır.
 // Ölçüler metre; ayaklar y = 0'da, yüz +z yönüne bakıyor.
 
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { adaptClip, hipsHeightOf, stripRootMotion } from './retarget';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { attachToHand, fastestHandMoment, prepareShield, prepareSword, SWORD_ATTACK_URLS } from './weapon';
 
 const SKELETON_URL = '/models/skeleton.fbx';
-// Vuruş animasyonu: Creature NPC Pack'teki pençe (vampir için indirildi, kemik adları aynı)
-const ATTACK_URL = encodeURI('/models/Creature NPC Pack/mutant swiping.fbx');
-// Pençe darbesinin animasyonun hangi anında (0..1) indiği (elin en hızlı anı ölçüldü)
-const ATTACK_HIT_MOMENT = 0.53;
+// Yedek vuruş: Creature NPC Pack'teki pençe (kılıç vuruşları yüklenemezse)
+const CLAW_URL = encodeURI('/models/Creature NPC Pack/mutant swiping.fbx');
+// Ölçüm yapılamazsa kullanılan darbe anı (0..1)
+const FALLBACK_HIT_MOMENT = 0.5;
+// İskeletin kılıcı: boyu (uçtan kabzaya, metre) ve elin tuttuğu yer (bıçak ucundan boy oranı)
+const SWORD_URL = '/models/sword2.glb';
+const SWORD_LENGTH = 1;
+const SWORD_GRIP = 0.89;
+// Kalkan: boyu (metre) ve yüzünün sol elin hangi tarafına baktığı (1 ya da -1; denenerek bulundu:
+// 1 iken süslü yüz gövdeye bakıyordu)
+const SHIELD_URL = '/models/kalkan.glb';
+const SHIELD_HEIGHT = 0.8;
+const SHIELD_FACING: 1 | -1 = -1;
+// Kalkanın ortası elden dirseğe doğru bu kadar (metre) kayık: ön kola bağlı gibi dursun
+const SHIELD_TOWARD_ELBOW = 0.12;
+// Kılıç ve kalkanın dokuları çok koyu (ortalama renk ~45-70 / 255) ve karanlık zeminde
+// seçilmiyordu. Görünür olsunlar diye: yansıma gücü, metallik oranı (0..1, dokudakiyle çarpılır;
+// düşükse ay ışığını daha çok alır) ve rengin kaç kat açıldığı.
+const GEAR_SHINE = 1.6;
+const GEAR_METALNESS = 0.5;
+const GEAR_BRIGHTNESS = 1.8;
 // Oyundaki boyu (metre)
 const SKELETON_HEIGHT = 1.8;
 // Dirilirken yayılan ışığın rengi
@@ -26,8 +47,8 @@ export type GlowMaterial = THREE.MeshStandardMaterial | THREE.MeshPhongMaterial;
 export interface SkeletonAnimations {
   idle: THREE.AnimationClip;
   walk: THREE.AnimationClip;
-  attack: THREE.AnimationClip | null; // pençe dosyası yüklenemezse null
-  attackHitMoment: number;
+  // Vuruşlar: her biri animasyon ve darbenin indiği an (0..1). Hiçbiri yüklenemezse boş.
+  attacks: { clip: THREE.AnimationClip; hitMoment: number }[];
   // Yürüme animasyonu normal hızda oynarken iskeletin saniyede kaç metre yürüdüğü.
   // Minion bundan hızlı yürürse animasyon da o oranda hızlandırılır, ayaklar kaymasın.
   walkSpeed: number;
@@ -60,18 +81,69 @@ export interface SourceAnimations {
 let template: THREE.Object3D | null = null;
 let templateAnimations: SkeletonAnimations | null = null;
 let templateLieHeight = 0;
+// Elde taşınan kılıç ve kalkan (pivot eksenine göre yerleşmiş). Her iskelete birer kopyası takılır.
+let sword: THREE.Object3D | null = null;
+let shield: THREE.Object3D | null = null;
+// Kılıç ve kalkanın malzemeleri (kopyalarda ortak) ve yansıtacakları ortam (Game verir)
+const gearMaterials: THREE.MeshStandardMaterial[] = [];
+let environment: THREE.Texture | null = null;
+
+/** Metal kılıç ve kalkanın yansıtacağı ortam haritasını ver (karakterin kılıcınınkiyle aynı) */
+export function setSkeletonEnvironment(texture: THREE.Texture) {
+  environment = texture;
+  for (const material of gearMaterials) applyEnvironment(material);
+}
+
+function applyEnvironment(material: THREE.MeshStandardMaterial) {
+  if (!environment) return;
+  material.envMap = environment;
+  material.envMapIntensity = GEAR_SHINE;
+  material.needsUpdate = true;
+}
+
+// Kılıç ya da kalkan modelini yükle, gölge ve yansıma ayarlarını yap. Yüklenemezse null.
+async function loadGear(url: string): Promise<THREE.Object3D | null> {
+  try {
+    const model = (await new GLTFLoader().loadAsync(url)).scene;
+    model.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return;
+      child.castShadow = true;
+      if (child.material instanceof THREE.MeshStandardMaterial) {
+        child.material.metalness = GEAR_METALNESS;
+        child.material.color.setScalar(GEAR_BRIGHTNESS);
+        gearMaterials.push(child.material);
+        applyEnvironment(child.material);
+      }
+    });
+    return model;
+  } catch (error) {
+    console.warn('İskeletin teçhizatı yüklenemedi:', url, error);
+    return null;
+  }
+}
 
 /** skeleton.fbx'i yükle ve karakterin animasyonlarını ona uyarla. Bitene kadar çizilmiş iskelet kullanılır. */
 export async function loadSkeletonModel(source: SourceAnimations) {
   const loader = new FBXLoader();
-  const [model, attackFile] = await Promise.all([
-    loader.loadAsync(SKELETON_URL),
-    // Pençe yüklenemezse iskelet yine çalışsın, sadece vuruş animasyonsuz olsun
-    loader.loadAsync(ATTACK_URL).catch((error) => {
-      console.warn('İskeletin vuruş animasyonu yüklenemedi:', error);
+  // Vuruş dosyası yüklenemezse iskelet yine çalışsın: o vuruş listede olmaz
+  const optional = (url: string) =>
+    loader.loadAsync(url).catch((error) => {
+      console.warn('İskeletin vuruş animasyonu yüklenemedi:', url, error);
       return null;
-    }),
+    });
+  const [model, swordModel, shieldModel, ...swordFiles] = await Promise.all([
+    loader.loadAsync(SKELETON_URL),
+    loadGear(SWORD_URL),
+    loadGear(SHIELD_URL),
+    ...SWORD_ATTACK_URLS.map(optional),
   ]);
+  sword = swordModel && prepareSword(swordModel, SWORD_LENGTH, SWORD_GRIP);
+  shield = shieldModel && prepareShield(shieldModel, SHIELD_HEIGHT, SHIELD_FACING, SHIELD_TOWARD_ELBOW);
+  let attackFiles = swordFiles.filter((file) => file !== null);
+  if (attackFiles.length === 0) {
+    const claw = await optional(CLAW_URL);
+    attackFiles = claw ? [claw] : [];
+  }
 
   // Mixamo santimetre kullanır; boyu ölçüp SKELETON_HEIGHT'a ölçekle, ayakları zemine koy
   const box = new THREE.Box3().setFromObject(model);
@@ -96,18 +168,18 @@ export async function loadSkeletonModel(source: SourceAnimations) {
   const hips = model.getObjectByName('mixamorigHips');
   const skeletonHips = hips ? hips.position.y : source.hipsHeight;
   const ratio = skeletonHips / source.hipsHeight;
-  // Pençe vampir için indirildi: oranı vampirin (dosyadaki iskeletin) kalçasına göre hesapla
-  let attack: THREE.AnimationClip | null = null;
-  if (attackFile) {
-    const clip = attackFile.animations[0];
+  // Vuruşlar başka bir karakter için indirildi: oranı o dosyadaki iskeletin kalçasına göre hesapla.
+  // Darbe anı, iskeletin sağ elinin en hızlı olduğu an ölçülerek bulunur.
+  const attacks = attackFiles.map((file) => {
+    const clip = file.animations[0];
     stripRootMotion(clip);
-    attack = adaptClip(clip, model, skeletonHips / (hipsHeightOf(attackFile) ?? skeletonHips));
-  }
+    const adapted = adaptClip(clip, model, skeletonHips / (hipsHeightOf(file) ?? skeletonHips));
+    return { clip: adapted, hitMoment: fastestHandMoment(model, adapted, FALLBACK_HIT_MOMENT) };
+  });
   templateAnimations = {
     idle: adaptClip(source.idle, model, ratio),
     walk: adaptClip(source.walk, model, ratio),
-    attack,
-    attackHitMoment: ATTACK_HIT_MOMENT,
+    attacks,
     walkSpeed: source.walkClipSpeed * ratio * scale,
   };
   template = model;
@@ -141,6 +213,16 @@ function cloneModel(source: THREE.Object3D): Skeleton {
     child.material = copies.length === 1 ? copies[0] : copies;
     materials.push(...copies);
   });
+
+  // Elde kılıç ve kalkan: birer kopya (şekli ve dokusu ortak), ele bağlı birer pivotun içinde
+  if (sword) {
+    const pivot = new THREE.Group();
+    if (attachToHand(pivot, model, 'Right')) pivot.add(sword.clone());
+  }
+  if (shield) {
+    const pivot = new THREE.Group();
+    if (attachToHand(pivot, model, 'Left')) pivot.add(shield.clone());
+  }
 
   const body = new THREE.Group();
   body.add(model);

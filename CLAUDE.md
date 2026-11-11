@@ -5,6 +5,17 @@ Diablo tarzı, tek oyunculu, 3D izometrik hack & slash. İlk oynanabilir sınıf
 Necromancer (minion çağıran büyücü). Tek kişilik bir öğrenme projesi;
 iyi olursa yayınlanacak.
 
+## Hikaye (kanon: Hikaye.md)
+Oyuncu Ruh Kıran: ikiz kardeşi X'in insanlara taktığı altın ölümsüzlük mühürlerini kıran ölüçağıran.
+Düşman öldürülmez, mührü kırılır: ruh mavi ışıkla yükselir ("Teşekkür ederiz"), kalan kemikler
+gönüllü minion olarak kalkar. Görsel dil ters: altın/ışıltı = tehlike, karanlık/kemik/kırmızı köz =
+oyuncunun tarafı, mavi = özgür ruh. Perdeler: Act I Kül Vadisi (boss: Dönüştürülmüş Yüzbaşı),
+Act II Güneş Krallığı (sınır kasabası sahnesi; boss: Altın Engizisyoncu), Act III Hafıza Mahzeni
+(boss: Ayna Tayfı), Act IV Ebediyet Kulesi (boss: X, 2 evre), Epilog. Harita, karakter ve mekanik
+kararlarında önce Hikaye.md'ye bak.
+Vampir kavramı bırakıldı: koddaki vampirler (Enemy.ts, Vampire.ts) geçici yer tutucu, yerlerini
+Altın Ölümsüzler alacak. Yeni işlerde "vampir" üzerine tasarım yapma.
+
 ## Platform
 Tarayıcıda çalışır, macOS için optimize edilir. Safari ve Chrome'da test edilir.
 Retina ekranlar hedeflenir.
@@ -34,11 +45,15 @@ Retina ekranlar hedeflenir.
 ## Şu anki hedef
 Faz 1 sahnesi, tıklayarak hareket ve A* yol bulma tamam (src/game/Grid.ts, src/game/findPath.ts;
 SHOW_DEBUG ile engelli kareler görünür; düşmanlar hareketli olduğu için ızgarayı engellemiyor).
-Savaş alanı: envoirement.glb (src/game/Environment.ts), taş avlu + ortada ~10 m'lik gotik yapı,
-haritayı (30 m) kaplıyor. Zemin yüksekliği karelerin ortanca yüksekliğinden bulunup y = 0'a
-oturtuluyor; zeminden 0.5 m'den yüksek kareler ızgarada engel. Model yüklenirken üçgenler zemin ve
-yapı diye iki gruba ayrılıyor: karakter yapının arkasındayken (kameraya doğru zeminde ilerleyip
-yükseklik haritası görüş çizgisini kesiyor mu) yapı %30 saydam oluyor. Doğuş noktası (3, 0, 11).
+Bölge: Act I / Yanık Kütüphane, parça setinden kuruluyor (src/game/KitLevel.ts). Parçalar
+public/models/kit/*.glb (12 parça; asılları kit-orijinal'de, gltf-transform ile ~10 bin üçgene ve
+1024 px dokuya küçültüldü). Yerleşim src/game/levels/yanikKutuphane.ts içinde, plan pikseliyle
+(800 x 800 px = 40 x 40 m, 20 px = 1 m; plan: planlar/yanik-kutuphane-ornek.svg). Her parça bir kez
+yüklenip kopyalanır, en uzun yatay kenarı PARTS'taki boyuta ölçeklenir. Izgara engeli parçanın
+dikdörtgeninden (kemerde sadece iki ayak, ağaçta sadece gövde, kitap yığını engel değil). Zemin
+dokulu (ambientCG, public/models/floor): dışarısı toprak, salonun içi (plandaki hall) taş döşeme. Karakter bir parçanın arkasındayken sadece o parça %30 saydam oluyor (her kopyanın kendi malzemesi var).
+Doğuş noktası plandaki "dogus" işareti (mühür kaidesinin önü). Eski avlu (Environment.ts,
+envoirement.glb) artık kullanılmıyor.
 Düşmanlar: 5 vampir (src/game/Enemy.ts davranış, src/game/Vampire.ts model; Mixamo
 "Vampire A Lusth.fbx" + Walking.fbx). Evlerinin çevresinde (5 m) rastgele dolaşıyorlar; beklerken
 karakterin idle animasyonu, yürürken Walking (root motion kaldırılıp hızına göre ayarlı).
@@ -46,7 +61,8 @@ Model yoksa yedek olarak hareketsiz, zararsız mezar taşı.
 Dövüş tarzları (src/game/Vampire.ts, STYLES): Avcı, Vahşi, Çevik, Muhafız. Can, hasar, boy,
 kovalama hızı (yürüyerek ya da koşarak), pençe (mutant swiping) hızı, mola ve kas gösterisi
 (ilk fark edişte) tarza göre değişir.
-Kural: attack.fbx (kılıç vuruşu) sadece necromancer'a ait; vampirler ve iskeletler pençe kullanır.
+Kılıç vuruşları (src/game/weapon.ts, SWORD_ATTACK_*: Lite Sword and Shield Pack'in 4 attack'ı) karakter ve
+iskeletlerde ortak; vampirler pençe kullanır. attack.fbx sadece karakterde yedek.
 Tarzlar karıştırılmış bir torbadan dağıtılır: 5 vampirde 4 tarzın hepsi çıkar. Bekleme duruşu da
 rastgele (karakter idle, mutant idle, breathing idle). Animasyonlar "Creature NPC Pack"ten;
 mutant dying.fbx bozuk (FBXLoader okuyamıyor), yüklenemezse vampir eskisi gibi devrilir.
@@ -60,13 +76,17 @@ Tıklamayı görünmez bir kutu (hitbox) yakalıyor. Vampire bir kez tıklayınc
 tıklamak ya da WASD saldırıyı bırakır. Vurulan vampir sarsılıp kırmızı parlıyor, saldırana dönüp
 0.4 sn şaşırıyor. Canı bitince geriye devrilip toprağa gömülüyor.
 Karakter Mixamo modeli (Nightshade): idle, walk, attack animasyonları AnimationMixer ile;
+her vuruşta "Lite Sword and Shield Pack"in 4 attack animasyonundan rastgele biri oynar (yüklenene
+kadar attack.fbx); darbe anı yüklenirken sağ elin en hızlı olduğu an ölçülerek bulunur (weapon.ts, fastestHandMoment);
 silah sağ el kemiğine bağlı: Meshy kılıcı (sword.glb), yoksa çizilmiş tırpan. Modeller public/models içinde, Git dışında (lisans).
 Kontroller: tıklayarak (A*) ya da WASD/ok tuşlarıyla (ekrana göre, çarpışmalı) yürüme;
 tekerlek/pinch ile karaktere doğru yumuşak zoom.
 Ölü diriltme: ölen vampir 1-2 et yığını (flesh.glb, src/game/Flesh.ts) bırakır; 1 tuşu en yakın
 yığını (8 m içinde) diriltir. Karakter Magic Spell Pack'ten rastgele bir büyü animasyonu oynar,
 yığın yeşil parlar, içinden iskelet minion topraktan çıkar, yığın toprağa gömülür; minion karakteri A* ile takip eder
-(src/game/Skeleton.ts: Mixamo'da riglenmiş skeleton.fbx; flesh.glb yoksa ceset olarak T-pozunda yatar;
+(src/game/Skeleton.ts: Mixamo'da riglenmiş skeleton.fbx; sağ elinde kılıç (sword2.glb), sol ön
+kolunda kalkan (kalkan.glb; weapon.ts prepareSword/prepareShield, attachToHand). Dokuları çok koyu olduğu
+için GEAR_* ile parlatılıyor; asıllar public/models/orijinal'de, küçültülmüş halleri models içinde; her vuruşta kılıç vuruşlarından rastgele biri, darbe anı ölçülerek; flesh.glb yoksa ceset olarak T-pozunda yatar;
 model yoksa çizilmiş iskelet. src/game/Minion.ts: takip, kendi AnimationMixer'ı).
 Minionlar 6 m içindeki en yakın vampire koşup vuruyor (karakterden 10 m'den fazla uzaklaşmıyor),
 vampir ölünce takibe dönüyor. Minionların canı yok, vampirler onlara saldırmıyor.
@@ -81,7 +101,10 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Tıklanan yere kısa süreli işaret (Diablo'daki tıklama halkası)
 - Fare basılı tutulunca sürekli yürüme
 - Harita kenarı: siyah boşluk yerine duvar/sis; gölge alanı karakteri takip etsin
-- envoirement.glb'yi hafiflet (288 bin üçgen) ve yapının içine girilebilir yerleri ayır
+- Sahneye biraz daha ışık; parçalar şu an çok koyu
+- planlar/yanik-kutuphane-ornek.svg'yi koda göre güncelle (yüksek duvar, duvar rafı, çatı kemeri yok)
+- Bölge çıkışı: "cikis" işaretine gelince sonraki bölgeye (Kül Yolu) geçiş
+- Kullanılmayan Environment.ts'yi sil
 - A* açık listesini öncelik kuyruğuna çevir (harita büyüyünce)
 - Vuruşta kan/parça efekti, ekran sarsıntısı gibi vuruş hissi efektleri
 - İskelete yerden kalkma (Standing Up) ve kendine özgü (zombi) yürüme animasyonu

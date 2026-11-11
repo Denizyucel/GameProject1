@@ -5,11 +5,13 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Grid } from './Grid';
 import { findPath } from './findPath';
 import { Minion } from './Minion';
-import { createSkeleton, loadSkeletonModel, materialsOf, setGlow, type GlowMaterial } from './Skeleton';
+import { createSkeleton, loadSkeletonModel, materialsOf, setGlow, setSkeletonEnvironment, type GlowMaterial } from './Skeleton';
+import { attachToHand, fastestHandMoment, prepareSword, SWORD_ATTACK_NAMES, SWORD_ATTACK_URLS } from './weapon';
 import { createFlesh, loadFleshModel } from './Flesh';
 import { createVampire, loadVampireModel } from './Vampire';
 import { Enemy } from './Enemy';
-import { Environment } from './Environment';
+import { KitLevel } from './KitLevel';
+import { YANIK_KUTUPHANE, planToWorld } from './levels/yanikKutuphane';
 import { gameStore } from '../state/gameStore';
 
 // Kameranın dikeyde kaç dünya birimi gördüğü. Küçültürsen yakınlaşır.
@@ -72,15 +74,16 @@ const WALK_CLIP_SPEED = 219;
 // Elin en hızlı aşağı indiği an ölçüldü: 1.73 sn'lik animasyonun 0.78. saniyesi ≈ %45.
 const ATTACK_TIME_SCALE = 1.3;
 const ATTACK_HIT_MOMENT = 0.45;
+// Her vuruşta rastgele biri seçilen kılıç vuruşları (weapon.ts). Yüklenene kadar (ya da yüklenemezse) attack.fbx.
 // İki animasyon arasında yumuşak geçiş süresi (saniye)
 const ANIMATION_FADE = 0.2;
 
 // Zemin boyutu ve ızgara karesi (dünya birimi)
-const GROUND_SIZE = 30;
+const GROUND_SIZE = 40;
 const CELL_SIZE = 1;
 
 // true iken engelli kareler kırmızı, bulunan yol yeşil çizgi olarak görünür
-const SHOW_DEBUG = true;
+const SHOW_DEBUG = false;
 // true iken tıklayınca bulunan yol zeminde yeşil çizgi olarak görünür (SHOW_DEBUG'dan ayrı)
 const SHOW_PATH_LINE = false;
 // Debug karolarının ortak şekli (yere yatırılmış kare) ve malzemesi
@@ -110,15 +113,13 @@ const RESPAWN_DELAY = 4;
 const HURT_COLOR = 0xff2a2a;
 // Kovalarken yolun kaç saniyede bir yenilendiği (hedef yürüdükçe yeri değişir)
 const CHASE_REPATH = 0.3;
-// Karakter yapının arkasına geçince yapının saydamlığı (0 = görünmez, 1 = tam) ve
-// saydamlaşma/geri gelme hızı
-const HIDDEN_BUILDING_OPACITY = 0.3;
-const BUILDING_FADE_SPEED = 8;
-// Karakterin doğduğu yer: avlunun ön tarafı (haritanın ortasında yapı var)
-const PLAYER_SPAWN = new THREE.Vector3(3, 0, 11);
-// Düşmanların başladığı yerler: yapının çevresindeki avluda, doğuş noktasından en az 11 m uzakta,
-// ki doğar doğmaz fark edilmesin (vampirler 5 m'den fark ediyor ve evlerinin 5 m çevresinde dolaşıyor)
-const ENEMY_SPOTS: [number, number][] = [[-11, -10], [2, -11], [12, -4], [-12, 2], [-8, 11]];
+// Oynanan bölgenin planı ve karakterin doğduğu yer (plandaki "dogus" işareti: mühür kaidesinin önü)
+const LEVEL = YANIK_KUTUPHANE;
+const SPAWN_POINT = planToWorld(LEVEL, ...LEVEL.spawn);
+const PLAYER_SPAWN = new THREE.Vector3(SPAWN_POINT.x, 0, SPAWN_POINT.z);
+// Düşmanların başladığı yerler: kütüphane salonunun dışında, doğuş noktasından en az 11 m uzakta,
+// ki doğar doğmaz fark edilmesin (5 m'den fark ediyorlar ve evlerinin 5 m çevresinde dolaşıyorlar)
+const ENEMY_SPOTS: [number, number][] = [[-15, -7], [15, -7], [-13, 8], [14, 13], [0, 15]];
 
 // Ölü diriltme
 // Ölen her düşmandan düşen ceset sayısı (en az, en çok) ve ne kadar uzağa düştükleri
@@ -162,6 +163,13 @@ const CAST_DURATION = 1;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 
 // Yerdeki ceset: et yığını (flesh.glb) ya da o yoksa yatan iskelet
+// Bir kılıç vuruşu: animasyonu, oyundaki süresi (saniye) ve darbenin indiği an (0..1)
+interface AttackMove {
+  action: THREE.AnimationAction;
+  duration: number;
+  hitMoment: number;
+}
+
 interface Corpse {
   root: THREE.Object3D;
   materials: GlowMaterial[];
@@ -219,6 +227,9 @@ export class Game {
   // Bu büyüde oynayan animasyon ve yüklenen bütün büyü animasyonları
   private castAction: THREE.AnimationAction | null = null;
   private spellActions: THREE.AnimationAction[] = [];
+  // Rastgele seçilen vuruşlar ve şu an oynayanı (boşsa actions.attack kullanılır)
+  private attackMoves: AttackMove[] = [];
+  private swingAction: THREE.AnimationAction | null = null;
 
   // AnimationMixer: modelin animasyonlarını oynatan ve aralarında geçiş yapan Three.js parçası.
   // Model yüklenene kadar null.
@@ -259,9 +270,8 @@ export class Game {
   private readonly cameraFocus = new THREE.Vector3();
   // Düz zemin üstündeki ızgara çizgileri (ortam yüklenince gizlenir)
   private readonly groundLines = new THREE.GridHelper(GROUND_SIZE, GROUND_SIZE / CELL_SIZE, 0x4a3f5c, 0x352e42);
-  // Savaş alanı (yüklenene kadar null) ve yapının şu anki saydamlığı
-  private environment: Environment | null = null;
-  private buildingOpacity = 1;
+  // Oynanan bölge (yüklenene kadar null)
+  private environment: KitLevel | null = null;
   // Kameranın bu karede ulaşmak istediği nokta: karakterin ayağının altı
   private readonly cameraGoal = new THREE.Vector3();
   // Şu anki zoom ve tekerlekle istenen zoom; her karede birbirine yaklaşır
@@ -496,14 +506,11 @@ export class Game {
     this.zoomTarget = THREE.MathUtils.clamp(next, MIN_ZOOM, MAX_ZOOM);
   };
 
-  // Karakter yapının arkasındaysa yapıyı yumuşakça saydamlaştır, çıkınca geri getir
+  // Karakteri kapatan parçaları yumuşakça saydamlaştır, kapatmayanları geri getir
   private updateBuildingFade(delta: number) {
     const environment = this.environment;
     if (!environment) return;
-    const target = environment.hides(this.player.position) ? HIDDEN_BUILDING_OPACITY : 1;
-    if (Math.abs(this.buildingOpacity - target) < 0.001) return;
-    this.buildingOpacity = THREE.MathUtils.lerp(this.buildingOpacity, target, 1 - Math.exp(-BUILDING_FADE_SPEED * delta));
-    environment.setBuildingOpacity(this.buildingOpacity);
+    environment.updateFade(this.player.position, delta);
   }
 
   // Zoom'u hedefe yumuşakça yaklaştır. Kamera karakteri ortaladığı için zoom hep karaktere doğru.
@@ -565,6 +572,13 @@ export class Game {
         this.swingTime = 0;
         this.swingHasHit = false;
         this.swingTarget = this.attackTarget;
+        // Vuruşlardan rastgele birini seç; süresi ve darbe anı ona göre
+        if (this.attackMoves.length > 0) {
+          const move = this.attackMoves[Math.floor(Math.random() * this.attackMoves.length)];
+          this.swingAction = move.action;
+          this.swingDuration = move.duration;
+          this.hitMoment = move.hitMoment;
+        }
       } else {
         // Hedef yürüyor: yolu belli aralıklarla (ya da yol bittiyse hemen) yenile
         this.chaseTimer -= delta;
@@ -611,7 +625,7 @@ export class Game {
 
     const wanted =
       this.castTime !== null ? (this.castAction ?? this.actions.idle)
-      : this.swingTime !== null ? this.actions.attack
+      : this.swingTime !== null ? (this.swingAction ?? this.actions.attack)
       : this.path.length > 0 || this.keyboardWalking ? this.actions.walk
       : this.actions.idle;
 
@@ -889,7 +903,7 @@ export class Game {
     moon.position.set(-8, 15, 6);
     moon.castShadow = true;
     moon.shadow.mapSize.set(2048, 2048);
-    const area = 15; // gölgenin hesaplandığı alanın yarı genişliği
+    const area = GROUND_SIZE / 2; // gölgenin hesaplandığı alanın yarı genişliği
     moon.shadow.camera.left = -area;
     moon.shadow.camera.right = area;
     moon.shadow.camera.top = area;
@@ -901,7 +915,7 @@ export class Game {
   private addGround(): THREE.Mesh {
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE),
-      new THREE.MeshStandardMaterial({ color: 0x2a2433, roughness: 1 }),
+      new THREE.MeshStandardMaterial({ color: 0x2c2927, roughness: 1 }), // kül rengi
     );
     ground.rotation.x = -Math.PI / 2; // dik duran düzlemi yere yatır
     ground.receiveShadow = true;
@@ -913,12 +927,12 @@ export class Game {
     return ground; // tıklama ışını bu nesneye karşı test edilecek
   }
 
-  // Savaş alanını yükle. Gelince düz zemin ve ızgara çizgileri gizlenir; zemin düzlemi görünmez
-  // olarak kalır, çünkü tıklama ışını hâlâ ona çarpıyor (ortamın zemini y = 0'a oturtuldu).
+  // Bölgeyi parça setinden kur. Gelince düz zemin ve ızgara çizgileri gizlenir.
   private async loadEnvironment() {
-    const environment = await Environment.load(this.grid);
+    const environment = await KitLevel.load(LEVEL, this.grid);
     this.environment = environment;
     this.scene.add(environment.object);
+    // Düz zemin görünmez olur (yerini bölgenin dokulu zemini alır) ama tıklama ışını hâlâ ona çarpar
     (this.ground.material as THREE.Material).visible = false;
     this.groundLines.visible = false;
     if (SHOW_DEBUG) this.refreshDebugTiles(); // yapının kareleri artık engelli
@@ -1108,6 +1122,26 @@ export class Game {
       walkClipSpeed: WALK_CLIP_SPEED,
     }).catch((error) => console.error('İskelet modeli yüklenemedi:', error));
     this.loadSpells(mixer).catch((error) => console.error('Büyü animasyonları yüklenemedi:', error));
+    this.loadSwordAttacks(model, mixer).catch((error) => console.error('Kılıç vuruşları yüklenemedi:', error));
+  }
+
+  // Kılıç vuruşlarını yükle. Yüklenmezse karakter eski tek vuruşla (attack.fbx) vurmaya devam eder.
+  private async loadSwordAttacks(model: THREE.Object3D, mixer: THREE.AnimationMixer) {
+    const loader = new FBXLoader();
+    const files = await Promise.all(SWORD_ATTACK_URLS.map((url) => loader.loadAsync(url)));
+    const moves = files.map((file, i): AttackMove => {
+      const clip = lockRootMotion(file.animations[0]);
+      // Darbe anı her vuruşta farklı: sağ elin en hızlı hareket ettiği an ölçülür
+      const hitMoment = fastestHandMoment(model, clip, ATTACK_HIT_MOMENT);
+      const action = mixer.clipAction(clip);
+      action.setLoop(THREE.LoopOnce, 1);
+      action.clampWhenFinished = true;
+      action.timeScale = ATTACK_TIME_SCALE;
+      const duration = clip.duration / ATTACK_TIME_SCALE;
+      console.log(`Vuruş: ${SWORD_ATTACK_NAMES[i]} (${duration.toFixed(2)} sn, darbe %${Math.round(hitMoment * 100)})`);
+      return { action, duration, hitMoment };
+    });
+    this.attackMoves = moves;
   }
 
   // Büyü animasyonlarını yükle. Yüklenmezse diriltme yine çalışır, sadece animasyonsuz.
@@ -1129,28 +1163,7 @@ export class Game {
     const gltf = await new GLTFLoader().loadAsync(SWORD_URL);
     const model = gltf.scene;
 
-    const box = new THREE.Box3().setFromObject(model);
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-
-    // İç grup: modeli, tutulan nokta (kabzanın ortası) tam orijine gelecek şekilde kaydır
-    const grip = new THREE.Group();
-    model.position.set(-center.x, -(box.min.y + size.y * SWORD_GRIP), -center.z);
-    grip.add(model);
-
-    // Dış grup: döndür ve ölçekle. Pivotun ekseni: y = elden öne (bıçak bu yöne),
-    // z = savurma yönü (bıçağın keskin kenarı ve geniş balçak bu yöne).
-    // Modelde bıçak -y'de, geniş taraf x'te: model x → pivot z, model -y → pivot y, model z → pivot x.
-    const sword = new THREE.Group();
-    sword.quaternion.setFromRotationMatrix(
-      new THREE.Matrix4().makeBasis(
-        new THREE.Vector3(0, 0, 1), // modelin x ekseni nereye gidecek
-        new THREE.Vector3(0, -1, 0), // modelin y ekseni (bıçak ters dönsün)
-        new THREE.Vector3(1, 0, 0), // modelin z ekseni
-      ),
-    );
-    sword.scale.setScalar(SWORD_LENGTH / size.y);
-    sword.add(grip);
+    const sword = prepareSword(model, SWORD_LENGTH, SWORD_GRIP);
 
     // Ortam haritası: metal yüzeyin yansıtacağı sanal bir oda. Sahnede yansıtacak bir şey
     // olmadığı için metal kılıç yoksa simsiyah görünür. Sadece kılıca veriliyor ki
@@ -1170,36 +1183,13 @@ export class Game {
 
     this.weaponPivot.add(sword);
     this.scythe.visible = false; // tırpana artık gerek yok
+    setSkeletonEnvironment(environment); // iskeletlerin kılıç ve kalkanı da aynı yansımayı kullansın
   }
 
   // Tırpanı sağ el kemiğine bağla; artık el nereye giderse tırpan da oraya gider
   private attachWeaponToHand(model: THREE.Object3D) {
-    const hand = model.getObjectByName('mixamorigRightHand');
-    const index = model.getObjectByName('mixamorigRightHandIndex1'); // işaret parmağı dibi
-    const pinky = model.getObjectByName('mixamorigRightHandPinky1'); // serçe parmak dibi
-    if (!hand || !index || !pinky) return; // farklı bir iskelet: tırpan yanda kalsın
-
-    // Yumruğun içinden geçen sap, serçe parmak dibinden işaret parmağı dibine doğru uzanır:
-    // kılıç tutar gibi, uç öne bakar (seçilen animasyonlar kılıç tutuşuna göre yapılmış).
-    // Parmak kemikleri elin "çocuğu" olduğu için konumları zaten elin kendi ekseninde.
-    const shaftDirection = new THREE.Vector3().subVectors(index.position, pinky.position).normalize();
-    // Bıçak sapa dik, elin sırtı yönünde (parmakların tersi, elin -y ekseni).
-    // Kol aşağı sarkarken bıçak yukarı bakar; savururken tırpan gibi geriye kıvrık kalır.
-    const bladeDirection = new THREE.Vector3(0, -1, 0)
-      .addScaledVector(shaftDirection, shaftDirection.y) // sapa dik olsun diye sap yönünü çıkar
-      .normalize();
-    const side = new THREE.Vector3().crossVectors(shaftDirection, bladeDirection);
-
-    // Pivotun ekseni: x = yan, y = sap, z = bıçak (tırpan bu eksenlerde çizildi)
-    const basis = new THREE.Matrix4().makeBasis(side, shaftDirection, bladeDirection);
-    this.weaponPivot.quaternion.setFromRotationMatrix(basis);
-    // Tutulan yer: iki parmak dibinin ortası
-    this.weaponPivot.position.addVectors(index.position, pinky.position).multiplyScalar(0.5);
-    // Kemik santimetre ölçeğinde; tırpan metre ile çizildi, ölçeği geri al
-    model.updateMatrixWorld(true);
-    this.weaponPivot.scale.setScalar(1 / hand.getWorldScale(new THREE.Vector3()).x);
-
-    hand.add(this.weaponPivot); // eski yerinden (karakter grubundan) alınıp ele takılır
+    // Elde tutulamazsa (farklı bir iskelet) tırpan karakterin yanında kalır
+    attachToHand(this.weaponPivot, model, 'Right');
   }
 
   private resize() {
