@@ -171,6 +171,9 @@ const CAST_DURATION = 1;
 // Altın açı (≈137.5°): her yeni minion karakterin çevresinde bir öncekinden bu kadar
 // dönük bir yere yerleşir. Böylece kaç minion olursa olsun çembere eşit dağılırlar.
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+// Aynı anda en fazla kaç iskelet olabilir. Sınır doluyken yenisi kaldırılırsa rastgele biri
+// ruhunu serbest bırakıp yok olur, yerini yenisi alır.
+const MAX_MINIONS = 5;
 
 // Yerdeki ceset: et yığını (flesh.glb) ya da o yoksa sırtüstü yatan kemikler
 interface Corpse {
@@ -228,6 +231,8 @@ export class Game {
 
   // Kalkmış iskeletler (minionlar)
   private readonly minions: Minion[] = [];
+  // Şimdiye kadar kaç iskelet kaldırıldı (serbest bırakılanlar dahil): yeni iskeletin yerini seçer
+  private raisedCount = 0;
   // Mührü kırılmış (ölmekte olan) düşmanlar: efekt bir kez oynasın diye
   private readonly brokenSeals = new WeakSet<Enemy>();
   // Oynayan mühür kırılma efektleri
@@ -817,15 +822,35 @@ export class Game {
   // Cesedin yerinden topraktan yükselen bir iskelet kaldır; kemikler yavaşça toprağa gömülür.
   // İskelet efendisine dönük kalkar ve onu takip eder.
   private raiseCorpse(corpse: Corpse) {
+    // Sınır doluysa rastgele bir iskelet ruhunu serbest bırakır, yerini yenisi alır
+    if (this.minions.length >= MAX_MINIONS) {
+      this.releaseMinion(this.minions[Math.floor(Math.random() * this.minions.length)]);
+    }
+
     corpse.sinkTime = 0;
     const { x, z } = corpse.root.position;
     const player = this.player.position;
     const facing = Math.atan2(player.x - x, player.z - z);
-    const minion = new Minion(x, z, facing, this.minions.length * GOLDEN_ANGLE);
+    // Her yeni iskelet bir sonraki altın açıdaki yere: serbest bırakılanların yerleri tekrar kullanılmaz,
+    // ama altın açı sayesinde yeni yerler de eskileriyle üst üste binmez
+    const minion = new Minion(x, z, facing, this.raisedCount * GOLDEN_ANGLE);
+    this.raisedCount++;
     this.scene.add(minion.object);
     this.minions.push(minion);
     gameStore.setState({ minions: this.minions.length });
     console.log(`İskelet kalktı (${this.minions.length} minion)`);
+  }
+
+  // İskeleti serbest bırak: ruhu mavi ışıkla yükselir, kemikleri yok olur
+  private releaseMinion(minion: Minion) {
+    const effect = new SealBreak(minion.object.position, this.soulLights.take(), 'release');
+    this.scene.add(effect.object);
+    this.sealBreaks.push(effect);
+    this.scene.remove(minion.object);
+    minion.dispose();
+    this.minions.splice(this.minions.indexOf(minion), 1);
+    gameStore.setState({ minions: this.minions.length });
+    console.log(`İskelet serbest bırakıldı (${this.minions.length} minion)`);
   }
 
   private updateCamera(delta: number) {

@@ -93,7 +93,8 @@ dönerek yükselen mavi ruh parçacıkları (Points; ortografik kamerada boyut p
 yerinde tek ceset kalır: et yığını (src/game/Flesh.ts, flesh.glb; yoksa sırtüstü yatan iskelet).
 İskelet otomatik kalkmaz; oyuncu 1 tuşuyla 8 m içindeki en yakın cesetten kaldırır (Magic Spell Pack'ten
 rastgele büyü animasyonu, ceset mavi parlar, büyünün yarısında iskelet kalkar, ceset gömülür); iskelet
-karakteri A* ile takip eder. Efektin ışığı (altın → mavi,
+karakteri A* ile takip eder. En fazla 5 iskelet (Game.ts MAX_MINIONS): sınır doluyken yenisi kaldırılırsa
+rastgele biri serbest kalır (SealBreak 'release': altınsız, sadece mavi parlama, ruh ve ışık) ve yok olur. Efektin ışığı (altın → mavi,
 3 sn'de sönen, 3.5 m menzil) SoulLightPool'dan ödünç alınır: 3 ışık oyun başında sönük kurulur; sahneye
 sonradan ışık eklemek bütün shader'ları yeniden derletip takıltır
 (src/game/Skeleton.ts: Mixamo'da riglenmiş skeleton.fbx; sağ elinde kılıç (sword2.glb), sol ön
@@ -121,7 +122,6 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Vuruşta kan/parça efekti, ekran sarsıntısı gibi vuruş hissi efektleri
 - İskelete yerden kalkma (Standing Up) ve kendine özgü (zombi) yürüme animasyonu
 - skeleton.fbx'i hafiflet (278 bin üçgen; çok minionda ağırlaşır)
-- Minion sayısı sınırı
 - Vampire kendi animasyonları (vurulma, ölüm) ve can barı
 - Hareketli çarpışma: karakter, vampir ve minionlar birbirinin içinden geçmesin
 - Minionların canı olsun, vampirler minionlara da saldırsın

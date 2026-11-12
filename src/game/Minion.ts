@@ -114,6 +114,13 @@ export class Minion {
     }
   }
 
+  /** Minion sahneden kaldırılınca: animasyonları durdur, kendi malzemelerini bellekten sil */
+  dispose() {
+    this.mixer?.stopAllAction();
+    if (this.skeleton.model) this.mixer?.uncacheRoot(this.skeleton.model);
+    for (const material of this.skeleton.materials) material.dispose();
+  }
+
   update(delta: number, elapsed: number, leader: THREE.Vector3, grid: Grid, enemies: readonly Enemy[]) {
     this.mixer?.update(delta);
     if (this.riseTime !== null) {

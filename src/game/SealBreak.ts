@@ -118,6 +118,7 @@ interface Shard {
 export class SealBreak {
   readonly object = new THREE.Group();
   readonly light: THREE.PointLight | null;
+  private readonly goldTime: number; // ışığın altın kaldığı süre (saniye)
   private time = 0;
 
   private readonly flash: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
@@ -132,25 +133,30 @@ export class SealBreak {
   /**
    * at: kırılan mührün sahibinin ayak noktası (dünya koordinatı)
    * light: havuzdan ödünç alınan ışık (yoksa null); efekt bitince Game onu havuza geri verir
+   * kind: 'seal' = mühür kırılması (altın kırılma + mavi ruh);
+   *       'release' = serbest bırakılan iskelet (kırılacak mühür yok: sadece mavi parlama ve ruh)
    */
-  constructor(at: THREE.Vector3, light: THREE.PointLight | null = null) {
+  constructor(at: THREE.Vector3, light: THREE.PointLight | null = null, kind: 'seal' | 'release' = 'seal') {
     this.light = light;
+    this.goldTime = kind === 'seal' ? LIGHT_GOLD_TIME : -LIGHT_TO_BLUE_TIME; // serbest bırakmada ışık baştan mavi
     this.object.position.set(at.x, 0, at.z);
     light?.position.set(at.x, CHEST_HEIGHT, at.z);
+    const burst = kind === 'seal' ? GOLD : SOUL_BLUE;
 
-    // 1. Parlama: göğüste kısa süre büyüyüp sönen altın küre
-    this.flash = new THREE.Mesh(FLASH_GEOMETRY, glowMaterial(GOLD));
+    // 1. Parlama: göğüste kısa süre büyüyüp sönen küre (mühürde altın, serbest bırakmada mavi)
+    this.flash = new THREE.Mesh(FLASH_GEOMETRY, glowMaterial(burst));
     this.flash.position.y = CHEST_HEIGHT;
     this.object.add(this.flash);
 
-    // Halka: yere paralel, dışa doğru açılıp sönen altın çember
-    this.ring = new THREE.Mesh(RING_GEOMETRY, glowMaterial(GOLD));
+    // Halka: yere paralel, dışa doğru açılıp sönen çember
+    this.ring = new THREE.Mesh(RING_GEOMETRY, glowMaterial(burst));
     this.ring.rotation.x = -Math.PI / 2;
     this.ring.position.y = CHEST_HEIGHT;
     this.object.add(this.ring);
 
-    // Kıymıklar: göğüsten dört yana ve biraz yukarı fırlar, düşerken söner
-    for (let i = 0; i < SHARD_COUNT; i++) {
+    // Kıymıklar: göğüsten dört yana ve biraz yukarı fırlar, düşerken söner (sadece mühür kırılınca)
+    const shardCount = kind === 'seal' ? SHARD_COUNT : 0;
+    for (let i = 0; i < shardCount; i++) {
       const mesh = new THREE.Mesh(SHARD_GEOMETRY, this.shardMaterial);
       mesh.position.y = CHEST_HEIGHT;
       const angle = (i / SHARD_COUNT) * Math.PI * 2 + Math.random() * 0.4;
@@ -241,7 +247,7 @@ export class SealBreak {
     // Işık: altın → mavi, kırılma anında en parlak, sonra yavaşça söner ve ruhla biraz yükselir
     if (this.light) {
       const life = Math.min(t / LIGHT_DURATION, 1);
-      const toBlue = THREE.MathUtils.clamp((t - LIGHT_GOLD_TIME) / LIGHT_TO_BLUE_TIME, 0, 1);
+      const toBlue = THREE.MathUtils.clamp((t - this.goldTime) / LIGHT_TO_BLUE_TIME, 0, 1);
       this.light.color.lerpColors(LIGHT_GOLD, LIGHT_BLUE, toBlue);
       const flare = Math.min(t / 0.05, 1); // ilk 0.05 sn'de yanar
       this.light.intensity = LIGHT_PEAK * flare * (1 - life) ** 2;
