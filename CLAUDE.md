@@ -72,7 +72,9 @@ mutant dying.fbx bozuk (FBXLoader okuyamıyor), yüklenemezse vampir eskisi gibi
 Vampirler karşılık veriyor: karakteri 5 m'den fark edip (vurulunca 6 sn kızgın, 12 m'ye kadar)
 kovalıyor ve vuruyor; vururken darbe almak vuruşu kesmiyor (kas gösterisini kesiyor).
 Can puanla: vampir 22-50 (tarza göre), karakterin vuruşu 10, minionunki 5. Karakterin 100 canı var; HUD'da can
-barı ve iskelet sayısı. Can bitince geriye devriliyor, "Öldün" yazısı, 4 sn sonra (0, 0)'da tam
+küresi (src/hud/HealthGlobe.tsx; Diablo tarzı, sol alt: boş küre, kayıp can, sıvı ve kafatası çerçeve
+katmanları, sıvı clip-path ile boşalır, hasarda kırmızı parlama, üzerine gelince sayı; görseller
+public/models/hud/health-globe, asılları orijinal/ içinde, saydamlık sonradan çıkarıldı) ve iskelet sayısı. Can bitince geriye devriliyor, "Öldün" yazısı, 4 sn sonra (0, 0)'da tam
 canla doğuyor; vampirler evlerine dönüyor.
 Tıklamayı görünmez bir kutu (hitbox) yakalıyor. Vampire bir kez tıklayınca karakter onu kovalıyor
 (yol 0.3 sn'de bir yenilenir), menzile girince vuruyor, ölene kadar vurmaya devam ediyor; zemine

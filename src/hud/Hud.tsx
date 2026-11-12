@@ -1,7 +1,8 @@
 import { useStore } from 'zustand';
 import { gameStore } from '../state/gameStore';
+import { HealthGlobe } from './HealthGlobe';
 
-// Oyunun üstündeki arayüz: başlık, can barı, minion sayısı, ölüm mesajı ve kontrol ipucu.
+// Oyunun üstündeki arayüz: başlık, can küresi, minion sayısı, ölüm mesajı ve kontrol ipucu.
 // Değerleri oyundan gameStore üzerinden okur; Three.js'e hiç dokunmaz.
 export function Hud() {
   // useStore: store'daki bu değer değişince bileşen kendini yeniden çizer
@@ -10,7 +11,6 @@ export function Hud() {
   const dead = useStore(gameStore, (s) => s.dead);
   const minions = useStore(gameStore, (s) => s.minions);
   const whisper = useStore(gameStore, (s) => s.whisper);
-  const percent = (health / maxHealth) * 100;
 
   return (
     <>
@@ -20,12 +20,7 @@ export function Hud() {
       </div>
 
       <div className="hud-status">
-        <div className="hud-health" aria-label={`Can ${health} / ${maxHealth}`}>
-          <div className="hud-health-fill" style={{ width: `${percent}%` }} />
-          <span className="hud-health-text">
-            {health} / {maxHealth}
-          </span>
-        </div>
+        <HealthGlobe health={health} maxHealth={maxHealth} />
         <div className="hud-minions">İskelet: {minions}</div>
       </div>
 
