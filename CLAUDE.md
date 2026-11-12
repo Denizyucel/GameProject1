@@ -88,8 +88,10 @@ Mühür kırma (çekirdek döngü): düşmanın canı bittiği an (karakter ya d
 src/game/SealBreak.ts efekti oynar: altın parlama, açılan halka, saçılan altın kıymıklar, ardından
 dönerek yükselen mavi ruh parçacıkları (Points; ortografik kamerada boyut pikseldir). HUD'da
 "Teşekkür ederiz…" fısıltısı (gameStore.whisper, .hud-whisper CSS animasyonu). Beden gömülünce
-(+0.3 sn) aynı yerden iskelet mavi ışıkla topraktan kendiliğinden kalkar; karakteri A* ile takip eder.
-Et yığını, 1 tuşu ve diriltme büyüsü yok (Flesh.ts silindi). Efektin ışığı (altın → mavi,
+yerinde tek ceset kalır: et yığını (src/game/Flesh.ts, flesh.glb; yoksa sırtüstü yatan iskelet).
+İskelet otomatik kalkmaz; oyuncu 1 tuşuyla 8 m içindeki en yakın cesetten kaldırır (Magic Spell Pack'ten
+rastgele büyü animasyonu, ceset mavi parlar, büyünün yarısında iskelet kalkar, ceset gömülür); iskelet
+karakteri A* ile takip eder. Efektin ışığı (altın → mavi,
 3 sn'de sönen, 3.5 m menzil) SoulLightPool'dan ödünç alınır: 3 ışık oyun başında sönük kurulur; sahneye
 sonradan ışık eklemek bütün shader'ları yeniden derletip takıltır
 (src/game/Skeleton.ts: Mixamo'da riglenmiş skeleton.fbx; sağ elinde kılıç (sword2.glb), sol ön
