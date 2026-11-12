@@ -44,7 +44,7 @@ export function Hud() {
       )}
 
       <div className="hud-controls">
-        Tıkla veya WASD: yürü · Düşmana tıkla: mührünü kır · 1: kemiklerden iskelet kaldır · Tekerlek: yakınlaş
+        Tıkla veya WASD: yürü · Düşmana tıkla: mührünü kır · 1: cesetten iskelet kaldır · Tekerlek: yakınlaş
       </div>
     </>
   );
