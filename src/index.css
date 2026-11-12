@@ -38,19 +38,10 @@ html, body {
   opacity: 0.8;
 }
 
-.hud-controls {
-  position: absolute;
-  bottom: 16px;
-  left: 16px;
-  right: 16px;
-  font-size: 12px;
-  opacity: 0.55;
-}
-
-/* Can küresi ve minion sayısı: sol alt, kontrol ipucunun üstünde */
+/* Can küresi ve minion sayısı: sol alt köşe */
 .hud-status {
   position: absolute;
-  bottom: 24px;
+  bottom: 8px;
   left: 0;
   display: flex;
   gap: 4px;

@@ -2,7 +2,7 @@ import { useStore } from 'zustand';
 import { gameStore } from '../state/gameStore';
 import { HealthGlobe } from './HealthGlobe';
 
-// Oyunun üstündeki arayüz: başlık, can küresi, minion sayısı, ölüm mesajı ve kontrol ipucu.
+// Oyunun üstündeki arayüz: başlık, can küresi, minion sayısı, ölüm mesajı.
 // Değerleri oyundan gameStore üzerinden okur; Three.js'e hiç dokunmaz.
 export function Hud() {
   // useStore: store'daki bu değer değişince bileşen kendini yeniden çizer
@@ -37,10 +37,6 @@ export function Hud() {
           <span>Birazdan yeniden doğacaksın…</span>
         </div>
       )}
-
-      <div className="hud-controls">
-        Tıkla veya WASD: yürü · Düşmana tıkla: mührünü kır · 1: cesetten iskelet kaldır · Tekerlek: yakınlaş
-      </div>
     </>
   );
 }
