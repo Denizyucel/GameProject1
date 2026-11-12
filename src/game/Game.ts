@@ -5,9 +5,9 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Grid } from './Grid';
 import { findPath } from './findPath';
 import { Minion } from './Minion';
-import { createSkeleton, loadSkeletonModel, materialsOf, setGlow, setSkeletonEnvironment, type GlowMaterial } from './Skeleton';
+import { loadSkeletonModel, materialsOf, setSkeletonEnvironment, type GlowMaterial } from './Skeleton';
 import { attachToHand, fastestHandMoment, prepareSword, SWORD_ATTACK_NAMES, SWORD_ATTACK_URLS } from './weapon';
-import { createFlesh, loadFleshModel } from './Flesh';
+import { SealBreak, SoulLightPool } from './SealBreak';
 import { createVampire, loadVampireModel } from './Vampire';
 import { Enemy } from './Enemy';
 import { KitLevel } from './KitLevel';
@@ -121,60 +121,21 @@ const PLAYER_SPAWN = new THREE.Vector3(SPAWN_POINT.x, 0, SPAWN_POINT.z);
 // ki doğar doğmaz fark edilmesin (5 m'den fark ediyorlar ve evlerinin 5 m çevresinde dolaşıyorlar)
 const ENEMY_SPOTS: [number, number][] = [[-15, -7], [15, -7], [-13, 8], [14, 13], [0, 15]];
 
-// Ölü diriltme
-// Ölen her düşmandan düşen ceset sayısı (en az, en çok) ve ne kadar uzağa düştükleri
-const CORPSES_MIN = 1;
-const CORPSES_MAX = 2;
-const CORPSE_SCATTER = 1.2;
-// Diriltme tuşu: üst sıradaki 1 ve sayı tuş takımındaki 1
-const RAISE_KEYS = ['Digit1', 'Numpad1'];
-// Karakterden en fazla bu uzaklıktaki ceset diriltilebilir (en yakını seçilir)
-const RAISE_RANGE = 8;
-// Diriltirken rastgele biri seçilen büyü animasyonları (Mixamo "Magic Spell Pack")
-const SPELL_NAMES = [
-  'Standing 1H Magic Attack 01',
-  'Standing 1H Magic Attack 02',
-  'Standing 1H Magic Attack 03',
-  'standing 1H cast spell 01',
-  'Standing 2H Cast Spell 01',
-  'Standing 2H Magic Area Attack 01',
-  'Standing 2H Magic Area Attack 02',
-  'Standing 2H Magic Attack 01',
-  'Standing 2H Magic Attack 02',
-  'Standing 2H Magic Attack 03',
-  'Standing 2H Magic Attack 04',
-  'Standing 2H Magic Attack 05',
-];
-// Dosya adlarında boşluk var; encodeURI onları adrese uygun hale getirir (boşluk → %20)
-const SPELL_URLS = SPELL_NAMES.map((name) => encodeURI(`/models/Magic Spell Pack/${name}.fbx`));
-// Büyü animasyonları 2–4 sn sürüyor; oyunda kaç kat hızlı oynatılacakları
-const SPELL_TIME_SCALE = 1.5;
-// Cesedin büyünün hangi anında (0..1) dirildiği
-const RAISE_MOMENT = 0.5;
-// İskelet içinden çıkarken et yığınının toprağa gömülme süresi (saniye) ve derinliği (metre)
-const CORPSE_SINK_DURATION = 1.2;
-const CORPSE_SINK_DEPTH = 0.45;
-// Büyü sırasında cesedin en fazla ne kadar parladığı (1 = düz yeşil, doku kaybolur)
-const CORPSE_GLOW = 0.5;
-// Model yüklenmeden (kapsüldeyken) bir büyünün süresi (saniye)
-const CAST_DURATION = 1;
+// Mühür kırma (Hikaye.md, çekirdek döngü): düşmanın canı bitince mührü kırılır, ruhu mavi ışıkla
+// yükselir ve "Teşekkür ederiz" diye fısıldar. Bedeni toprağa gömülünce kemiklerinden bir iskelet
+// gönüllü olarak kalkar; bu, gömülme bittikten kaç saniye sonra olur:
+const RISE_DELAY = 0.3;
+// Ruhun fısıltısı (HUD'da kısa süre görünür)
+const THANKS_WHISPER = 'Teşekkür ederiz…';
 // Altın açı (≈137.5°): her yeni minion karakterin çevresinde bir öncekinden bu kadar
 // dönük bir yere yerleşir. Böylece kaç minion olursa olsun çembere eşit dağılırlar.
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 
-// Yerdeki ceset: et yığını (flesh.glb) ya da o yoksa yatan iskelet
 // Bir kılıç vuruşu: animasyonu, oyundaki süresi (saniye) ve darbenin indiği an (0..1)
 interface AttackMove {
   action: THREE.AnimationAction;
   duration: number;
   hitMoment: number;
-}
-
-interface Corpse {
-  root: THREE.Object3D;
-  materials: GlowMaterial[];
-  baseY: number; // yerdeki yüksekliği; gömülürken buradan aşağı iner
-  sinkTime: number | null; // iskelet içinden çıktıysa kaç saniyedir gömüldüğü; null ise yerinde duruyor
 }
 
 export class Game {
@@ -216,17 +177,17 @@ export class Game {
   private swingDuration = SWING_DURATION;
   private hitMoment = HIT_MOMENT;
 
-  // Yerde diriltilmeyi bekleyen cesetler ve dirilmiş minionlar
-  private readonly corpses: Corpse[] = [];
+  // Kalkmış iskeletler (minionlar)
   private readonly minions: Minion[] = [];
-  // Büyü başladıysa kaç saniyedir sürdüğü; null ise büyü yapmıyor
-  private castTime: number | null = null;
-  private castDuration = CAST_DURATION;
-  // Bu büyüyle dirilecek ceset; dirilince null olur
-  private castTarget: Corpse | null = null;
-  // Bu büyüde oynayan animasyon ve yüklenen bütün büyü animasyonları
-  private castAction: THREE.AnimationAction | null = null;
-  private spellActions: THREE.AnimationAction[] = [];
+  // Mührü kırılmış (ölmekte olan) düşmanlar: efekt bir kez oynasın diye
+  private readonly brokenSeals = new WeakSet<Enemy>();
+  // Oynayan mühür kırılma efektleri ve kalkmayı bekleyen iskeletlerin yeri ve zamanı
+  private readonly sealBreaks: SealBreak[] = [];
+  // Mühür kırılınca yanan ışıklar: oyun başında hazır kurulur (aynı anda en fazla 3 ışıklı efekt)
+  private readonly soulLights = new SoulLightPool(this.scene, 3);
+  private readonly pendingRises: { x: number; z: number; at: number }[] = [];
+  // HUD'daki fısıltının sırası (her yeni fısıltıda artar, HUD yazıyı baştan canlandırır)
+  private whisperCount = 0;
   // Rastgele seçilen vuruşlar ve şu an oynayanı (boşsa actions.attack kullanılır)
   private attackMoves: AttackMove[] = [];
   private swingAction: THREE.AnimationAction | null = null;
@@ -283,7 +244,6 @@ export class Game {
 
   constructor(container: HTMLElement) {
     this.container = container;
-
     // Renderer: sahneyi canvas'a çizen motor
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -307,7 +267,6 @@ export class Game {
     this.prey = { position: this.player.position, alive: true, damage: (amount) => this.damagePlayer(amount) };
     this.loadCharacter().catch((error) => console.error('Karakter modeli yüklenemedi:', error));
     this.loadSword().catch((error) => console.error('Kılıç modeli yüklenemedi:', error));
-    loadFleshModel().catch((error) => console.error('Et yığını modeli yüklenemedi:', error));
     this.loadEnvironment().catch((error) => console.error('Ortam modeli yüklenemedi:', error));
     if (SHOW_DEBUG) this.addDebugView();
 
@@ -358,9 +317,8 @@ export class Game {
     this.updateKeyboardMovement(delta);
     this.updateMovement(delta);
     this.updateAttack(delta, elapsed);
-    this.updateCast(delta);
-    this.updateCorpses(delta);
     this.updateEnemies(elapsed, delta);
+    this.updateSealBreaks(elapsed, delta);
     for (const minion of this.minions) minion.update(delta, elapsed, this.player.position, this.grid, this.enemies);
     this.updateAnimation(delta);
     this.updateBuildingFade(delta);
@@ -420,9 +378,9 @@ export class Game {
     return this.grid.isWalkable(cell.col, cell.row);
   }
 
-  // Karakter şu an bir şeyin ortasında mı (vuruş, büyü ya da ölü). O sırada yürümez, yenisini başlatmaz.
+  // Karakter şu an bir şeyin ortasında mı (vuruş ya da ölü). O sırada yürümez, yenisini başlatmaz.
   private isBusy(): boolean {
-    return this.swingTime !== null || this.castTime !== null || this.deathTime !== null;
+    return this.swingTime !== null || this.deathTime !== null;
   }
 
   // Vampir vurdu: canı azalt, kırmızı parla; can bittiyse öl
@@ -442,10 +400,6 @@ export class Game {
     this.attackTarget = null;
     this.swingTime = null;
     this.swingTarget = null;
-    if (this.castTarget) setGlow(this.castTarget, 0);
-    this.castTarget = null;
-    this.castTime = null;
-    this.castAction = null;
     gameStore.setState({ dead: true });
     console.log('Karakter öldü');
   }
@@ -478,11 +432,6 @@ export class Game {
   }
 
   private readonly onKeyDown = (event: KeyboardEvent) => {
-    if (RAISE_KEYS.includes(event.code)) {
-      // event.repeat: tuş basılı tutulunca tarayıcının tekrar gönderdiği olay; onları sayma
-      if (!event.repeat) this.raiseDead();
-      return;
-    }
     if (!Object.hasOwn(KEY_DIRECTIONS, event.code)) return;
     event.preventDefault(); // ok tuşları sayfayı kaydırmasın
     this.pressedKeys.add(event.code);
@@ -624,8 +573,7 @@ export class Game {
     if (!this.mixer || !this.actions) return;
 
     const wanted =
-      this.castTime !== null ? (this.castAction ?? this.actions.idle)
-      : this.swingTime !== null ? (this.swingAction ?? this.actions.attack)
+      this.swingTime !== null ? (this.swingAction ?? this.actions.attack)
       : this.path.length > 0 || this.keyboardWalking ? this.actions.walk
       : this.actions.idle;
 
@@ -639,164 +587,63 @@ export class Game {
     this.mixer.update(delta); // animasyonları delta kadar ilerlet, kemikleri hareket ettir
   }
 
-  // Düşmanları güncelle (dolaşma, vurulma, ölme); ölümü biten düşmanı silip yerine ceset bırak
+  // Düşmanları güncelle (dolaşma, vurulma, ölme). Canı biten düşmanın mührü kırılır;
+  // bedeni toprağa gömülünce silinir ve kemiklerinden iskelet kalkar.
   private updateEnemies(elapsed: number, delta: number) {
     // Sondan başa doğru dönüyoruz ki silinen düşman, sıradakilerin yerini kaydırmasın
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i];
       enemy.update(delta, elapsed, this.grid, this.prey);
+      // Canı bu karede bitti (karakterin ya da bir iskeletin vuruşuyla): mühür kırılır
+      if (!enemy.alive && !this.brokenSeals.has(enemy)) {
+        this.brokenSeals.add(enemy);
+        this.breakSeal(enemy.position);
+      }
       if (!enemy.finished) continue;
-      this.dropCorpses(enemy.position);
+      const { x, z } = enemy.position;
+      this.pendingRises.push({ x, z, at: elapsed + RISE_DELAY });
       this.scene.remove(enemy.root);
       enemy.dispose();
       this.enemies.splice(i, 1);
     }
   }
 
-  // Ölen düşmanın çevresine 1-2 ceset bırak
-  private dropCorpses(around: THREE.Vector3) {
-    const count = THREE.MathUtils.randInt(CORPSES_MIN, CORPSES_MAX);
-    const startAngle = Math.random() * Math.PI * 2;
-    for (let i = 0; i < count; i++) {
-      // Cesetler düşmanın çevresine eşit aralıklı dağılsın (2 cesetse karşılıklı)
-      const angle = startAngle + (i * Math.PI * 2) / count;
-      let x = around.x + Math.sin(angle) * CORPSE_SCATTER;
-      let z = around.z + Math.cos(angle) * CORPSE_SCATTER;
-      if (!this.canStand(x, z)) {
-        // Düşeceği yer başka bir düşmanın dibi ya da haritanın dışı: ölenin kendi yerine koy
-        x = around.x;
-        z = around.z;
-      }
+  // Mühür kırılma anı: efekti başlat, ruhun fısıltısını HUD'a gönder
+  private breakSeal(at: THREE.Vector3) {
+    const effect = new SealBreak(at, this.soulLights.take());
+    this.scene.add(effect.object);
+    this.sealBreaks.push(effect);
+    this.whisperCount++;
+    gameStore.setState({ whisper: { id: this.whisperCount, text: THANKS_WHISPER } });
+  }
 
-      const corpse = this.createCorpse();
-      corpse.root.position.set(x, corpse.baseY, z);
-      this.scene.add(corpse.root);
-      this.corpses.push(corpse);
+  // Efektleri ilerlet, bitenleri sil; zamanı gelen iskeletleri kaldır
+  private updateSealBreaks(elapsed: number, delta: number) {
+    for (let i = this.sealBreaks.length - 1; i >= 0; i--) {
+      const effect = this.sealBreaks[i];
+      if (effect.update(delta)) continue;
+      this.scene.remove(effect.object);
+      if (effect.light) this.soulLights.give(effect.light);
+      effect.dispose();
+      this.sealBreaks.splice(i, 1);
+    }
+    for (let i = this.pendingRises.length - 1; i >= 0; i--) {
+      const rise = this.pendingRises[i];
+      if (elapsed < rise.at) continue;
+      this.pendingRises.splice(i, 1);
+      this.raiseSkeleton(rise.x, rise.z);
     }
   }
 
-  // Et yığını; model yoksa (ya da henüz yüklenmediyse) sırtüstü yatan bir iskelet
-  private createCorpse(): Corpse {
-    const yaw = Math.random() * Math.PI * 2; // her ceset rastgele bir yöne dönük
-    const flesh = createFlesh();
-    if (flesh) {
-      flesh.root.rotation.y = yaw;
-      return { root: flesh.root, materials: flesh.materials, baseY: 0, sinkTime: null };
-    }
-
-    const skeleton = createSkeleton();
-    const { root } = skeleton;
-    // Sırtüstü yatır. Önce yere yatır (x), sonra rastgele bir yöne çevir (y);
-    // "YXZ" sırası bu dönüşlerin hangi sırayla uygulanacağını söyler.
-    root.rotation.order = 'YXZ';
-    root.rotation.set(-Math.PI / 2, yaw, 0);
-    // Çizilmiş iskelette kollar ve bacaklar iki yana açık, gözler sönük: ölü
-    if (skeleton.limbs) {
-      skeleton.limbs.leftArm.rotation.z = 0.5;
-      skeleton.limbs.rightArm.rotation.z = -0.5;
-      skeleton.limbs.leftLeg.rotation.z = 0.2;
-      skeleton.limbs.rightLeg.rotation.z = -0.2;
-    }
-    if (skeleton.eyes) skeleton.eyes.visible = false;
-    for (const material of skeleton.materials) material.color.multiplyScalar(0.75); // biraz daha soluk
-    // lieHeight: kemikler toprağa gömülmesin diye biraz yukarıda
-    return { root, materials: skeleton.materials, baseY: skeleton.lieHeight, sinkTime: null };
-  }
-
-  // İskeleti çıkmış cesetleri yavaşça toprağa göm, bitince sahneden sil
-  private updateCorpses(delta: number) {
-    for (let i = this.corpses.length - 1; i >= 0; i--) {
-      const corpse = this.corpses[i];
-      if (corpse.sinkTime === null) continue;
-      corpse.sinkTime += delta;
-      const t = Math.min(corpse.sinkTime / CORPSE_SINK_DURATION, 1);
-      corpse.root.position.y = corpse.baseY - t * t * CORPSE_SINK_DEPTH; // yavaş başlayıp hızlanan gömülme
-      setGlow(corpse, (1 - t) * CORPSE_GLOW);
-      if (t >= 1) {
-        this.scene.remove(corpse.root);
-        for (const material of corpse.materials) material.dispose();
-        this.corpses.splice(i, 1);
-      }
-    }
-  }
-
-  // 1 tuşu: en yakın cesedi dirilten büyüyü başlat
-  private raiseDead() {
-    if (this.isBusy()) return; // vuruş ya da önceki büyü bitmeden yenisi başlamaz
-    const corpse = this.nearestCorpse();
-    if (!corpse) {
-      console.log('Yakında diriltilecek ceset yok');
-      return;
-    }
-
-    // Yürümeyi ve saldırıyı bırak, yüzünü cesede çevir
-    this.path = [];
-    this.attackTarget = null;
-    const target = corpse.root.position;
+  // Kemiklerden topraktan yükselen bir iskelet kaldır; efendisine dönük kalkar ve onu takip eder
+  private raiseSkeleton(x: number, z: number) {
     const player = this.player.position;
-    this.player.rotation.y = Math.atan2(target.x - player.x, target.z - player.z);
-
-    this.castTarget = corpse;
-    this.castTime = 0;
-    // Yüklenen büyü animasyonlarından rastgele birini seç; süre o animasyondan gelir
-    if (this.spellActions.length > 0) {
-      const action = this.spellActions[Math.floor(Math.random() * this.spellActions.length)];
-      this.castAction = action;
-      this.castDuration = action.getClip().duration / SPELL_TIME_SCALE;
-    } else {
-      this.castAction = null;
-      this.castDuration = CAST_DURATION;
-    }
-  }
-
-  // Karaktere RAISE_RANGE içindeki en yakın ceset; yoksa null
-  private nearestCorpse(): Corpse | null {
-    let best: Corpse | null = null;
-    let bestDistance = RAISE_RANGE;
-    for (const corpse of this.corpses) {
-      if (corpse.sinkTime !== null) continue; // iskeleti zaten çıktı, gömülüyor
-      const p = corpse.root.position;
-      const distance = Math.hypot(p.x - this.player.position.x, p.z - this.player.position.z);
-      if (distance <= bestDistance) {
-        best = corpse;
-        bestDistance = distance;
-      }
-    }
-    return best;
-  }
-
-  // Büyüyü ilerlet: ceset gittikçe yeşil parlar, dirilme anında minion olarak kalkar
-  private updateCast(delta: number) {
-    if (this.castTime === null) return;
-    this.castTime += delta;
-    const progress = Math.min(this.castTime / this.castDuration, 1);
-
-    if (this.castTarget) {
-      setGlow(this.castTarget, Math.min(progress / RAISE_MOMENT, 1) * CORPSE_GLOW);
-      if (progress >= RAISE_MOMENT) {
-        this.raiseCorpse(this.castTarget);
-        this.castTarget = null;
-      }
-    }
-
-    if (progress >= 1) {
-      this.castTime = null;
-      this.castAction = null;
-    }
-  }
-
-  // Cesedin içinden topraktan yükselen bir minion çıkar; ceset de yavaşça toprağa gömülsün
-  private raiseCorpse(corpse: Corpse) {
-    corpse.sinkTime = 0;
-
-    const { x, z } = corpse.root.position;
-    const player = this.player.position;
-    const facing = Math.atan2(player.x - x, player.z - z); // efendisine dönük kalksın
+    const facing = Math.atan2(player.x - x, player.z - z);
     const minion = new Minion(x, z, facing, this.minions.length * GOLDEN_ANGLE);
     this.scene.add(minion.object);
     this.minions.push(minion);
     gameStore.setState({ minions: this.minions.length });
-    console.log(`Ceset dirildi (${this.minions.length} minion)`);
+    console.log(`İskelet kalktı (${this.minions.length} minion)`);
   }
 
   private updateCamera(delta: number) {
@@ -1121,7 +968,6 @@ export class Game {
       hipsHeight,
       walkClipSpeed: WALK_CLIP_SPEED,
     }).catch((error) => console.error('İskelet modeli yüklenemedi:', error));
-    this.loadSpells(mixer).catch((error) => console.error('Büyü animasyonları yüklenemedi:', error));
     this.loadSwordAttacks(model, mixer).catch((error) => console.error('Kılıç vuruşları yüklenemedi:', error));
   }
 
@@ -1142,20 +988,6 @@ export class Game {
       return { action, duration, hitMoment };
     });
     this.attackMoves = moves;
-  }
-
-  // Büyü animasyonlarını yükle. Yüklenmezse diriltme yine çalışır, sadece animasyonsuz.
-  private async loadSpells(mixer: THREE.AnimationMixer) {
-    const loader = new FBXLoader();
-    const files = await Promise.all(SPELL_URLS.map((url) => loader.loadAsync(url)));
-    this.spellActions = files.map((file) => {
-      const action = mixer.clipAction(lockRootMotion(file.animations[0]));
-      // Vuruş gibi: bir kez oynar, son karesinde bekler
-      action.setLoop(THREE.LoopOnce, 1);
-      action.clampWhenFinished = true;
-      action.timeScale = SPELL_TIME_SCALE;
-      return action;
-    });
   }
 
   // Kılıcı yükle ve tırpanın yerine silah pivotuna tak. Pivot ele bağlıysa kılıç da elde olur.

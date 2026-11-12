@@ -35,6 +35,9 @@ Retina ekranlar hedeflenir.
 - Kamera: OrthographicCamera, izometrik açı.
 - Piksel oranı en fazla 2.
 
+## Kontroller
+Tip kontrolü: `npx tsc --noEmit -p tsconfig.app.json` (kök tsconfig.json boş; `-p .` hiçbir şeyi denetlemez).
+
 ## Benimle nasıl çalışmalısın
 - Arayüz tasarımcısıyım; oyun geliştirmeye ve TypeScript'e yeniyim.
 - Her değişiklikte neyi neden yaptığını kısa ve sade Türkçe ile açıkla.
@@ -81,9 +84,14 @@ kadar attack.fbx); darbe anı yüklenirken sağ elin en hızlı olduğu an ölç
 silah sağ el kemiğine bağlı: Meshy kılıcı (sword.glb), yoksa çizilmiş tırpan. Modeller public/models içinde, Git dışında (lisans).
 Kontroller: tıklayarak (A*) ya da WASD/ok tuşlarıyla (ekrana göre, çarpışmalı) yürüme;
 tekerlek/pinch ile karaktere doğru yumuşak zoom.
-Ölü diriltme: ölen vampir 1-2 et yığını (flesh.glb, src/game/Flesh.ts) bırakır; 1 tuşu en yakın
-yığını (8 m içinde) diriltir. Karakter Magic Spell Pack'ten rastgele bir büyü animasyonu oynar,
-yığın yeşil parlar, içinden iskelet minion topraktan çıkar, yığın toprağa gömülür; minion karakteri A* ile takip eder
+Mühür kırma (çekirdek döngü): düşmanın canı bittiği an (karakter ya da iskelet vurmuş olabilir)
+src/game/SealBreak.ts efekti oynar: altın parlama, açılan halka, saçılan altın kıymıklar, ardından
+dönerek yükselen mavi ruh parçacıkları (Points; ortografik kamerada boyut pikseldir). HUD'da
+"Teşekkür ederiz…" fısıltısı (gameStore.whisper, .hud-whisper CSS animasyonu). Beden gömülünce
+(+0.3 sn) aynı yerden iskelet mavi ışıkla topraktan kendiliğinden kalkar; karakteri A* ile takip eder.
+Et yığını, 1 tuşu ve diriltme büyüsü yok (Flesh.ts silindi). Efektin ışığı (altın → mavi,
+3 sn'de sönen, 3.5 m menzil) SoulLightPool'dan ödünç alınır: 3 ışık oyun başında sönük kurulur; sahneye
+sonradan ışık eklemek bütün shader'ları yeniden derletip takıltır
 (src/game/Skeleton.ts: Mixamo'da riglenmiş skeleton.fbx; sağ elinde kılıç (sword2.glb), sol ön
 kolunda kalkan (kalkan.glb; weapon.ts prepareSword/prepareShield, attachToHand). Dokuları çok koyu olduğu
 için GEAR_* ile parlatılıyor; asıllar public/models/orijinal'de, küçültülmüş halleri models içinde; her vuruşta kılıç vuruşlarından rastgele biri, darbe anı ölçülerek; flesh.glb yoksa ceset olarak T-pozunda yatar;
@@ -109,12 +117,12 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Vuruşta kan/parça efekti, ekran sarsıntısı gibi vuruş hissi efektleri
 - İskelete yerden kalkma (Standing Up) ve kendine özgü (zombi) yürüme animasyonu
 - skeleton.fbx'i hafiflet (278 bin üçgen; çok minionda ağırlaşır)
-- Minion sayısı sınırı ve mana; yakında ceset yoksa HUD'da uyarı
+- Minion sayısı sınırı
 - Vampire kendi animasyonları (vurulma, ölüm) ve can barı
 - Hareketli çarpışma: karakter, vampir ve minionlar birbirinin içinden geçmesin
 - Minionların canı olsun, vampirler minionlara da saldırsın
 - Can yenilenmesi (iksir ya da zamanla), mana ve diriltmenin mana maliyeti
 - Karakter için ölüm ve vurulma animasyonu (şimdi sadece devriliyor)
 - Walking.fbx'i Without Skin indir (15 MB → ~0.5 MB)
-- Diriltme büyüsü için ışık/parçacık efekti
+- Mühür kırılma sesi (cam kırılması) ve fısıltı sesi
 - Minionlar birbirinin ve karakterin içinden geçmesin

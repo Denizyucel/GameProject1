@@ -9,6 +9,7 @@ export function Hud() {
   const maxHealth = useStore(gameStore, (s) => s.maxHealth);
   const dead = useStore(gameStore, (s) => s.dead);
   const minions = useStore(gameStore, (s) => s.minions);
+  const whisper = useStore(gameStore, (s) => s.whisper);
   const percent = (health / maxHealth) * 100;
 
   return (
@@ -28,6 +29,13 @@ export function Hud() {
         <div className="hud-minions">İskelet: {minions}</div>
       </div>
 
+      {/* key değişince React yazıyı yeniden yaratır, CSS animasyonu baştan oynar; sonunda görünmez kalır */}
+      {whisper && (
+        <div key={whisper.id} className="hud-whisper">
+          {whisper.text}
+        </div>
+      )}
+
       {dead && (
         <div className="hud-death">
           <strong>Öldün</strong>
@@ -36,7 +44,7 @@ export function Hud() {
       )}
 
       <div className="hud-controls">
-        Tıkla veya WASD: yürü · Vampire tıkla: saldır · 1: ceset dirilt · Tekerlek: yakınlaş
+        Tıkla veya WASD: yürü · Düşmana tıkla: mührünü kır · Tekerlek: yakınlaş
       </div>
     </>
   );

@@ -1,4 +1,4 @@
-// İskelet: hem yerde yatan ceset hem de dirilen minion bunu kullanır.
+// İskelet: mührü kırılan düşmanın kemiklerinden kalkan minion bunu kullanır.
 // public/models/skeleton.fbx (Mixamo'da riglenmiş) yüklendiyse o model kopyalanır ve karakterin
 // yürüme/bekleme animasyonlarını oynatır; vururken vampirin pençe animasyonunu kullanır
 // Sağ elinde kılıç (sword2.glb), sol elinde kalkan (kalkan.glb) taşır; vururken kılıç
@@ -37,8 +37,8 @@ const GEAR_METALNESS = 0.5;
 const GEAR_BRIGHTNESS = 1.8;
 // Oyundaki boyu (metre)
 const SKELETON_HEIGHT = 1.8;
-// Dirilirken yayılan ışığın rengi
-const GLOW_COLOR = 0x3cff9a;
+// Topraktan kalkarken yayılan ışığın rengi: özgürleşen ruhun mavisi (SealBreak ile aynı)
+const GLOW_COLOR = 0x7cc4ff;
 
 /** Parlatılabilen malzeme (emissive özelliği olan) */
 export type GlowMaterial = THREE.MeshStandardMaterial | THREE.MeshPhongMaterial;

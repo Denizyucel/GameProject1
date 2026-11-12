@@ -89,6 +89,29 @@ html, body {
 }
 
 /* Ölünce ekranın ortasında çıkan mesaj */
+/* Kurtarılan ruhun fısıltısı: ekranın üst ortasında mavi, yavaşça belirip yukarı süzülerek kaybolur */
+.hud-whisper {
+  position: absolute;
+  top: 22%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 22px;
+  font-style: italic;
+  letter-spacing: 0.12em;
+  color: #a9d8ff;
+  text-shadow: 0 0 12px rgba(124, 196, 255, 0.8), 0 0 28px rgba(124, 196, 255, 0.4);
+  opacity: 0;
+  animation: hud-whisper 3s ease-out forwards;
+}
+
+@keyframes hud-whisper {
+  0% { opacity: 0; transform: translateY(8px); }
+  20% { opacity: 1; }
+  70% { opacity: 0.9; }
+  100% { opacity: 0; transform: translateY(-18px); }
+}
+
 .hud-death {
   position: absolute;
   inset: 0;

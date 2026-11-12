@@ -9,6 +9,9 @@ export interface GameState {
   maxHealth: number;
   dead: boolean; // karakter öldü mü (yeniden doğmayı bekliyor)
   minions: number; // kaç minion var
+  // Kurtarılan ruhun fısıltısı: ekranda kısa süre belirip kaybolan yazı. id her fısıltıda artar,
+  // ki aynı yazı arka arkaya gelse de HUD onu baştan canlandırsın. Henüz fısıltı yoksa null.
+  whisper: { id: number; text: string } | null;
 }
 
 export const gameStore = createStore<GameState>(() => ({
@@ -16,4 +19,5 @@ export const gameStore = createStore<GameState>(() => ({
   maxHealth: 100,
   dead: false,
   minions: 0,
+  whisper: null,
 }));
