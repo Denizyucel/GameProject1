@@ -108,7 +108,17 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   3 m'den uzaklaşınca, 3.4 m/sn); 6 m içindeki ve oyuncudan 10 m'den yakın düşmana koşup vurur (5 hasar,
   0.5 sn mola). En fazla 5 (MAX_MINIONS); fazlasında rastgele biri seal_break release efektiyle yok olur.
   HUD'da "İskelet: N". Deneme: tools/minion_test.gd.
-- Henüz taşınmadı: düşmana tıklayınca kovalayıp vurma, mühür kırma, iskeletler, HUD, parça saydamlaşması.
+- Düşmana tıklayarak dövüş: player.enemy_under_cursor ekranda düşmanın ayağından 2 m yukarısına uzanan
+  çizgiye bakar (0.6 m yarıçap, fizik/çarpışma kutusu yok). Tıklanan düşman attack_target olur: oyuncu
+  kovalar (yol 0.3 sn'de bir), 1.7 m'ye yetişince vurur, ölene kadar vuruşları zincirler; zemine tık ya da
+  WASD bırakır. Darbe önce kovalanan düşmana gider. Deneme: tools/click_fight_test.gd (gerçek tık).
+- Kemik mızrağı (sağ tık; Mac'te Ctrl + tık da): player.start_spear → Magic Spell Pack'in 1H Magic
+  Attack 01-03'ünden (spell1-3) biri 1.8 kat hızlı; elin en hızlı anında effects/bone_spear.tscn fırlar
+  (göğüs hizası, 0.6 m önden). Mızrak: kemik beyazı koni + kırmızı köz izi (GPUParticles3D) + kırmızı ışık;
+  16 m/sn, 14 m menzil, yolundaki her düşmana bir kez 15 hasar (delip geçer); altı navmesh'ten 0.6 m'den
+  uzaksa duvara çarpmış sayılıp kırılır (kitap yığını gibi alçak engellerde de kırılır). Bekleme 0.8 sn,
+  mana yok. Deneme: tools/spear_test.gd (gerçek sağ tık).
+- Henüz taşınmadı: mühür kırma, iskeletler, HUD, parça saydamlaşması.
 
 ## Mimari kurallar
 - src/game/ React import etmez; src/hud/ Three.js nesnelerine dokunmaz.
