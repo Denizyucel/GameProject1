@@ -10,6 +10,21 @@ const TURN_SPEED := 12.0 # dönüşün ne kadar hızlı yetiştiği (büyüdük�
 const ANIMATION_BLEND := 0.2 # bekleme ↔ yürüme geçişinin süresi (saniye)
 const HIPS_BONE := "mixamorig_Hips"
 
+# Kılıç: sağ elde. Boyu (metre) ve elin tuttuğu yer (bıçak ucundan ölçülen boy oranı)
+const SWORD_FILE := "res://assets/weapons/sword.glb"
+const SWORD_LENGTH := 1.1
+const SWORD_GRIP := 0.89
+
+# Kılıç vuruşları (Mixamo "Lite Sword and Shield Pack"): her vuruşta rastgele biri oynar
+const ATTACK_FILES := [
+	"res://assets/animations/sword/attack.fbx",
+	"res://assets/animations/sword/attack2.fbx",
+	"res://assets/animations/sword/attack3.fbx",
+	"res://assets/animations/sword/attack4.fbx",
+]
+const ATTACK_TIME_SCALE := 1.3 # vuruşlar kaç kat hızlı oynasın
+const ATTACK_BLEND := 0.1
+
 # Bekleme ve yürüme animasyonlarının dosyası ve dosyadaki adı
 @export_file("*.fbx", "*.glb") var idle_file := "res://assets/character/idle.fbx"
 @export var idle_name := "mixamo_com"
@@ -23,6 +38,8 @@ const HIPS_BONE := "mixamorig_Hips"
 
 var walk_clip_speed := 0.0 # yürüme animasyonunda ayakların ilerlediği hız (metre / saniye, oyundaki ölçekte)
 var walking := false
+var attack_names: Array[String] = [] # yüklenen vuruş animasyonlarının adları
+var attack_time_left := 0.0 # süren vuruşun bitmesine kalan süre (saniye); 0 ise vurmuyor
 
 
 func _ready() -> void:
@@ -31,8 +48,23 @@ func _ready() -> void:
 	var walk := take_animation(walk_file, walk_name)
 	walk_clip_speed = remove_root_motion(walk) * model.scale.x
 	library.add_animation("walk", walk)
+	for i in ATTACK_FILES.size():
+		if not ResourceLoader.exists(ATTACK_FILES[i]):
+			continue
+		var attack := take_animation(ATTACK_FILES[i], "mixamo_com")
+		attack.loop_mode = Animation.LOOP_NONE # bir kez oynar
+		remove_root_motion(attack) # vururken öne kaymasın
+		library.add_animation("vurus%d" % (i + 1), attack)
+		attack_names.append("hareket/vurus%d" % (i + 1))
 	animation_player.add_animation_library("hareket", library)
 	animation_player.play("hareket/idle")
+
+	var sword_scene := load(SWORD_FILE) as PackedScene
+	if sword_scene:
+		var sword := Weapon.prepare_sword(sword_scene.instantiate(), SWORD_LENGTH, SWORD_GRIP)
+		if not Weapon.attach_to_hand(skeleton, "Right", sword):
+			push_warning("Kılıç takılamadı: modelin sağ elinde gerekli kemikler yok")
+			sword.free()
 
 
 # Bir dosyadaki animasyonun kopyasını al ve bu modelin iskeletine uyarla
@@ -81,21 +113,51 @@ func remove_root_motion(animation: Animation) -> float:
 	return Vector2(last.x - first.x, last.z - first.z).length() / animation.length
 
 
-# Sol tık: tıklanan zemin noktasına yürü
+# Sol tık: tıklanan zemin noktasına yürü. Shift + sol tık: olduğun yerde o yöne kılıç salla.
 func _unhandled_input(event: InputEvent) -> void:
 	var click := event as InputEventMouseButton
 	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_LEFT:
 		return
+	if attack_time_left > 0:
+		return # vuruş bitmeden yeni bir şey başlamaz
 	var camera := get_viewport().get_camera_3d()
 	# Kameradan farenin altına doğru bir ışın gönder, zemin düzlemine (y = 0) çarptığı yeri bul
 	var origin := camera.project_ray_origin(click.position)
 	var direction := camera.project_ray_normal(click.position)
 	var hit = Plane(Vector3.UP, 0).intersects_ray(origin, direction)
-	if hit != null:
+	if hit == null:
+		return
+	if click.shift_pressed:
+		start_attack(hit)
+	else:
 		agent.target_position = hit # navmesh dışına tıklanırsa ajan en yakın yürünebilir noktaya gider
 
 
+# Yürümeyi bırak, hedefe dön ve rastgele bir kılıç vuruşu başlat
+func start_attack(toward: Vector3) -> void:
+	if attack_names.is_empty():
+		return
+	agent.target_position = global_position # yürümeyi bırak
+	walking = false
+	var to_target := toward - global_position
+	if Vector2(to_target.x, to_target.z).length() > 0.01:
+		rotation.y = atan2(to_target.x, to_target.z) # vuruşta beklemeden hedefe dön
+	var attack: String = attack_names.pick_random()
+	animation_player.play(attack, ATTACK_BLEND)
+	animation_player.seek(0.0, true) # aynı vuruş arka arkaya seçildiyse baştan başlasın
+	animation_player.speed_scale = ATTACK_TIME_SCALE
+	attack_time_left = animation_player.get_animation(attack).length / ATTACK_TIME_SCALE
+
+
 func _physics_process(delta: float) -> void:
+	if attack_time_left > 0:
+		attack_time_left -= delta
+		if attack_time_left <= 0:
+			attack_time_left = 0
+			animation_player.play("hareket/idle", ANIMATION_BLEND)
+			animation_player.speed_scale = 1.0
+		return # vururken yürümez
+
 	var was_walking := walking
 	walking = not agent.is_navigation_finished()
 	if walking:

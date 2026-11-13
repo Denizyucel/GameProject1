@@ -48,13 +48,18 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   Bekleme: Nightshade'in idle.fbx'i; yürüme: modelin kendi "Walking"i. player.gd her animasyonu modelin
   iskeletine uyarlar (iz yolu + kalça yüksekliği oranı); dosya ve ad Inspector'dan (idle_file/walk_file).
   Yeni Mixamo animasyonu: herhangi bir Mixamo karakteriyle "Without Skin" indir, olduğu gibi çalışır.
-  Nightshade (nightshade.fbx) assets'te duruyor. Yürümede kalçanın root motion'ı silinir, hız animasyona
+  Nightshade (nightshade.fbx) assets'te duruyor. Kılıç: assets/weapons/sword.glb sağ elde
+  (characters/weapon.gd: Weapon.prepare_sword, Weapon.attach_to_hand → BoneAttachment3D + pivot;
+  işaret parmağı yoksa orta parmak kullanılır; 1.1 m, kabzadan %89).
+  Vuruş: Shift + sol tık → yerinde, tıklanan yöne dönüp assets/animations/sword/attack*.fbx'ten rastgele
+  biri (1.3 kat hızlı, root motion kilitli); vururken yürümez ve yeni tık almaz. Henüz hasar/darbe anı yok.
+  Deneme: `godot --path godot --resolution 1280x720 -s tools/attack_test.gd -- <klasör>`. Yürümede kalçanın root motion'ı silinir, hız animasyona
   uydurulur; sol tık → zemin düzlemine ışın → NavigationAgent3D hedefi, 3 m/sn, yumuşak dönüş.
 - Kontrol betikleri (pencere kısa süre açılır):
   `godot --path godot --resolution 1280x720 -s tools/screenshot.gd -- <çıktı.png> 90`;
   `... -s tools/walk_test.gd -- <klasör> <tık x> <tık y>` (sahte tık, yol ve iki ekran görüntüsü);
   `godot --headless --path godot -s tools/inspect.gd -- res://...fbx` (model ağacı, animasyonlar).
-- Henüz taşınmadı: WASD, saldırı, düşmanlar, mühür kırma, iskeletler, HUD, parça saydamlaşması.
+- Henüz taşınmadı: WASD, vuruşun darbe anı ve hasarı, düşmanlar, mühür kırma, iskeletler, HUD, parça saydamlaşması.
 
 ## Mimari kurallar
 - src/game/ React import etmez; src/hud/ Three.js nesnelerine dokunmaz.
