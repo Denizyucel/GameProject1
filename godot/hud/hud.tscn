@@ -24,6 +24,23 @@ font_size = 15
 outline_size = 4
 outline_color = Color(0, 0, 0, 0.8)
 
+[sub_resource type="LabelSettings" id="OlumYazisiAyari"]
+font_size = 40
+font_color = Color(0.88, 0.28, 0.28, 1)
+outline_size = 6
+outline_color = Color(0, 0, 0, 0.8)
+
+[sub_resource type="SystemFont" id="FisiltiYazitipi"]
+font_italic = true
+
+[sub_resource type="LabelSettings" id="FisiltiAyari"]
+font = SubResource("FisiltiYazitipi")
+font_size = 24
+font_color = Color(0.66, 0.85, 1, 1)
+shadow_size = 10
+shadow_color = Color(0.35, 0.6, 1, 0.55)
+shadow_offset = Vector2(0, 0)
+
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
 
@@ -88,3 +105,48 @@ text = "100 / 100"
 label_settings = SubResource("SayiYazisi")
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="OlumYazisi" type="Label" parent="."]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -40.0
+offset_right = 300.0
+offset_bottom = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+text = "Öldün"
+label_settings = SubResource("OlumYazisiAyari")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Fisilti" type="Label" parent="."]
+modulate = Color(1, 1, 1, 0)
+anchors_preset = 10
+anchor_top = 0.22
+anchor_right = 1.0
+anchor_bottom = 0.22
+offset_bottom = 40.0
+grow_horizontal = 2
+mouse_filter = 2
+label_settings = SubResource("FisiltiAyari")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="IskeletSayisi" type="Label" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 196.0
+offset_top = -120.0
+offset_right = 320.0
+offset_bottom = -96.0
+grow_vertical = 0
+mouse_filter = 2
+modulate = Color(1, 1, 1, 0.8)
+text = "İskelet: 0"

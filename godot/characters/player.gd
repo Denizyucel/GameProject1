@@ -1,17 +1,19 @@
-# Oyuncu karakteri (Ruh Kıran): tıklanan yere navmesh üzerinden yürür.
-# Model: player.tscn'deki "Model" düğümü (Mixamo kemik adlı herhangi bir karakter). Bekleme ve yürüme
-# animasyonları aşağıdaki dosyalardan alınır; başka bir modelden geliyorsa yeni modelin iskeletine
-# uyarlanır (iz yolları ve kalça yüksekliği). Ayarlar editörde, Player düğümünün Inspector'ında.
+# Oyuncu karakteri (Ruh Kıran): tıklanan yere navmesh üzerinden ya da WASD ile yürür, Shift + tıkla
+# kılıç sallar; darbe anında önündeki düşmana vurur. Canı biterse ölür, biraz sonra doğuş noktasında kalkar.
+# Model: player.tscn'deki "Model" düğümü (Mixamo kemik adlı herhangi bir karakter). Animasyonlar başka
+# dosyalardan gelip bu modele uyarlanır (RigAnimations). Ayarlar editörde, Player'ın Inspector'ında.
 
 extends Node3D
 
 ## Can değişince gönderilir (HUD'daki can küresi dinler)
 signal health_changed(health: float, max_health: float)
+## Ölünce ve yeniden doğunca gönderilir (HUD "Öldün" yazısını gösterir/gizler)
+signal died
+signal respawned
 
 const MOVE_SPEED := 3.0 # metre / saniye
 const TURN_SPEED := 12.0 # dönüşün ne kadar hızlı yetiştiği (büyüdükçe daha keskin)
 const ANIMATION_BLEND := 0.2 # bekleme ↔ yürüme geçişinin süresi (saniye)
-const HIPS_BONE := "mixamorig_Hips"
 
 # Kılıç: sağ elde. Boyu (metre) ve elin tuttuğu yer (bıçak ucundan ölçülen boy oranı)
 const SWORD_FILE := "res://assets/weapons/sword.glb"
@@ -27,45 +29,77 @@ const ATTACK_FILES := [
 ]
 const ATTACK_TIME_SCALE := 1.3 # vuruşlar kaç kat hızlı oynasın
 const ATTACK_BLEND := 0.1
+const ATTACK_DAMAGE := 10.0
+const HIT_REACH := 2.2 # darbe anında düşman en fazla bu kadar uzakta olabilir (metre)
+const HIT_ARC := 0.3 # düşman ne kadar önde olmalı (1 = tam önde, 0 = yanda; kosinüs)
+
+const DEATH_FILE := "res://assets/animations/creature/mutant-dying.fbx"
+
+# Büyü (iskelet kaldırma): Mixamo "Magic Spell Pack"ten rastgele biri, 1.5 kat hızlı
+const SPELL_COUNT := 12
+const SPELL_FILE := "res://assets/animations/spell/spell%d.fbx"
+const SPELL_TIME_SCALE := 1.5
+const RESPAWN_DELAY := 4.0
 
 # Bekleme ve yürüme animasyonlarının dosyası ve dosyadaki adı
 @export_file("*.fbx", "*.glb") var idle_file := "res://assets/character/idle.fbx"
 @export var idle_name := "mixamo_com"
 @export_file("*.fbx", "*.glb") var walk_file := "res://assets/character/walk.fbx"
 @export var walk_name := "mixamo_com"
+@export var max_health := 100.0
 
 @onready var agent: NavigationAgent3D = $NavigationAgent3D
 @onready var model: Node3D = $Model
 @onready var animation_player: AnimationPlayer = model.find_child("AnimationPlayer")
 @onready var skeleton: Skeleton3D = model.find_child("Skeleton3D")
 
-@export var max_health := 100.0
 var health := max_health
-
+var alive := true
+var spawn_point := Vector3.ZERO
 var walk_clip_speed := 0.0 # yürüme animasyonunda ayakların ilerlediği hız (metre / saniye, oyundaki ölçekte)
 var walking := false
-var attack_names: Array[String] = [] # yüklenen vuruş animasyonlarının adları
-var attack_time_left := 0.0 # süren vuruşun bitmesine kalan süre (saniye); 0 ise vurmuyor
+var attack_moves: Array[Dictionary] = [] # her vuruş: {name, hit_moment}
+var attack: Dictionary = {} # süren vuruş; boşsa vurmuyor
+var attack_time := 0.0 # süren vuruşun kaç saniyedir sürdüğü
+var attack_has_hit := false
+var death_time := 0.0
+var spell_names: Array[String] = []
+var cast_time := -1.0 # büyü başladıysa kaç saniyedir sürdüğü; -1 ise büyü yapmıyor
+var cast_duration := 1.0
 
 
 func _ready() -> void:
+	add_to_group("oyuncu") # düşmanlar oyuncuyu bu grupla bulur
+	spawn_point = global_position
 	var library := AnimationLibrary.new()
-	library.add_animation("idle", take_animation(idle_file, idle_name))
-	var walk := take_animation(walk_file, walk_name)
-	remove_root_motion(walk)
+	library.add_animation("idle", RigAnimations.take(idle_file, idle_name, animation_player, skeleton))
+	var walk := RigAnimations.take(walk_file, walk_name, animation_player, skeleton)
+	RigAnimations.remove_root_motion(walk)
 	library.add_animation("walk", walk)
 	for i in ATTACK_FILES.size():
 		if not ResourceLoader.exists(ATTACK_FILES[i]):
 			continue
-		var attack := take_animation(ATTACK_FILES[i], "mixamo_com")
-		attack.loop_mode = Animation.LOOP_NONE # bir kez oynar
-		remove_root_motion(attack) # vururken öne kaymasın
-		library.add_animation("vurus%d" % (i + 1), attack)
-		attack_names.append("hareket/vurus%d" % (i + 1))
+		var move := RigAnimations.take(ATTACK_FILES[i], "mixamo_com", animation_player, skeleton, false)
+		RigAnimations.remove_root_motion(move) # vururken öne kaymasın
+		library.add_animation("vurus%d" % (i + 1), move)
+	for i in range(1, SPELL_COUNT + 1):
+		var path := SPELL_FILE % i
+		if ResourceLoader.exists(path):
+			var spell := RigAnimations.take(path, "mixamo_com", animation_player, skeleton, false)
+			RigAnimations.remove_root_motion(spell)
+			library.add_animation("buyu%d" % i, spell)
+			spell_names.append("hareket/buyu%d" % i)
+	if ResourceLoader.exists(DEATH_FILE):
+		library.add_animation("olum", RigAnimations.take(DEATH_FILE, "mixamo_com", animation_player, skeleton, false))
 	animation_player.add_animation_library("hareket", library)
-	# Yürüme animasyonunun ayaklarının taşıdığı hız: animasyon buna göre hızlandırılıp yavaşlatılır,
-	# ki ayaklar yerde kaymasın
-	walk_clip_speed = stride_speed("hareket/walk")
+
+	# Ölçümler (bir kez): yürümenin ayak hızı ve her vuruşun darbe anı
+	walk_clip_speed = RigAnimations.stride_speed(animation_player, skeleton, "hareket/walk")
+	for i in ATTACK_FILES.size():
+		var animation_name := "hareket/vurus%d" % (i + 1)
+		if animation_player.has_animation(animation_name):
+			var moment := RigAnimations.fastest_hand_moment(animation_player, skeleton, animation_name)
+			attack_moves.append({"name": animation_name, "hit_moment": moment})
 	animation_player.play("hareket/idle")
 
 	var sword_scene := load(SWORD_FILE) as PackedScene
@@ -76,77 +110,67 @@ func _ready() -> void:
 			sword.free()
 
 
-## Canı azalt (eksi değer canı artırır). Henüz ölüm yok: düşmanlar gelince eklenecek.
+## Canı azalt (eksi değer canı artırır). Can biterse ölür.
 func take_damage(amount: float) -> void:
+	if not alive:
+		return
 	health = clampf(health - amount, 0.0, max_health)
 	health_changed.emit(health, max_health)
+	if health <= 0:
+		die()
 
 
-# Bir dosyadaki animasyonun kopyasını al ve bu modelin iskeletine uyarla
-func take_animation(path: String, animation_name: String) -> Animation:
-	var source: Node = (load(path) as PackedScene).instantiate()
-	var source_player: AnimationPlayer = source.find_child("AnimationPlayer")
-	var source_skeleton: Skeleton3D = source.find_child("Skeleton3D")
-	var animation: Animation = source_player.get_animation(animation_name).duplicate()
-
-	# İz yolları "iskeletin yolu:kemik" biçiminde; iskeletin bu modeldeki yolunu yaz
-	var target_root := animation_player.get_node(animation_player.root_node)
-	var target_path := String(target_root.get_path_to(skeleton))
-	# Kalça konumunu iki karakterin kalça yüksekliği oranında ölçekle (kısa karakter havada yürümesin)
-	var height_ratio := hips_height(skeleton) / hips_height(source_skeleton)
-	for track in animation.get_track_count():
-		var bone := String(animation.track_get_path(track)).get_slice(":", 1)
-		animation.track_set_path(track, NodePath(target_path + ":" + bone))
-		if bone == HIPS_BONE and animation.track_get_type(track) == Animation.TYPE_POSITION_3D:
-			for key in animation.track_get_key_count(track):
-				animation.track_set_key_value(track, key, animation.track_get_key_value(track, key) * height_ratio)
-	source.free()
-	animation.loop_mode = Animation.LOOP_LINEAR
-	return animation
+## Vuruş, büyü ya da ölüm sürerken yeni bir şey başlamaz
+func is_busy() -> bool:
+	return not alive or not attack.is_empty() or cast_time >= 0
 
 
-# Bir yürüme ya da koşma animasyonunda ayakların karakteri ne hızla taşıdığı (metre / saniye, oyundaki
-# ölçekte). Yere basan ayak bir adım boyunca geriye kayar; bir döngüde iki adım atılır. Animasyon yerinde
-# yürüyorsa (kalça ilerlemiyorsa) hızı bilmenin tek yolu bu.
-func stride_speed(animation_name: String) -> float:
-	var foot := skeleton.find_bone("mixamorig_LeftFoot")
-	var animation := animation_player.get_animation(animation_name)
-	if foot == -1 or animation == null:
-		return 0.0
-	var min_z := INF
-	var max_z := -INF
-	animation_player.play(animation_name)
-	const SAMPLES := 40
-	for i in SAMPLES:
-		animation_player.seek(animation.length * i / SAMPLES, true)
-		var z := skeleton.get_bone_global_pose(foot).origin.z
-		min_z = minf(min_z, z)
-		max_z = maxf(max_z, z)
-	animation_player.stop()
-	return 2.0 * (max_z - min_z) / animation.length * skeleton.global_basis.get_scale().x
+## Hedefe dön ve rastgele bir büyü animasyonu başlat. Büyünün süresini döndürür (başlayamazsa -1).
+func start_cast(toward: Vector3) -> float:
+	if is_busy():
+		return -1.0
+	agent.target_position = global_position # yürümeyi bırak
+	walking = false
+	var to_target := toward - global_position
+	if Vector2(to_target.x, to_target.z).length() > 0.01:
+		rotation.y = atan2(to_target.x, to_target.z)
+	cast_time = 0.0
+	cast_duration = 1.0
+	if not spell_names.is_empty():
+		var spell: String = spell_names.pick_random()
+		animation_player.play(spell, ATTACK_BLEND)
+		animation_player.seek(0.0, true)
+		animation_player.speed_scale = SPELL_TIME_SCALE
+		cast_duration = animation_player.get_animation(spell).length / SPELL_TIME_SCALE
+	return cast_duration
 
 
-func hips_height(target: Skeleton3D) -> float:
-	var bone := target.find_bone(HIPS_BONE)
-	return target.get_bone_global_rest(bone).origin.y if bone != -1 else 1.0
+## Süren büyünün ilerlemesi (0..1); büyü yapmıyorsa -1
+func cast_progress() -> float:
+	return minf(cast_time / cast_duration, 1.0) if cast_time >= 0 else -1.0
 
 
-# Yürüme animasyonu kalçayı ileri taşır (root motion); karakteri biz yürüttüğümüz için kalçayı
-# yerinde tut. Animasyonun kendi ilerleme hızını döndürür (metre / saniye).
-func remove_root_motion(animation: Animation) -> float:
-	var track := -1
-	for i in animation.get_track_count():
-		if String(animation.track_get_path(i)).ends_with(":" + HIPS_BONE) and animation.track_get_type(i) == Animation.TYPE_POSITION_3D:
-			track = i
-	if track == -1:
-		return 0.0
-	var count := animation.track_get_key_count(track)
-	var first: Vector3 = animation.track_get_key_value(track, 0)
-	var last: Vector3 = animation.track_get_key_value(track, count - 1)
-	for i in count:
-		var value: Vector3 = animation.track_get_key_value(track, i)
-		animation.track_set_key_value(track, i, Vector3(first.x, value.y, first.z))
-	return Vector2(last.x - first.x, last.z - first.z).length() / animation.length
+func die() -> void:
+	alive = false
+	attack = {}
+	cast_time = -1.0
+	walking = false
+	agent.target_position = global_position
+	death_time = 0.0
+	if animation_player.has_animation("hareket/olum"):
+		animation_player.play("hareket/olum", ANIMATION_BLEND)
+		animation_player.speed_scale = 1.0
+	died.emit()
+
+
+func respawn() -> void:
+	alive = true
+	health = max_health
+	global_position = spawn_point
+	agent.target_position = spawn_point
+	animation_player.play("hareket/idle", ANIMATION_BLEND)
+	health_changed.emit(health, max_health)
+	respawned.emit()
 
 
 # Sol tık: tıklanan zemin noktasına yürü. Shift + sol tık: olduğun yerde o yöne kılıç salla.
@@ -154,8 +178,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	var click := event as InputEventMouseButton
 	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_LEFT:
 		return
-	if attack_time_left > 0:
-		return # vuruş bitmeden yeni bir şey başlamaz
+	if is_busy():
+		return # ölüyken, vururken ya da büyü yaparken yeni bir şey başlamaz
 	var camera := get_viewport().get_camera_3d()
 	# Kameradan farenin altına doğru bir ışın gönder, zemin düzlemine (y = 0) çarptığı yeri bul
 	var origin := camera.project_ray_origin(click.position)
@@ -171,18 +195,55 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # Yürümeyi bırak, hedefe dön ve rastgele bir kılıç vuruşu başlat
 func start_attack(toward: Vector3) -> void:
-	if attack_names.is_empty():
+	if attack_moves.is_empty():
 		return
 	agent.target_position = global_position # yürümeyi bırak
 	walking = false
 	var to_target := toward - global_position
 	if Vector2(to_target.x, to_target.z).length() > 0.01:
 		rotation.y = atan2(to_target.x, to_target.z) # vuruşta beklemeden hedefe dön
-	var attack: String = attack_names.pick_random()
-	animation_player.play(attack, ATTACK_BLEND)
+	attack = attack_moves.pick_random()
+	attack_time = 0.0
+	attack_has_hit = false
+	animation_player.play(attack["name"], ATTACK_BLEND)
 	animation_player.seek(0.0, true) # aynı vuruş arka arkaya seçildiyse baştan başlasın
 	animation_player.speed_scale = ATTACK_TIME_SCALE
-	attack_time_left = animation_player.get_animation(attack).length / ATTACK_TIME_SCALE
+
+
+# Vuruşu ilerlet: darbe anında önündeki en yakın düşmana vur, bitince beklemeye dön
+func update_attack(delta: float) -> void:
+	attack_time += delta
+	var duration: float = animation_player.get_animation(attack["name"]).length / ATTACK_TIME_SCALE
+	var progress := attack_time / duration
+	if not attack_has_hit and progress >= attack["hit_moment"]:
+		attack_has_hit = true
+		var target := enemy_in_front()
+		if target:
+			target.hit(global_position, ATTACK_DAMAGE)
+	if progress >= 1.0:
+		attack = {}
+		animation_player.play("hareket/idle", ANIMATION_BLEND)
+		animation_player.speed_scale = 1.0
+
+
+# Kılıcın erişebileceği, önündeki en yakın canlı düşman (yoksa null)
+func enemy_in_front() -> Node3D:
+	var forward := Vector3(sin(rotation.y), 0, cos(rotation.y))
+	var best: Node3D = null
+	var best_distance := HIT_REACH
+	for enemy in get_tree().get_nodes_in_group("dusman"):
+		if not enemy.alive:
+			continue
+		var to_enemy: Vector3 = enemy.global_position - global_position
+		to_enemy.y = 0
+		var distance := to_enemy.length()
+		if distance > best_distance:
+			continue
+		if distance > 0.3 and forward.dot(to_enemy / distance) < HIT_ARC:
+			continue # arkada ya da çok yanda
+		best = enemy
+		best_distance = distance
+	return best
 
 
 # WASD ya da ok tuşları: ekrana göre yön (W = ekranın yukarısı). Tuşların klavyedeki yerine bakılır,
@@ -225,13 +286,21 @@ func face(direction: Vector3, delta: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if attack_time_left > 0:
-		attack_time_left -= delta
-		if attack_time_left <= 0:
-			attack_time_left = 0
+	if not alive:
+		death_time += delta
+		if death_time >= RESPAWN_DELAY:
+			respawn()
+		return
+	if not attack.is_empty():
+		update_attack(delta)
+		return # vururken yürümez
+	if cast_time >= 0:
+		cast_time += delta
+		if cast_time >= cast_duration:
+			cast_time = -1.0
 			animation_player.play("hareket/idle", ANIMATION_BLEND)
 			animation_player.speed_scale = 1.0
-		return # vururken yürümez
+		return # büyü yaparken yürümez
 
 	var was_walking := walking
 	var key_direction := keyboard_direction()
@@ -244,15 +313,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		walking = not agent.is_navigation_finished()
 		if walking:
-			# Ajan yolun bir sonraki köşesini söyler; oraya doğru düz yürü
-			var next := agent.get_next_path_position()
-			var to_next := Vector3(next.x - global_position.x, 0, next.z - global_position.z)
-			var step := MOVE_SPEED * delta
-			if to_next.length() <= step:
-				global_position = Vector3(next.x, global_position.y, next.z)
-			else:
-				global_position += to_next.normalized() * step
-			face(to_next, delta)
+			face(RigAnimations.step_along_path(agent, self, MOVE_SPEED, delta), delta)
 
 	if walking != was_walking:
 		if walking:

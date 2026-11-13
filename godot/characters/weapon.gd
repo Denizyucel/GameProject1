@@ -65,6 +65,41 @@ static func prepare_sword(model: Node3D, length: float, grip: float) -> Node3D:
 	return sword
 
 
+## Kalkan modelini sol el pivotuna uygun hale getir: ön kola kayışla bağlı gibi. Boyu ön kol boyunca
+## (pivot z: bilekten dirseğe), yüzü elin sırtına dik (pivot x) dışarı bakar. Meshy kalkanında yüz +z'de.
+## facing: yüzün pivot x'in hangi yönüne baktığı (1 ya da -1); toward_elbow: dirseğe doğru kayma (metre).
+static func prepare_shield(model: Node3D, height: float, facing: float, toward_elbow: float) -> Node3D:
+	var box := scene_aabb(model, Transform3D.IDENTITY)
+	var center := box.get_center()
+	# İç düğüm: kalkanın ortası orijinde, arka yüzü ele değecek şekilde biraz dışarı itilmiş
+	var inner := Node3D.new()
+	model.position = Vector3(-center.x, -center.y, -center.z + box.size.z / 2)
+	inner.add_child(model)
+	# Dış düğüm: model y → pivot z (üstü dirseğe), model z → pivot x * facing (yüzü dışarı),
+	# model x → pivot y * facing (dönüş olsun, ayna görüntüsü olmasın diye işareti facing'e bağlı)
+	var shield := Node3D.new()
+	shield.name = "Kalkan"
+	shield.basis = Basis(Vector3(0, facing, 0), Vector3(0, 0, 1), Vector3(facing, 0, 0)).scaled(Vector3.ONE * height / box.size.y)
+	shield.position.z = toward_elbow
+	shield.add_child(inner)
+	return shield
+
+
+## Koyu dokulu bir modeli parlat: her malzemenin kopyası alınır (asıl dosya değişmez), rengi
+## brightness katına çıkar, metal oranı metallic olur
+static func brighten(node: Node, brightness: float, metallic: float) -> void:
+	for mesh_instance in node.find_children("*", "MeshInstance3D", true, false):
+		var mesh := (mesh_instance as MeshInstance3D).mesh
+		for surface in mesh.get_surface_count():
+			var material := mesh.surface_get_material(surface) as StandardMaterial3D
+			if material == null:
+				continue
+			var copy := material.duplicate() as StandardMaterial3D
+			copy.albedo_color = copy.albedo_color * brightness
+			copy.metallic = metallic
+			(mesh_instance as MeshInstance3D).set_surface_override_material(surface, copy)
+
+
 ## Bir sahnedeki bütün şekillerin, sahnenin kendi eksenindeki toplam sınır kutusu
 static func scene_aabb(node: Node, parent: Transform3D) -> AABB:
 	var xform := parent

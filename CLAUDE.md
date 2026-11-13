@@ -13,8 +13,9 @@ oyuncunun tarafı, mavi = özgür ruh. Perdeler: Act I Kül Vadisi (boss: Dönü
 Act II Güneş Krallığı (sınır kasabası sahnesi; boss: Altın Engizisyoncu), Act III Hafıza Mahzeni
 (boss: Ayna Tayfı), Act IV Ebediyet Kulesi (boss: X, 2 evre), Epilog. Harita, karakter ve mekanik
 kararlarında önce Hikaye.md'ye bak.
-Vampir kavramı bırakıldı: koddaki vampirler (Enemy.ts, Vampire.ts) geçici yer tutucu, yerlerini
-Altın Ölümsüzler alacak. Yeni işlerde "vampir" üzerine tasarım yapma.
+Vampir kavramı bırakıldı: tarayıcı sürümündeki vampirler (Enemy.ts, Vampire.ts) geçici yer tutucuydu;
+Godot sürümünde yerlerini enemy1.glb düşmanları aldı (ileride Altın Ölümsüzler). Yeni işlerde
+"vampir" üzerine tasarım yapma.
 
 ## Platform
 Tarayıcıda çalışır, macOS için optimize edilir. Safari ve Chrome'da test edilir.
@@ -74,7 +75,40 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   arayüzün eski hali kaydedilebiliyor. Sahte fare/tuş olayları pencere odağını kaybedince bırakılabilir.
 - Dosyaları ben değiştirirken editör açıksa Godot "diskte değişti, yeniden yükle?" diye sorar: yeniden yükle
   (yoksa editördeki eski hali kaydedip değişikliklerin üstüne yazar).
-- Henüz taşınmadı: vuruşun darbe anı ve hasarı, düşmanlar, mühür kırma, iskeletler, HUD, parça saydamlaşması.
+- Düşmanlar (vampirlerin yerine): enemies/enemy.tscn + enemy.gd, model assets/enemies/enemy1.glb (Meshy
+  SmartRig, gümüş zırhlı pençeli şövalye; altın değil). main.tscn'de Dusmanlar altında 5 tane (eski
+  vampir yerleri). Vampirlerin davranışı aynen: 5 m'de dolaşma, 5 m'den fark etme, vurulunca 6 sn kızgın
+  ve 12 m'ye kadar kovalama, pençe (mutant-swiping, darbe anı ölçülür), 4 dövüş tarzı torbadan (STYLES:
+  can, hasar, boy, kovalama animasyonu/hızı, pençe hızı, mola, kas gösterisi). Animasyonlar ilk
+  düşmanda bir kez hazırlanıp hepsi arasında paylaşılır (static shared_library). Vurulunca
+  material_overlay ile kırmızı parlar, 0.4 sn şaşırır. Ölüm: mutant-dying.fbx (Godot okuyabiliyor),
+  sonra toprağa gömülüp silinir; seal_broken sinyali gönderir (mühür kırma efekti buna bağlanacak).
+  Gruplar: "dusman" (canlı düşmanlar), "oyuncu".
+- Oyuncu dövüşü: Shift + tık vuruşunun darbe anında (sağ elin en hızlı anı) önündeki 2.2 m içindeki
+  en yakın düşmana 10 hasar. Can 0 → ölüm animasyonu, HUD'da "Öldün", 4 sn sonra doğuş noktasında tam can.
+  Ortak animasyon işleri: characters/rig_animations.gd (RigAnimations: take, remove_root_motion,
+  stride_speed, fastest_hand_moment, step_along_path). Deneme: tools/combat_test.gd.
+- Mühür kırma: main.gd (Main'in betiği) düşmanların seal_broken sinyalini dinler →
+  effects/seal_break.tscn (+ .gd): altın parlama küresi ve halka (kodla), Kiymiklar (GPUParticles3D, 16
+  altın prizma, yerçekimli), Ruh (GPUParticles3D, 70 mavi nokta, halkadan yukarı hızlanarak ve dönerek;
+  0.15 sn gecikmeli), OmniLight3D (altın → mavi, 3 sn'de söner, 3.5 m). Parçacık ayarları editörde
+  sahneden. release = true: altınsız (serbest bırakılan iskelet için). 3.2 sn sonra kendini siler.
+  HUD.whisper(metin): Fisilti etiketi (italik SystemFont, mavi parıltı), belirip yukarı süzülerek kaybolur.
+  Godot Forward+'ta sahneye ışık eklemek shader derletmez; ışık havuzu gerekmedi.
+  Deneme: tools/seal_test.gd (efektin kendi saatine göre görüntü alır; ekran görüntüsü oyunu dondurur ve
+  Godot o süreyi oyun zamanına saymaz, duvar saatine göre beklemek yanıltır).
+- Ceset ve iskeletler (main.gd yönetir): düşman gömülünce buried sinyali → minions/corpse.tscn (flesh.glb,
+  1.1 m, rastgele yön, "ceset" grubu). 1 tuşu (fiziksel; numpad 1 de): oyuncu 8 m içindeki en yakın cesede
+  döner, Magic Spell Pack'ten rastgele büyü (assets/animations/spell/spell1-12.fbx, 1.5 kat hızlı;
+  player.start_cast/cast_progress/is_busy); ceset ilk yarıda mavi parlar, yarısında iskelet kalkar, ceset
+  gömülür. minions/minion.tscn + minion.gd: skeleton.fbx (1.8 m, 1.05 ölçek), sağda sword2.glb, sol ön
+  kolda kalkan.glb (Weapon.prepare_shield, facing -1; Weapon.brighten ile 1.8 kat parlak, metal 0.5).
+  Animasyonlar paylaşılır: idle.fbx, koşu = yeni Necromancer'ın "Running"i, 4 kılıç vuruşu (1.5 kat, darbe
+  anı ölçülür). Topraktan 0.9 sn'de mavi parıltıyla yükselir; oyuncuyu takip eder (altın açılı yer, 1.6 m;
+  3 m'den uzaklaşınca, 3.4 m/sn); 6 m içindeki ve oyuncudan 10 m'den yakın düşmana koşup vurur (5 hasar,
+  0.5 sn mola). En fazla 5 (MAX_MINIONS); fazlasında rastgele biri seal_break release efektiyle yok olur.
+  HUD'da "İskelet: N". Deneme: tools/minion_test.gd.
+- Henüz taşınmadı: düşmana tıklayınca kovalayıp vurma, mühür kırma, iskeletler, HUD, parça saydamlaşması.
 
 ## Mimari kurallar
 - src/game/ React import etmez; src/hud/ Three.js nesnelerine dokunmaz.

@@ -5,6 +5,8 @@
 [ext_resource type="PackedScene" path="res://characters/player.tscn" id="3_player"]
 [ext_resource type="Script" path="res://camera_follow.gd" id="4_camera"]
 [ext_resource type="PackedScene" path="res://hud/hud.tscn" id="5_hud"]
+[ext_resource type="PackedScene" path="res://enemies/enemy.tscn" id="6_enemy"]
+[ext_resource type="Script" path="res://main.gd" id="7_main"]
 
 [sub_resource type="ProceduralSkyMaterial" id="YansimaGogu"]
 sky_top_color = Color(0.3, 0.3, 0.38, 1)
@@ -25,6 +27,7 @@ ambient_light_color = Color(0.56078434, 0.5254902, 0.6901961, 1)
 ambient_light_energy = 0.8
 
 [node name="Main" type="Node3D" unique_id=989554303]
+script = ExtResource("7_main")
 
 [node name="Ortam" type="WorldEnvironment" parent="." unique_id=219416387]
 environment = SubResource("Environment_0xm2m")
@@ -55,3 +58,20 @@ target = NodePath("../Player")
 
 [node name="HUD" parent="." node_paths=PackedStringArray("player") instance=ExtResource("5_hud")]
 player = NodePath("../Player")
+
+[node name="Dusmanlar" type="Node3D" parent="."]
+
+[node name="Dusman1" parent="Dusmanlar" instance=ExtResource("6_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 0, -7)
+
+[node name="Dusman2" parent="Dusmanlar" instance=ExtResource("6_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, -7)
+
+[node name="Dusman3" parent="Dusmanlar" instance=ExtResource("6_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13, 0, 8)
+
+[node name="Dusman4" parent="Dusmanlar" instance=ExtResource("6_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, 13)
+
+[node name="Dusman5" parent="Dusmanlar" instance=ExtResource("6_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 15)
