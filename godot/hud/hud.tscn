@@ -1,0 +1,90 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://hud/hud.gd" id="1_hud"]
+[ext_resource type="Script" path="res://hud/health_globe.gd" id="2_globe"]
+[ext_resource type="Texture2D" path="res://assets/hud/globe-empty.png" id="3_empty"]
+[ext_resource type="Texture2D" path="res://assets/hud/globe-liquid.png" id="4_liquid"]
+[ext_resource type="Texture2D" path="res://assets/hud/globe-frame.png" id="5_frame"]
+[ext_resource type="Shader" path="res://hud/globe_fill.gdshader" id="6_fill"]
+
+[sub_resource type="ShaderMaterial" id="KayipCanMalzemesi"]
+shader = ExtResource("6_fill")
+shader_parameter/fill = 1.0
+shader_parameter/brightness = 1.8
+shader_parameter/flash = 0.0
+
+[sub_resource type="ShaderMaterial" id="SiviMalzemesi"]
+shader = ExtResource("6_fill")
+shader_parameter/fill = 1.0
+shader_parameter/brightness = 1.0
+shader_parameter/flash = 0.0
+
+[sub_resource type="LabelSettings" id="SayiYazisi"]
+font_size = 15
+outline_size = 4
+outline_color = Color(0, 0, 0, 0.8)
+
+[node name="HUD" type="CanvasLayer"]
+script = ExtResource("1_hud")
+
+[node name="CanKuresi" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -208.0
+offset_right = 200.0
+offset_bottom = -8.0
+grow_vertical = 0
+script = ExtResource("2_globe")
+
+[node name="BosKure" type="TextureRect" parent="CanKuresi"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture = ExtResource("3_empty")
+expand_mode = 1
+
+[node name="KayipCan" type="TextureRect" parent="CanKuresi"]
+modulate = Color(1, 1, 1, 0.7)
+material = SubResource("KayipCanMalzemesi")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture = ExtResource("4_liquid")
+expand_mode = 1
+
+[node name="Sivi" type="TextureRect" parent="CanKuresi"]
+material = SubResource("SiviMalzemesi")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture = ExtResource("4_liquid")
+expand_mode = 1
+
+[node name="Cerceve" type="TextureRect" parent="CanKuresi"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture = ExtResource("5_frame")
+expand_mode = 1
+
+[node name="Sayi" type="Label" parent="CanKuresi"]
+layout_mode = 1
+anchor_left = 0.275
+anchor_top = 0.253
+anchor_right = 0.765
+anchor_bottom = 0.744
+mouse_filter = 2
+text = "100 / 100"
+label_settings = SubResource("SayiYazisi")
+horizontal_alignment = 1
+vertical_alignment = 1

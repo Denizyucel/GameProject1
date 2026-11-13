@@ -4,10 +4,22 @@
 [ext_resource type="NavigationMesh" path="res://levels/yanik_kutuphane_nav.tres" id="2_nav"]
 [ext_resource type="PackedScene" path="res://characters/player.tscn" id="3_player"]
 [ext_resource type="Script" path="res://camera_follow.gd" id="4_camera"]
+[ext_resource type="PackedScene" path="res://hud/hud.tscn" id="5_hud"]
+
+[sub_resource type="ProceduralSkyMaterial" id="YansimaGogu"]
+sky_top_color = Color(0.3, 0.3, 0.38, 1)
+sky_horizon_color = Color(0.42, 0.42, 0.48, 1)
+ground_bottom_color = Color(0.05, 0.045, 0.06, 1)
+ground_horizon_color = Color(0.22, 0.22, 0.27, 1)
+
+[sub_resource type="Sky" id="Gok"]
+sky_material = SubResource("YansimaGogu")
 
 [sub_resource type="Environment" id="Environment_0xm2m"]
 background_mode = 1
 background_color = Color(0.07058824, 0.0627451, 0.09411765, 1)
+sky = SubResource("Gok")
+reflected_light_source = 2
 ambient_light_source = 2
 ambient_light_color = Color(0.56078434, 0.5254902, 0.6901961, 1)
 ambient_light_energy = 0.8
@@ -40,3 +52,6 @@ near = 0.1
 far = 200.0
 script = ExtResource("4_camera")
 target = NodePath("../Player")
+
+[node name="HUD" parent="." node_paths=PackedStringArray("player") instance=ExtResource("5_hud")]
+player = NodePath("../Player")

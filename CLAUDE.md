@@ -37,6 +37,9 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
 - godot/levels/yanik_kutuphane.tscn: bölge (tools/build_yanik_kutuphane.gd ile plandan bir kez üretildi;
   artık editörde düzenlenir, betiği yeniden çalıştırmak üzerine yazar). Her parça: konum/dönüş tutan
   bir Node3D ve içinde ölçeklenmiş .glb örneği ("Model").
+- Meshy modellerinin hepsi "metal" işaretli (metal oranı dokuda). Metal yüzeyler yansıtacak bir şey
+  bulsun diye ortamda sadece yansıma için koyu gri bir ProceduralSky var (arka plan ve genel ışık renkten);
+  açık gökyüzü zemini puslandırıyordu.
 - godot/main.tscn: ortam ışığı, ay ışığı (gölgeli), Gezinme (NavigationRegion3D; içinde bölge),
   Player, ortografik izometrik kamera (camera_follow.gd: takip, tekerlek/pinch zoom).
 - Navmesh: levels/yanik_kutuphane_nav.tres (ajan 0.4 m yarıçap, 1.8 m boy, 0.25 m tırmanma). Bölgede
@@ -45,7 +48,9 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
 - characters/player.tscn + player.gd: yeni Necromancer (assets/character/necromancer-kadin.glb; Meshy
   "SmartRig", Mixamo kemik adları + 23 etek/saç kemiği, eli: başparmak/orta/serçe, işaret parmağı YOK;
   1.7 m, 1.176 ölçekle 2 m). Mixamo'ya yüklemeye gerek yok (yüklenirse ek kemikler kaybolur).
-  Bekleme: Nightshade'in idle.fbx'i; yürüme: modelin kendi "Walking"i. player.gd her animasyonu modelin
+  Bekleme: Nightshade'in idle.fbx'i; hareket: modelin kendi "Running"i (yürüme animasyonları yerinde
+  yürüyor ve ayakları ~1.8 m/sn taşıyor, 3 m/sn'de kayıyordu; koşu 3.1 m/sn). Animasyon hızı ayaktan
+  ölçülür (player.gd stride_speed: sol ayağın bir döngüdeki ileri-geri menzili × 2 / süre). player.gd her animasyonu modelin
   iskeletine uyarlar (iz yolu + kalça yüksekliği oranı); dosya ve ad Inspector'dan (idle_file/walk_file).
   Yeni Mixamo animasyonu: herhangi bir Mixamo karakteriyle "Without Skin" indir, olduğu gibi çalışır.
   Nightshade (nightshade.fbx) assets'te duruyor. Kılıç: assets/weapons/sword.glb sağ elde
@@ -59,7 +64,17 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   `godot --path godot --resolution 1280x720 -s tools/screenshot.gd -- <çıktı.png> 90`;
   `... -s tools/walk_test.gd -- <klasör> <tık x> <tık y>` (sahte tık, yol ve iki ekran görüntüsü);
   `godot --headless --path godot -s tools/inspect.gd -- res://...fbx` (model ağacı, animasyonlar).
-- Henüz taşınmadı: WASD, vuruşun darbe anı ve hasarı, düşmanlar, mühür kırma, iskeletler, HUD, parça saydamlaşması.
+- WASD/oklar: ekrana göre yön (fiziksel tuş, klavye düzeninden bağımsız), adım navmesh'in en yakın
+  noktasına çekilir (duvar boyunca kayar), tıklanan hedefi iptal eder. Deneme: tools/keys_test.gd.
+- HUD: hud/hud.tscn (CanvasLayer; main.tscn'de, player'a bağlı). Can küresi hud/health_globe.gd +
+  globe_fill.gdshader (sıvıyı üstten keser; brightness, flash); görseller assets/hud. Oyuncunun canı
+  player.gd'de (max_health 100, take_damage, health_changed sinyali). Pencere ölçeklemesi canvas_items
+  (arayüz 1280x720'ye göre büyür). Deneme: tools/hud_test.gd.
+- Deneme betiklerinde ekran görüntüsünden önce `await RenderingServer.frame_post_draw` gerekir; yoksa
+  arayüzün eski hali kaydedilebiliyor. Sahte fare/tuş olayları pencere odağını kaybedince bırakılabilir.
+- Dosyaları ben değiştirirken editör açıksa Godot "diskte değişti, yeniden yükle?" diye sorar: yeniden yükle
+  (yoksa editördeki eski hali kaydedip değişikliklerin üstüne yazar).
+- Henüz taşınmadı: vuruşun darbe anı ve hasarı, düşmanlar, mühür kırma, iskeletler, HUD, parça saydamlaşması.
 
 ## Mimari kurallar
 - src/game/ React import etmez; src/hud/ Three.js nesnelerine dokunmaz.

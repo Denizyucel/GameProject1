@@ -5,6 +5,9 @@
 
 extends Node3D
 
+## Can değişince gönderilir (HUD'daki can küresi dinler)
+signal health_changed(health: float, max_health: float)
+
 const MOVE_SPEED := 3.0 # metre / saniye
 const TURN_SPEED := 12.0 # dönüşün ne kadar hızlı yetiştiği (büyüdükçe daha keskin)
 const ANIMATION_BLEND := 0.2 # bekleme ↔ yürüme geçişinin süresi (saniye)
@@ -36,6 +39,9 @@ const ATTACK_BLEND := 0.1
 @onready var animation_player: AnimationPlayer = model.find_child("AnimationPlayer")
 @onready var skeleton: Skeleton3D = model.find_child("Skeleton3D")
 
+@export var max_health := 100.0
+var health := max_health
+
 var walk_clip_speed := 0.0 # yürüme animasyonunda ayakların ilerlediği hız (metre / saniye, oyundaki ölçekte)
 var walking := false
 var attack_names: Array[String] = [] # yüklenen vuruş animasyonlarının adları
@@ -46,7 +52,7 @@ func _ready() -> void:
 	var library := AnimationLibrary.new()
 	library.add_animation("idle", take_animation(idle_file, idle_name))
 	var walk := take_animation(walk_file, walk_name)
-	walk_clip_speed = remove_root_motion(walk) * model.scale.x
+	remove_root_motion(walk)
 	library.add_animation("walk", walk)
 	for i in ATTACK_FILES.size():
 		if not ResourceLoader.exists(ATTACK_FILES[i]):
@@ -57,6 +63,9 @@ func _ready() -> void:
 		library.add_animation("vurus%d" % (i + 1), attack)
 		attack_names.append("hareket/vurus%d" % (i + 1))
 	animation_player.add_animation_library("hareket", library)
+	# Yürüme animasyonunun ayaklarının taşıdığı hız: animasyon buna göre hızlandırılıp yavaşlatılır,
+	# ki ayaklar yerde kaymasın
+	walk_clip_speed = stride_speed("hareket/walk")
 	animation_player.play("hareket/idle")
 
 	var sword_scene := load(SWORD_FILE) as PackedScene
@@ -65,6 +74,12 @@ func _ready() -> void:
 		if not Weapon.attach_to_hand(skeleton, "Right", sword):
 			push_warning("Kılıç takılamadı: modelin sağ elinde gerekli kemikler yok")
 			sword.free()
+
+
+## Canı azalt (eksi değer canı artırır). Henüz ölüm yok: düşmanlar gelince eklenecek.
+func take_damage(amount: float) -> void:
+	health = clampf(health - amount, 0.0, max_health)
+	health_changed.emit(health, max_health)
 
 
 # Bir dosyadaki animasyonun kopyasını al ve bu modelin iskeletine uyarla
@@ -88,6 +103,27 @@ func take_animation(path: String, animation_name: String) -> Animation:
 	source.free()
 	animation.loop_mode = Animation.LOOP_LINEAR
 	return animation
+
+
+# Bir yürüme ya da koşma animasyonunda ayakların karakteri ne hızla taşıdığı (metre / saniye, oyundaki
+# ölçekte). Yere basan ayak bir adım boyunca geriye kayar; bir döngüde iki adım atılır. Animasyon yerinde
+# yürüyorsa (kalça ilerlemiyorsa) hızı bilmenin tek yolu bu.
+func stride_speed(animation_name: String) -> float:
+	var foot := skeleton.find_bone("mixamorig_LeftFoot")
+	var animation := animation_player.get_animation(animation_name)
+	if foot == -1 or animation == null:
+		return 0.0
+	var min_z := INF
+	var max_z := -INF
+	animation_player.play(animation_name)
+	const SAMPLES := 40
+	for i in SAMPLES:
+		animation_player.seek(animation.length * i / SAMPLES, true)
+		var z := skeleton.get_bone_global_pose(foot).origin.z
+		min_z = minf(min_z, z)
+		max_z = maxf(max_z, z)
+	animation_player.stop()
+	return 2.0 * (max_z - min_z) / animation.length * skeleton.global_basis.get_scale().x
 
 
 func hips_height(target: Skeleton3D) -> float:
@@ -149,6 +185,45 @@ func start_attack(toward: Vector3) -> void:
 	attack_time_left = animation_player.get_animation(attack).length / ATTACK_TIME_SCALE
 
 
+# WASD ya da ok tuşları: ekrana göre yön (W = ekranın yukarısı). Tuşların klavyedeki yerine bakılır,
+# ki Türkçe ya da başka bir klavye düzeninde de aynı tuşlar çalışsın. Basılı değilse sıfır.
+func keyboard_direction() -> Vector3:
+	var input := Vector2.ZERO
+	if Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP):
+		input.y -= 1
+	if Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN):
+		input.y += 1
+	if Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT):
+		input.x -= 1
+	if Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT):
+		input.x += 1
+	if input == Vector2.ZERO:
+		return Vector3.ZERO
+	# Kameranın sağı ve ileri yönü, yere düzleştirilmiş: ekranın sağı ve yukarısı dünyada nereye düşüyor
+	var camera := get_viewport().get_camera_3d()
+	var right := Vector3(camera.global_basis.x.x, 0, camera.global_basis.x.z).normalized()
+	var up := Vector3(-camera.global_basis.z.x, 0, -camera.global_basis.z.z).normalized()
+	return (right * input.x - up * input.y).normalized()
+
+
+# Klavyeyle bir adım: istenen noktaya en yakın yürünebilir noktaya git. Duvara doğru yürürken navmesh'in
+# kenarına yapışıp boyunca kayar (tarayıcıdaki "çarpışmalı yürüme"nin karşılığı).
+func walk_with_keys(direction: Vector3, delta: float) -> void:
+	var wanted := global_position + direction * MOVE_SPEED * delta
+	var map := agent.get_navigation_map()
+	# Navmesh zeminden path_height_offset kadar yukarıda; aynı yükseklikte sor
+	var allowed := NavigationServer3D.map_get_closest_point(map, wanted + Vector3.UP * agent.path_height_offset)
+	global_position = Vector3(allowed.x, global_position.y, allowed.z)
+	face(direction, delta)
+
+
+# Model +z yönüne bakıyor: verilen yöne yumuşakça dön
+func face(direction: Vector3, delta: float) -> void:
+	if Vector2(direction.x, direction.z).length() > 0.01:
+		var target_angle := atan2(direction.x, direction.z)
+		rotation.y = lerp_angle(rotation.y, target_angle, 1.0 - exp(-TURN_SPEED * delta))
+
+
 func _physics_process(delta: float) -> void:
 	if attack_time_left > 0:
 		attack_time_left -= delta
@@ -159,20 +234,25 @@ func _physics_process(delta: float) -> void:
 		return # vururken yürümez
 
 	var was_walking := walking
-	walking = not agent.is_navigation_finished()
-	if walking:
-		# Ajan yolun bir sonraki köşesini söyler; oraya doğru düz yürü
-		var next := agent.get_next_path_position()
-		var to_next := Vector3(next.x - global_position.x, 0, next.z - global_position.z)
-		var step := MOVE_SPEED * delta
-		if to_next.length() <= step:
-			global_position = Vector3(next.x, global_position.y, next.z)
-		else:
-			global_position += to_next.normalized() * step
-		if to_next.length() > 0.01:
-			# Model +z yönüne bakıyor: yürüme yönüne yumuşakça dön
-			var target_angle := atan2(to_next.x, to_next.z)
-			rotation.y = lerp_angle(rotation.y, target_angle, 1.0 - exp(-TURN_SPEED * delta))
+	var key_direction := keyboard_direction()
+	if key_direction != Vector3.ZERO:
+		# Klavyeyle yürürken tıklanan hedef unutulur
+		if not agent.is_navigation_finished():
+			agent.target_position = global_position
+		walk_with_keys(key_direction, delta)
+		walking = true
+	else:
+		walking = not agent.is_navigation_finished()
+		if walking:
+			# Ajan yolun bir sonraki köşesini söyler; oraya doğru düz yürü
+			var next := agent.get_next_path_position()
+			var to_next := Vector3(next.x - global_position.x, 0, next.z - global_position.z)
+			var step := MOVE_SPEED * delta
+			if to_next.length() <= step:
+				global_position = Vector3(next.x, global_position.y, next.z)
+			else:
+				global_position += to_next.normalized() * step
+			face(to_next, delta)
 
 	if walking != was_walking:
 		if walking:
