@@ -42,9 +42,14 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
 - Navmesh: levels/yanik_kutuphane_nav.tres (ajan 0.4 m yarıçap, 1.8 m boy, 0.25 m tırmanma). Bölgede
   parça taşıyınca yeniden çıkar: `godot --path godot -s tools/bake_navmesh.gd` ya da editörde Gezinme →
   Bake NavigationMesh. Navmesh zeminden 0.5 m yukarıda çıkıyor; ajanın path_height_offset'i 0.5.
-- characters/player.tscn + player.gd: Nightshade (0.852 ölçek = 2 m), idle/walk fbx'ten AnimationLibrary
-  "hareket" (yürümede kalçanın root motion'ı silinir, hız animasyona uydurulur), sol tık → zemin
-  düzlemine ışın → NavigationAgent3D hedefi, 3 m/sn, yürüme yönüne yumuşak dönüş.
+- characters/player.tscn + player.gd: yeni Necromancer (assets/character/necromancer-kadin.glb; Meshy
+  "SmartRig", Mixamo kemik adları + 23 etek/saç kemiği, eli: başparmak/orta/serçe, işaret parmağı YOK;
+  1.7 m, 1.176 ölçekle 2 m). Mixamo'ya yüklemeye gerek yok (yüklenirse ek kemikler kaybolur).
+  Bekleme: Nightshade'in idle.fbx'i; yürüme: modelin kendi "Walking"i. player.gd her animasyonu modelin
+  iskeletine uyarlar (iz yolu + kalça yüksekliği oranı); dosya ve ad Inspector'dan (idle_file/walk_file).
+  Yeni Mixamo animasyonu: herhangi bir Mixamo karakteriyle "Without Skin" indir, olduğu gibi çalışır.
+  Nightshade (nightshade.fbx) assets'te duruyor. Yürümede kalçanın root motion'ı silinir, hız animasyona
+  uydurulur; sol tık → zemin düzlemine ışın → NavigationAgent3D hedefi, 3 m/sn, yumuşak dönüş.
 - Kontrol betikleri (pencere kısa süre açılır):
   `godot --path godot --resolution 1280x720 -s tools/screenshot.gd -- <çıktı.png> 90`;
   `... -s tools/walk_test.gd -- <klasör> <tık x> <tık y>` (sahte tık, yol ve iki ekran görüntüsü);

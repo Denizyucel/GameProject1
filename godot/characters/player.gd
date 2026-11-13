@@ -1,53 +1,75 @@
 # Oyuncu karakteri (Ruh Kıran): tıklanan yere navmesh üzerinden yürür.
-# Model: Mixamo "Nightshade" (assets/character/nightshade.fbx); bekleme ve yürüme animasyonları ayrı
-# dosyalardan (idle.fbx, walk.fbx) alınıp modelin AnimationPlayer'ına eklenir.
+# Model: player.tscn'deki "Model" düğümü (Mixamo kemik adlı herhangi bir karakter). Bekleme ve yürüme
+# animasyonları aşağıdaki dosyalardan alınır; başka bir modelden geliyorsa yeni modelin iskeletine
+# uyarlanır (iz yolları ve kalça yüksekliği). Ayarlar editörde, Player düğümünün Inspector'ında.
 
 extends Node3D
 
 const MOVE_SPEED := 3.0 # metre / saniye
 const TURN_SPEED := 12.0 # dönüşün ne kadar hızlı yetiştiği (büyüdükçe daha keskin)
 const ANIMATION_BLEND := 0.2 # bekleme ↔ yürüme geçişinin süresi (saniye)
+const HIPS_BONE := "mixamorig_Hips"
 
-const IDLE_FILE := "res://assets/character/idle.fbx"
-const WALK_FILE := "res://assets/character/walk.fbx"
-# Mixamo animasyon dosyalarında animasyonun adı hep bu
-const MIXAMO_ANIMATION := "mixamo_com"
-const HIPS_TRACK := "Skeleton3D:mixamorig_Hips"
+# Bekleme ve yürüme animasyonlarının dosyası ve dosyadaki adı
+@export_file("*.fbx", "*.glb") var idle_file := "res://assets/character/idle.fbx"
+@export var idle_name := "mixamo_com"
+@export_file("*.fbx", "*.glb") var walk_file := "res://assets/character/walk.fbx"
+@export var walk_name := "mixamo_com"
 
 @onready var agent: NavigationAgent3D = $NavigationAgent3D
 @onready var model: Node3D = $Model
-@onready var animation_player: AnimationPlayer = $Model/AnimationPlayer
+@onready var animation_player: AnimationPlayer = model.find_child("AnimationPlayer")
+@onready var skeleton: Skeleton3D = model.find_child("Skeleton3D")
 
-var walk_clip_speed := 0.0 # yürüme animasyonunda ayakların ilerlediği hız (metre / saniye, model ölçeğinde)
+var walk_clip_speed := 0.0 # yürüme animasyonunda ayakların ilerlediği hız (metre / saniye, oyundaki ölçekte)
 var walking := false
 
 
 func _ready() -> void:
 	var library := AnimationLibrary.new()
-	library.add_animation("idle", take_animation(IDLE_FILE))
-	var walk := take_animation(WALK_FILE)
+	library.add_animation("idle", take_animation(idle_file, idle_name))
+	var walk := take_animation(walk_file, walk_name)
 	walk_clip_speed = remove_root_motion(walk) * model.scale.x
 	library.add_animation("walk", walk)
 	animation_player.add_animation_library("hareket", library)
-	# Yürüme animasyonunu karakterin hızına uydur, ayaklar yerde kaymasın
-	animation_player.speed_scale = 1.0
 	animation_player.play("hareket/idle")
 
 
-# Bir Mixamo dosyasındaki animasyonu kopyalayıp al (dosyanın kendi modeli atılır)
-func take_animation(path: String) -> Animation:
+# Bir dosyadaki animasyonun kopyasını al ve bu modelin iskeletine uyarla
+func take_animation(path: String, animation_name: String) -> Animation:
 	var source: Node = (load(path) as PackedScene).instantiate()
-	var player: AnimationPlayer = source.find_child("AnimationPlayer")
-	var animation: Animation = player.get_animation(MIXAMO_ANIMATION).duplicate()
+	var source_player: AnimationPlayer = source.find_child("AnimationPlayer")
+	var source_skeleton: Skeleton3D = source.find_child("Skeleton3D")
+	var animation: Animation = source_player.get_animation(animation_name).duplicate()
+
+	# İz yolları "iskeletin yolu:kemik" biçiminde; iskeletin bu modeldeki yolunu yaz
+	var target_root := animation_player.get_node(animation_player.root_node)
+	var target_path := String(target_root.get_path_to(skeleton))
+	# Kalça konumunu iki karakterin kalça yüksekliği oranında ölçekle (kısa karakter havada yürümesin)
+	var height_ratio := hips_height(skeleton) / hips_height(source_skeleton)
+	for track in animation.get_track_count():
+		var bone := String(animation.track_get_path(track)).get_slice(":", 1)
+		animation.track_set_path(track, NodePath(target_path + ":" + bone))
+		if bone == HIPS_BONE and animation.track_get_type(track) == Animation.TYPE_POSITION_3D:
+			for key in animation.track_get_key_count(track):
+				animation.track_set_key_value(track, key, animation.track_get_key_value(track, key) * height_ratio)
 	source.free()
 	animation.loop_mode = Animation.LOOP_LINEAR
 	return animation
 
 
+func hips_height(target: Skeleton3D) -> float:
+	var bone := target.find_bone(HIPS_BONE)
+	return target.get_bone_global_rest(bone).origin.y if bone != -1 else 1.0
+
+
 # Yürüme animasyonu kalçayı ileri taşır (root motion); karakteri biz yürüttüğümüz için kalçayı
 # yerinde tut. Animasyonun kendi ilerleme hızını döndürür (metre / saniye).
 func remove_root_motion(animation: Animation) -> float:
-	var track := animation.find_track(NodePath(HIPS_TRACK), Animation.TYPE_POSITION_3D)
+	var track := -1
+	for i in animation.get_track_count():
+		if String(animation.track_get_path(i)).ends_with(":" + HIPS_BONE) and animation.track_get_type(i) == Animation.TYPE_POSITION_3D:
+			track = i
 	if track == -1:
 		return 0.0
 	var count := animation.track_get_key_count(track)
@@ -93,6 +115,7 @@ func _physics_process(delta: float) -> void:
 	if walking != was_walking:
 		if walking:
 			animation_player.play("hareket/walk", ANIMATION_BLEND)
+			# Yürüme animasyonunu karakterin hızına uydur, ayaklar yerde kaymasın
 			animation_player.speed_scale = MOVE_SPEED / walk_clip_speed if walk_clip_speed > 0 else 1.0
 		else:
 			animation_player.play("hareket/idle", ANIMATION_BLEND)

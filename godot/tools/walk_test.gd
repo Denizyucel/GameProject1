@@ -1,6 +1,6 @@
 # Tıklayarak yürümeyi deneyen yardımcı betik: ekrana bir sol tık gönderir, karakterin yürüyüşünü
 # izler ve iki ekran görüntüsü alır (yürürken ve vardıktan sonra).
-# Çalıştırma:  godot --path godot --resolution 1280x720 -s tools/walk_test.gd -- <klasör> <tık x> <tık y>
+# Çalıştırma:  godot --path godot --resolution 1280x720 -s tools/walk_test.gd -- <klasör> <tık x> <tık y> [yakınlaşma]
 
 extends SceneTree
 
@@ -12,6 +12,10 @@ func _initialize() -> void:
 	var main: Node = (load("res://main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	var player: Node3D = main.get_node("Player")
+	if args.size() > 3: # isteğe bağlı 4. değer: kameranın yakınlaşması (1 = normal)
+		var camera := main.get_node("Kamera")
+		camera.zoom = float(args[3])
+		camera.zoom_target = camera.zoom
 	for i in 30:
 		await process_frame
 	print("Başlangıç: ", player.global_position)

@@ -1,13 +1,15 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://characters/player.gd" id="1_script"]
-[ext_resource type="PackedScene" path="res://assets/character/nightshade.fbx" id="2_model"]
+[ext_resource type="PackedScene" path="res://assets/character/necromancer-kadin.glb" id="2_model"]
 
 [node name="Player" type="Node3D"]
 script = ExtResource("1_script")
+walk_file = "res://assets/character/necromancer-kadin.glb"
+walk_name = "Walking"
 
 [node name="Model" parent="." instance=ExtResource("2_model")]
-transform = Transform3D(0.852, 0, 0, 0, 0.852, 0, 0, 0, 0.852, 0, 0, 0)
+transform = Transform3D(1.176, 0, 0, 0, 1.176, 0, 0, 0, 1.176, 0, 0, 0)
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
 path_desired_distance = 0.3
