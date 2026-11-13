@@ -1,0 +1,16 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/floor/disarisi/Ground048_1K-JPG_Color.jpg" id="1_kss80"]
+[ext_resource type="Texture2D" path="res://assets/floor/disarisi/Ground048_1K-JPG_AmbientOcclusion.jpg" id="2_p6lqt"]
+[ext_resource type="Texture2D" path="res://assets/floor/disarisi/Ground048_1K-JPG_NormalGL.jpg" id="3_xbn10"]
+[ext_resource type="Texture2D" path="res://assets/floor/disarisi/Ground048_1K-JPG_Roughness.jpg" id="4_yry8q"]
+
+[resource]
+albedo_color = Color(0.5529412, 0.53333336, 0.5176471, 1)
+albedo_texture = ExtResource("1_kss80")
+roughness_texture = ExtResource("4_yry8q")
+normal_enabled = true
+normal_texture = ExtResource("3_xbn10")
+ao_enabled = true
+ao_texture = ExtResource("2_p6lqt")
+uv1_scale = Vector3(13.333333, 13.333333, 1)

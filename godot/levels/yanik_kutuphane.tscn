@@ -1,0 +1,401 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://materials/disarisi.tres" id="1_sb6cd"]
+[ext_resource type="Material" path="res://materials/salonun_ici.tres" id="2_80lyw"]
+[ext_resource type="PackedScene" path="res://assets/kit/yuksek-duvar.glb" id="3_cxbaj"]
+[ext_resource type="PackedScene" path="res://assets/kit/duvar-rafi.glb" id="4_3jwsk"]
+[ext_resource type="PackedScene" path="res://assets/kit/cati-kemeri.glb" id="5_j1eas"]
+[ext_resource type="PackedScene" path="res://assets/kit/yikik-duvar.glb" id="6_j6dji"]
+[ext_resource type="PackedScene" path="res://assets/kit/kemer-kapi.glb" id="7_7q8wq"]
+[ext_resource type="PackedScene" path="res://assets/kit/sutun.glb" id="8_kywlf"]
+[ext_resource type="PackedScene" path="res://assets/kit/kirik-sutun.glb" id="9_c2w05"]
+[ext_resource type="PackedScene" path="res://assets/kit/yanmis-raf.glb" id="10_mh5mc"]
+[ext_resource type="PackedScene" path="res://assets/kit/muhur-kaidesi.glb" id="11_0isc0"]
+[ext_resource type="PackedScene" path="res://assets/kit/kitap-yigini.glb" id="12_bsbvw"]
+[ext_resource type="PackedScene" path="res://assets/kit/moloz.glb" id="13_lyskp"]
+[ext_resource type="PackedScene" path="res://assets/kit/kuru-agac.glb" id="14_dcoj0"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_c3aq7"]
+size = Vector2(40, 40)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_fmaa3"]
+size = Vector2(19.4, 20.6)
+
+[node name="YanikKutuphane" type="Node3D" unique_id=202660416]
+
+[node name="Disarisi" type="MeshInstance3D" parent="." unique_id=899020295]
+material_override = ExtResource("1_sb6cd")
+mesh = SubResource("PlaneMesh_c3aq7")
+
+[node name="SalonunIci" type="MeshInstance3D" parent="." unique_id=67523302]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, -3.3999999)
+material_override = ExtResource("2_80lyw")
+mesh = SubResource("PlaneMesh_fmaa3")
+
+[node name="Parcalar" type="Node3D" parent="." unique_id=773790059]
+
+[node name="yuksek-duvar-1" type="Node3D" parent="Parcalar" unique_id=183343469]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, -13.7)
+
+[node name="Model" type="Node3D" parent="Parcalar/yuksek-duvar-1" unique_id=827508213 instance=ExtResource("3_cxbaj")]
+transform = Transform3D(3.1306329, 0, 0, 0, 3.1306329, 0, 0, 0, 3.1306329, -0.0018768255, 2.9813895, -0.023082172)
+
+[node name="yuksek-duvar-2" type="Node3D" parent="Parcalar" unique_id=1939958523]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, -13.7)
+
+[node name="Model" type="Node3D" parent="Parcalar/yuksek-duvar-2" unique_id=1590056302 instance=ExtResource("3_cxbaj")]
+transform = Transform3D(3.1306329, 0, 0, 0, 3.1306329, 0, 0, 0, 3.1306329, -0.0018768255, 2.9813895, -0.023082172)
+
+[node name="yuksek-duvar-3" type="Node3D" parent="Parcalar" unique_id=488965684]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -13.7)
+
+[node name="Model" type="Node3D" parent="Parcalar/yuksek-duvar-3" unique_id=1164365502 instance=ExtResource("3_cxbaj")]
+transform = Transform3D(3.1306329, 0, 0, 0, 3.1306329, 0, 0, 0, 3.1306329, -0.0018768255, 2.9813895, -0.023082172)
+
+[node name="yuksek-duvar-4" type="Node3D" parent="Parcalar" unique_id=1492163148]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, -13.7)
+
+[node name="Model" type="Node3D" parent="Parcalar/yuksek-duvar-4" unique_id=1209596141 instance=ExtResource("3_cxbaj")]
+transform = Transform3D(3.1306329, 0, 0, 0, 3.1306329, 0, 0, 0, 3.1306329, -0.0018768255, 2.9813895, -0.023082172)
+
+[node name="yuksek-duvar-5" type="Node3D" parent="Parcalar" unique_id=1080310498]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, -13.7)
+
+[node name="Model" type="Node3D" parent="Parcalar/yuksek-duvar-5" unique_id=249662630 instance=ExtResource("3_cxbaj")]
+transform = Transform3D(3.1306329, 0, 0, 0, 3.1306329, 0, 0, 0, 3.1306329, -0.0018768255, 2.9813895, -0.023082172)
+
+[node name="yuksek-duvar-6" type="Node3D" parent="Parcalar" unique_id=395598776]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -9.7, 0, -11.4)
+
+[node name="Model" type="Node3D" parent="Parcalar/yuksek-duvar-6" unique_id=2018230233 instance=ExtResource("3_cxbaj")]
+transform = Transform3D(3.1306329, 0, 0, 0, 3.1306329, 0, 0, 0, 3.1306329, -0.0018768255, 2.9813895, -0.023082172)
+
+[node name="yuksek-duvar-7" type="Node3D" parent="Parcalar" unique_id=420697073]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -9.7, 0, -7.4)
+
+[node name="Model" type="Node3D" parent="Parcalar/yuksek-duvar-7" unique_id=1142692042 instance=ExtResource("3_cxbaj")]
+transform = Transform3D(3.1306329, 0, 0, 0, 3.1306329, 0, 0, 0, 3.1306329, -0.0018768255, 2.9813895, -0.023082172)
+
+[node name="yuksek-duvar-8" type="Node3D" parent="Parcalar" unique_id=1461436955]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -9.7, 0, 0.6)
+
+[node name="Model" type="Node3D" parent="Parcalar/yuksek-duvar-8" unique_id=2118453242 instance=ExtResource("3_cxbaj")]
+transform = Transform3D(3.1306329, 0, 0, 0, 3.1306329, 0, 0, 0, 3.1306329, -0.0018768255, 2.9813895, -0.023082172)
+
+[node name="yuksek-duvar-9" type="Node3D" parent="Parcalar" unique_id=1537046886]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -9.7, 0, 4.6)
+
+[node name="Model" type="Node3D" parent="Parcalar/yuksek-duvar-9" unique_id=1219799273 instance=ExtResource("3_cxbaj")]
+transform = Transform3D(3.1306329, 0, 0, 0, 3.1306329, 0, 0, 0, 3.1306329, -0.0018768255, 2.9813895, -0.023082172)
+
+[node name="duvar-rafi-1" type="Node3D" parent="Parcalar" unique_id=2095055999]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, -12.9)
+
+[node name="Model" type="Node3D" parent="Parcalar/duvar-rafi-1" unique_id=1758788698 instance=ExtResource("4_3jwsk")]
+transform = Transform3D(1.9071087, 0, 0, 0, 1.9071087, 0, 0, 0, 1.9071087, 0.009077889, 1.8164523, 0.0072117266)
+
+[node name="duvar-rafi-2" type="Node3D" parent="Parcalar" unique_id=418456695]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, -12.9)
+
+[node name="Model" type="Node3D" parent="Parcalar/duvar-rafi-2" unique_id=1243149864 instance=ExtResource("4_3jwsk")]
+transform = Transform3D(1.9071087, 0, 0, 0, 1.9071087, 0, 0, 0, 1.9071087, 0.009077889, 1.8164523, 0.0072117266)
+
+[node name="duvar-rafi-3" type="Node3D" parent="Parcalar" unique_id=1236703365]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, -12.9)
+
+[node name="Model" type="Node3D" parent="Parcalar/duvar-rafi-3" unique_id=616840570 instance=ExtResource("4_3jwsk")]
+transform = Transform3D(1.9071087, 0, 0, 0, 1.9071087, 0, 0, 0, 1.9071087, 0.009077889, 1.8164523, 0.0072117266)
+
+[node name="duvar-rafi-4" type="Node3D" parent="Parcalar" unique_id=1284133165]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, -12.9)
+
+[node name="Model" type="Node3D" parent="Parcalar/duvar-rafi-4" unique_id=2085349761 instance=ExtResource("4_3jwsk")]
+transform = Transform3D(1.9071087, 0, 0, 0, 1.9071087, 0, 0, 0, 1.9071087, 0.009077889, 1.8164523, 0.0072117266)
+
+[node name="duvar-rafi-5" type="Node3D" parent="Parcalar" unique_id=1419890321]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -8.9, 0, -11.4)
+
+[node name="Model" type="Node3D" parent="Parcalar/duvar-rafi-5" unique_id=967663926 instance=ExtResource("4_3jwsk")]
+transform = Transform3D(1.9071087, 0, 0, 0, 1.9071087, 0, 0, 0, 1.9071087, 0.009077889, 1.8164523, 0.0072117266)
+
+[node name="duvar-rafi-6" type="Node3D" parent="Parcalar" unique_id=1613721769]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -8.9, 0, -7.4)
+
+[node name="Model" type="Node3D" parent="Parcalar/duvar-rafi-6" unique_id=1068897431 instance=ExtResource("4_3jwsk")]
+transform = Transform3D(1.9071087, 0, 0, 0, 1.9071087, 0, 0, 0, 1.9071087, 0.009077889, 1.8164523, 0.0072117266)
+
+[node name="duvar-rafi-7" type="Node3D" parent="Parcalar" unique_id=2032329276]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -8.9, 0, 0.6)
+
+[node name="Model" type="Node3D" parent="Parcalar/duvar-rafi-7" unique_id=281362377 instance=ExtResource("4_3jwsk")]
+transform = Transform3D(1.9071087, 0, 0, 0, 1.9071087, 0, 0, 0, 1.9071087, 0.009077889, 1.8164523, 0.0072117266)
+
+[node name="duvar-rafi-8" type="Node3D" parent="Parcalar" unique_id=955742261]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -8.9, 0, 4.6)
+
+[node name="Model" type="Node3D" parent="Parcalar/duvar-rafi-8" unique_id=1551638198 instance=ExtResource("4_3jwsk")]
+transform = Transform3D(1.9071087, 0, 0, 0, 1.9071087, 0, 0, 0, 1.9071087, 0.009077889, 1.8164523, 0.0072117266)
+
+[node name="cati-kemeri-1" type="Node3D" parent="Parcalar" unique_id=1850670816]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -9.7, 0, -3.4)
+
+[node name="Model" type="Node3D" parent="Parcalar/cati-kemeri-1" unique_id=2027332600 instance=ExtResource("5_j1eas")]
+transform = Transform3D(2.8476744, 0, 0, 0, 2.8476744, 0, 0, 0, 2.8476744, 0.012457163, 2.7124383, 0.0012529809)
+
+[node name="yikik-duvar-1" type="Node3D" parent="Parcalar" unique_id=1709403796]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 9.7, 0, -11.4)
+
+[node name="Model" type="Node3D" parent="Parcalar/yikik-duvar-1" unique_id=40166343 instance=ExtResource("6_j6dji")]
+transform = Transform3D(2.1079857, 0, 0, 0, 2.1079857, 0, 0, 0, 2.1079857, 0.0010286617, 0.95962673, -0.009348922)
+
+[node name="yikik-duvar-2" type="Node3D" parent="Parcalar" unique_id=367230001]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 9.7, 0, -7.4)
+
+[node name="Model" type="Node3D" parent="Parcalar/yikik-duvar-2" unique_id=1301730778 instance=ExtResource("6_j6dji")]
+transform = Transform3D(2.1079857, 0, 0, 0, 2.1079857, 0, 0, 0, 2.1079857, 0.0010286617, 0.95962673, -0.009348922)
+
+[node name="yikik-duvar-3" type="Node3D" parent="Parcalar" unique_id=1876759372]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 9.7, 0, -3.4)
+
+[node name="Model" type="Node3D" parent="Parcalar/yikik-duvar-3" unique_id=558650992 instance=ExtResource("6_j6dji")]
+transform = Transform3D(2.1079857, 0, 0, 0, 2.1079857, 0, 0, 0, 2.1079857, 0.0010286617, 0.95962673, -0.009348922)
+
+[node name="yikik-duvar-4" type="Node3D" parent="Parcalar" unique_id=1163247861]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 9.7, 0, 0.6)
+
+[node name="Model" type="Node3D" parent="Parcalar/yikik-duvar-4" unique_id=141866417 instance=ExtResource("6_j6dji")]
+transform = Transform3D(2.1079857, 0, 0, 0, 2.1079857, 0, 0, 0, 2.1079857, 0.0010286617, 0.95962673, -0.009348922)
+
+[node name="yikik-duvar-5" type="Node3D" parent="Parcalar" unique_id=1968338298]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 9.7, 0, 4.6)
+
+[node name="Model" type="Node3D" parent="Parcalar/yikik-duvar-5" unique_id=1795404803 instance=ExtResource("6_j6dji")]
+transform = Transform3D(2.1079857, 0, 0, 0, 2.1079857, 0, 0, 0, 2.1079857, 0.0010286617, 0.95962673, -0.009348922)
+
+[node name="yikik-duvar-6" type="Node3D" parent="Parcalar" unique_id=780195637]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 6.9)
+
+[node name="Model" type="Node3D" parent="Parcalar/yikik-duvar-6" unique_id=393855548 instance=ExtResource("6_j6dji")]
+transform = Transform3D(2.1079857, 0, 0, 0, 2.1079857, 0, 0, 0, 2.1079857, 0.0010286617, 0.95962673, -0.009348922)
+
+[node name="yikik-duvar-7" type="Node3D" parent="Parcalar" unique_id=1446324304]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, 6.9)
+
+[node name="Model" type="Node3D" parent="Parcalar/yikik-duvar-7" unique_id=389250445 instance=ExtResource("6_j6dji")]
+transform = Transform3D(2.1079857, 0, 0, 0, 2.1079857, 0, 0, 0, 2.1079857, 0.0010286617, 0.95962673, -0.009348922)
+
+[node name="kemer-kapi-1" type="Node3D" parent="Parcalar" unique_id=1918749250]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6.9)
+
+[node name="Model" type="Node3D" parent="Parcalar/kemer-kapi-1" unique_id=1119282200 instance=ExtResource("7_7q8wq")]
+transform = Transform3D(2.1060758, 0, 0, 0, 2.1060758, 0, 0, 0, 2.1060758, 0.00024754892, 1.921059, 0.00029167335)
+
+[node name="yikik-duvar-8" type="Node3D" parent="Parcalar" unique_id=17958667]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 6.9)
+
+[node name="Model" type="Node3D" parent="Parcalar/yikik-duvar-8" unique_id=243825883 instance=ExtResource("6_j6dji")]
+transform = Transform3D(2.1079857, 0, 0, 0, 2.1079857, 0, 0, 0, 2.1079857, 0.0010286617, 0.95962673, -0.009348922)
+
+[node name="yikik-duvar-9" type="Node3D" parent="Parcalar" unique_id=406509304]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 6.9)
+
+[node name="Model" type="Node3D" parent="Parcalar/yikik-duvar-9" unique_id=574466026 instance=ExtResource("6_j6dji")]
+transform = Transform3D(2.1079857, 0, 0, 0, 2.1079857, 0, 0, 0, 2.1079857, 0.0010286617, 0.95962673, -0.009348922)
+
+[node name="sutun-1" type="Node3D" parent="Parcalar" unique_id=628290892]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, -9.5)
+
+[node name="Model" type="Node3D" parent="Parcalar/sutun-1" unique_id=187513479 instance=ExtResource("8_kywlf")]
+transform = Transform3D(1.9706677, 0, 0, 0, 1.9706677, 0, 0, 0, 1.9706677, 0.00070549984, 1.8768463, 0.00022957743)
+
+[node name="sutun-2" type="Node3D" parent="Parcalar" unique_id=877412953]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, -5)
+
+[node name="Model" type="Node3D" parent="Parcalar/sutun-2" unique_id=726409530 instance=ExtResource("8_kywlf")]
+transform = Transform3D(1.9706677, 0, 0, 0, 1.9706677, 0, 0, 0, 1.9706677, 0.00070549984, 1.8768463, 0.00022957743)
+
+[node name="kirik-sutun-1" type="Node3D" parent="Parcalar" unique_id=1257430651]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, -0.5)
+
+[node name="Model" type="Node3D" parent="Parcalar/kirik-sutun-1" unique_id=1215106572 instance=ExtResource("9_c2w05")]
+transform = Transform3D(1.5224484, 0, 0, 0, 1.5224484, 0, 0, 0, 1.5224484, -1.7513785e-05, 1.4502082, 0.0018383575)
+
+[node name="sutun-3" type="Node3D" parent="Parcalar" unique_id=1286718708]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, 3.5)
+
+[node name="Model" type="Node3D" parent="Parcalar/sutun-3" unique_id=1561925032 instance=ExtResource("8_kywlf")]
+transform = Transform3D(1.9706677, 0, 0, 0, 1.9706677, 0, 0, 0, 1.9706677, 0.00070549984, 1.8768463, 0.00022957743)
+
+[node name="kirik-sutun-2" type="Node3D" parent="Parcalar" unique_id=1221441795]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, -9.5)
+
+[node name="Model" type="Node3D" parent="Parcalar/kirik-sutun-2" unique_id=261788041 instance=ExtResource("9_c2w05")]
+transform = Transform3D(1.5224484, 0, 0, 0, 1.5224484, 0, 0, 0, 1.5224484, -1.7513785e-05, 1.4502082, 0.0018383575)
+
+[node name="sutun-4" type="Node3D" parent="Parcalar" unique_id=1175313664]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, -5)
+
+[node name="Model" type="Node3D" parent="Parcalar/sutun-4" unique_id=1415797808 instance=ExtResource("8_kywlf")]
+transform = Transform3D(1.9706677, 0, 0, 0, 1.9706677, 0, 0, 0, 1.9706677, 0.00070549984, 1.8768463, 0.00022957743)
+
+[node name="sutun-5" type="Node3D" parent="Parcalar" unique_id=1085770919]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, -0.5)
+
+[node name="Model" type="Node3D" parent="Parcalar/sutun-5" unique_id=1585245039 instance=ExtResource("8_kywlf")]
+transform = Transform3D(1.9706677, 0, 0, 0, 1.9706677, 0, 0, 0, 1.9706677, 0.00070549984, 1.8768463, 0.00022957743)
+
+[node name="sutun-6" type="Node3D" parent="Parcalar" unique_id=1567300882]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 3.5)
+
+[node name="Model" type="Node3D" parent="Parcalar/sutun-6" unique_id=2067301863 instance=ExtResource("8_kywlf")]
+transform = Transform3D(1.9706677, 0, 0, 0, 1.9706677, 0, 0, 0, 1.9706677, 0.00070549984, 1.8768463, 0.00022957743)
+
+[node name="yanmis-raf-1" type="Node3D" parent="Parcalar" unique_id=347943944]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 0, -8.5)
+
+[node name="Model" type="Node3D" parent="Parcalar/yanmis-raf-1" unique_id=1621004030 instance=ExtResource("10_mh5mc")]
+transform = Transform3D(1.1301018, 0, 0, 0, 1.1301018, 0, 0, 0, 1.1301018, 0.00037970446, 1.0764468, 0.0007498271)
+
+[node name="yanmis-raf-2" type="Node3D" parent="Parcalar" unique_id=1595418603]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 0, -6)
+
+[node name="Model" type="Node3D" parent="Parcalar/yanmis-raf-2" unique_id=1554895005 instance=ExtResource("10_mh5mc")]
+transform = Transform3D(1.1301018, 0, 0, 0, 1.1301018, 0, 0, 0, 1.1301018, 0.00037970446, 1.0764468, 0.0007498271)
+
+[node name="yanmis-raf-3" type="Node3D" parent="Parcalar" unique_id=583615327]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 0, -2)
+
+[node name="Model" type="Node3D" parent="Parcalar/yanmis-raf-3" unique_id=2073823544 instance=ExtResource("10_mh5mc")]
+transform = Transform3D(1.1301018, 0, 0, 0, 1.1301018, 0, 0, 0, 1.1301018, 0.00037970446, 1.0764468, 0.0007498271)
+
+[node name="yanmis-raf-4" type="Node3D" parent="Parcalar" unique_id=909333590]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 0, 2)
+
+[node name="Model" type="Node3D" parent="Parcalar/yanmis-raf-4" unique_id=1713072468 instance=ExtResource("10_mh5mc")]
+transform = Transform3D(1.1301018, 0, 0, 0, 1.1301018, 0, 0, 0, 1.1301018, 0.00037970446, 1.0764468, 0.0007498271)
+
+[node name="yanmis-raf-5" type="Node3D" parent="Parcalar" unique_id=1918964413]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.5, 0, -7.5)
+
+[node name="Model" type="Node3D" parent="Parcalar/yanmis-raf-5" unique_id=2007308097 instance=ExtResource("10_mh5mc")]
+transform = Transform3D(1.1301018, 0, 0, 0, 1.1301018, 0, 0, 0, 1.1301018, 0.00037970446, 1.0764468, 0.0007498271)
+
+[node name="yanmis-raf-6" type="Node3D" parent="Parcalar" unique_id=672470836]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.5, 0, -4.5)
+
+[node name="Model" type="Node3D" parent="Parcalar/yanmis-raf-6" unique_id=1090448548 instance=ExtResource("10_mh5mc")]
+transform = Transform3D(1.1301018, 0, 0, 0, 1.1301018, 0, 0, 0, 1.1301018, 0.00037970446, 1.0764468, 0.0007498271)
+
+[node name="yanmis-raf-7" type="Node3D" parent="Parcalar" unique_id=567480767]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.5, 0, 1)
+
+[node name="Model" type="Node3D" parent="Parcalar/yanmis-raf-7" unique_id=1318872199 instance=ExtResource("10_mh5mc")]
+transform = Transform3D(1.1301018, 0, 0, 0, 1.1301018, 0, 0, 0, 1.1301018, 0.00037970446, 1.0764468, 0.0007498271)
+
+[node name="yanmis-raf-8" type="Node3D" parent="Parcalar" unique_id=304486232]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.5, 0, 3.5)
+
+[node name="Model" type="Node3D" parent="Parcalar/yanmis-raf-8" unique_id=750855851 instance=ExtResource("10_mh5mc")]
+transform = Transform3D(1.1301018, 0, 0, 0, 1.1301018, 0, 0, 0, 1.1301018, 0.00037970446, 1.0764468, 0.0007498271)
+
+[node name="muhur-kaidesi-1" type="Node3D" parent="Parcalar" unique_id=817516433]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -11.75)
+
+[node name="Model" type="Node3D" parent="Parcalar/muhur-kaidesi-1" unique_id=1137325884 instance=ExtResource("11_0isc0")]
+transform = Transform3D(1.0137032, 0, 0, 0, 1.0137032, 0, 0, 0, 1.0137032, 0.0005620401, 0.96497554, 0.0005661487)
+
+[node name="kitap-yigini-1" type="Node3D" parent="Parcalar" unique_id=1421790587]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.75, 0, -11)
+
+[node name="Model" type="Node3D" parent="Parcalar/kitap-yigini-1" unique_id=588122447 instance=ExtResource("12_bsbvw")]
+transform = Transform3D(0.38928187, 0, 0, 0, 0.38928187, 0, 0, 0, 0.38928187, -0.0021601303, 0.12335097, 0.020569466)
+
+[node name="kitap-yigini-2" type="Node3D" parent="Parcalar" unique_id=1882562160]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.75, 0, -10.75)
+
+[node name="Model" type="Node3D" parent="Parcalar/kitap-yigini-2" unique_id=804378820 instance=ExtResource("12_bsbvw")]
+transform = Transform3D(0.38928187, 0, 0, 0, 0.38928187, 0, 0, 0, 0.38928187, -0.0021601303, 0.12335097, 0.020569466)
+
+[node name="kitap-yigini-3" type="Node3D" parent="Parcalar" unique_id=2073121187]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -3.5)
+
+[node name="Model" type="Node3D" parent="Parcalar/kitap-yigini-3" unique_id=1676339322 instance=ExtResource("12_bsbvw")]
+transform = Transform3D(0.38928187, 0, 0, 0, 0.38928187, 0, 0, 0, 0.38928187, -0.0021601303, 0.12335097, 0.020569466)
+
+[node name="kitap-yigini-4" type="Node3D" parent="Parcalar" unique_id=1864293564]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 0, 3.5)
+
+[node name="Model" type="Node3D" parent="Parcalar/kitap-yigini-4" unique_id=396142203 instance=ExtResource("12_bsbvw")]
+transform = Transform3D(0.38928187, 0, 0, 0, 0.38928187, 0, 0, 0, 0.38928187, -0.0021601303, 0.12335097, 0.020569466)
+
+[node name="kitap-yigini-5" type="Node3D" parent="Parcalar" unique_id=2104731531]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.75, 0, -1.75)
+
+[node name="Model" type="Node3D" parent="Parcalar/kitap-yigini-5" unique_id=1799274097 instance=ExtResource("12_bsbvw")]
+transform = Transform3D(0.38928187, 0, 0, 0, 0.38928187, 0, 0, 0, 0.38928187, -0.0021601303, 0.12335097, 0.020569466)
+
+[node name="moloz-1" type="Node3D" parent="Parcalar" unique_id=287348259]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.4, 0, -0.4)
+
+[node name="Model" type="Node3D" parent="Parcalar/moloz-1" unique_id=674756720 instance=ExtResource("13_lyskp")]
+transform = Transform3D(1.0697997, 0, 0, 0, 1.0697997, 0, 0, 0, 1.0697997, 0.00022949034, 0.41677576, -0.0027857665)
+
+[node name="moloz-2" type="Node3D" parent="Parcalar" unique_id=2107433701]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.75, 0, -12)
+
+[node name="Model" type="Node3D" parent="Parcalar/moloz-2" unique_id=1241018241 instance=ExtResource("13_lyskp")]
+transform = Transform3D(1.0697997, 0, 0, 0, 1.0697997, 0, 0, 0, 1.0697997, 0.00022949034, 0.41677576, -0.0027857665)
+
+[node name="moloz-3" type="Node3D" parent="Parcalar" unique_id=1920771459]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, 5)
+
+[node name="Model" type="Node3D" parent="Parcalar/moloz-3" unique_id=1197560518 instance=ExtResource("13_lyskp")]
+transform = Transform3D(1.0697997, 0, 0, 0, 1.0697997, 0, 0, 0, 1.0697997, 0.00022949034, 0.41677576, -0.0027857665)
+
+[node name="moloz-4" type="Node3D" parent="Parcalar" unique_id=2104213744]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, 10)
+
+[node name="Model" type="Node3D" parent="Parcalar/moloz-4" unique_id=1039164136 instance=ExtResource("13_lyskp")]
+transform = Transform3D(1.0697997, 0, 0, 0, 1.0697997, 0, 0, 0, 1.0697997, 0.00022949034, 0.41677576, -0.0027857665)
+
+[node name="kuru-agac-1" type="Node3D" parent="Parcalar" unique_id=1352619247]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.5, 0, -14.5)
+
+[node name="Model" type="Node3D" parent="Parcalar/kuru-agac-1" unique_id=1035575814 instance=ExtResource("14_dcoj0")]
+transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.004443877, 2.0478587, 0.00918155)
+
+[node name="kuru-agac-2" type="Node3D" parent="Parcalar" unique_id=1144792811]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, -15.5)
+
+[node name="Model" type="Node3D" parent="Parcalar/kuru-agac-2" unique_id=1459814559 instance=ExtResource("14_dcoj0")]
+transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.004443877, 2.0478587, 0.00918155)
+
+[node name="kuru-agac-3" type="Node3D" parent="Parcalar" unique_id=1577256785]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 0, 1)
+
+[node name="Model" type="Node3D" parent="Parcalar/kuru-agac-3" unique_id=4605812 instance=ExtResource("14_dcoj0")]
+transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.004443877, 2.0478587, 0.00918155)
+
+[node name="kuru-agac-4" type="Node3D" parent="Parcalar" unique_id=2106805884]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.5, 0, -1)
+
+[node name="Model" type="Node3D" parent="Parcalar/kuru-agac-4" unique_id=805401084 instance=ExtResource("14_dcoj0")]
+transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.004443877, 2.0478587, 0.00918155)
+
+[node name="kuru-agac-5" type="Node3D" parent="Parcalar" unique_id=1835297567]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.5, 0, 13)
+
+[node name="Model" type="Node3D" parent="Parcalar/kuru-agac-5" unique_id=1034326620 instance=ExtResource("14_dcoj0")]
+transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.004443877, 2.0478587, 0.00918155)
+
+[node name="kuru-agac-6" type="Node3D" parent="Parcalar" unique_id=1355063583]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 0, 16)
+
+[node name="Model" type="Node3D" parent="Parcalar/kuru-agac-6" unique_id=1927027514 instance=ExtResource("14_dcoj0")]
+transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.004443877, 2.0478587, 0.00918155)
+
+[node name="kuru-agac-7" type="Node3D" parent="Parcalar" unique_id=2120833019]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 12)
+
+[node name="Model" type="Node3D" parent="Parcalar/kuru-agac-7" unique_id=1600957779 instance=ExtResource("14_dcoj0")]
+transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.004443877, 2.0478587, 0.00918155)

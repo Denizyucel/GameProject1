@@ -1,0 +1,6 @@
+# Godot'nun içe aktarma önbelleği (her bilgisayarda yeniden oluşur)
+.godot/
+
+# Modeller, dokular ve animasyonlar: lisans ham dosyaların dağıtılmasına izin vermiyor, repoya girmesin.
+# Asılları ../public/models içinde; buraya kopyalanır.
+assets/

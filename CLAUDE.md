@@ -27,6 +27,30 @@ Retina ekranlar hedeflenir.
 - Zustand: oyun ile HUD arasındaki durum (src/state/gameStore.ts; oyun zustand/vanilla ile yazar, HUD useStore ile okur)
 - React Three Fiber kullanılmaz.
 
+## Godot 4 geçişi (devam ediyor)
+Oyun Godot 4.7'ye taşınıyor (asıl hedef masaüstü/Steam; tarayıcı ikinci planda). Godot projesi
+godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru olarak duruyor.
+- Godot: /Applications/Godot.app, komut satırı `godot` (Homebrew cask). Renderer: Forward+
+  (web dışa aktarımı Compatibility ister; o zaman değiştirilecek).
+- godot/assets/: modeller ve dokular public/models'tan KOPYALANIR (git dışında, lisans).
+  Yeni dosya eklenince: `godot --headless --path godot --import`.
+- godot/levels/yanik_kutuphane.tscn: bölge (tools/build_yanik_kutuphane.gd ile plandan bir kez üretildi;
+  artık editörde düzenlenir, betiği yeniden çalıştırmak üzerine yazar). Her parça: konum/dönüş tutan
+  bir Node3D ve içinde ölçeklenmiş .glb örneği ("Model").
+- godot/main.tscn: ortam ışığı, ay ışığı (gölgeli), Gezinme (NavigationRegion3D; içinde bölge),
+  Player, ortografik izometrik kamera (camera_follow.gd: takip, tekerlek/pinch zoom).
+- Navmesh: levels/yanik_kutuphane_nav.tres (ajan 0.4 m yarıçap, 1.8 m boy, 0.25 m tırmanma). Bölgede
+  parça taşıyınca yeniden çıkar: `godot --path godot -s tools/bake_navmesh.gd` ya da editörde Gezinme →
+  Bake NavigationMesh. Navmesh zeminden 0.5 m yukarıda çıkıyor; ajanın path_height_offset'i 0.5.
+- characters/player.tscn + player.gd: Nightshade (0.852 ölçek = 2 m), idle/walk fbx'ten AnimationLibrary
+  "hareket" (yürümede kalçanın root motion'ı silinir, hız animasyona uydurulur), sol tık → zemin
+  düzlemine ışın → NavigationAgent3D hedefi, 3 m/sn, yürüme yönüne yumuşak dönüş.
+- Kontrol betikleri (pencere kısa süre açılır):
+  `godot --path godot --resolution 1280x720 -s tools/screenshot.gd -- <çıktı.png> 90`;
+  `... -s tools/walk_test.gd -- <klasör> <tık x> <tık y>` (sahte tık, yol ve iki ekran görüntüsü);
+  `godot --headless --path godot -s tools/inspect.gd -- res://...fbx` (model ağacı, animasyonlar).
+- Henüz taşınmadı: WASD, saldırı, düşmanlar, mühür kırma, iskeletler, HUD, parça saydamlaşması.
+
 ## Mimari kurallar
 - src/game/ React import etmez; src/hud/ Three.js nesnelerine dokunmaz.
 - Oyun durumu düz TypeScript sınıflarında tutulur.

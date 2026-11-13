@@ -1,0 +1,16 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/floor/salonun-ici/Tiles130_1K-JPG_Color.jpg" id="1_f2apv"]
+[ext_resource type="Texture2D" path="res://assets/floor/salonun-ici/Tiles130_1K-JPG_AmbientOcclusion.jpg" id="2_neqq1"]
+[ext_resource type="Texture2D" path="res://assets/floor/salonun-ici/Tiles130_1K-JPG_NormalGL.jpg" id="3_hh7tn"]
+[ext_resource type="Texture2D" path="res://assets/floor/salonun-ici/Tiles130_1K-JPG_Roughness.jpg" id="4_0o2cp"]
+
+[resource]
+albedo_color = Color(0.45490196, 0.46666667, 0.49803922, 1)
+albedo_texture = ExtResource("1_f2apv")
+roughness_texture = ExtResource("4_0o2cp")
+normal_enabled = true
+normal_texture = ExtResource("3_hh7tn")
+ao_enabled = true
+ao_texture = ExtResource("2_neqq1")
+uv1_scale = Vector3(3.2333333, 6.866667, 1)

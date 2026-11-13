@@ -1,0 +1,42 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://levels/yanik_kutuphane.tscn" id="1_ig7tw"]
+[ext_resource type="NavigationMesh" path="res://levels/yanik_kutuphane_nav.tres" id="2_nav"]
+[ext_resource type="PackedScene" path="res://characters/player.tscn" id="3_player"]
+[ext_resource type="Script" path="res://camera_follow.gd" id="4_camera"]
+
+[sub_resource type="Environment" id="Environment_0xm2m"]
+background_mode = 1
+background_color = Color(0.07058824, 0.0627451, 0.09411765, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.56078434, 0.5254902, 0.6901961, 1)
+ambient_light_energy = 0.8
+
+[node name="Main" type="Node3D" unique_id=989554303]
+
+[node name="Ortam" type="WorldEnvironment" parent="." unique_id=219416387]
+environment = SubResource("Environment_0xm2m")
+
+[node name="AyIsigi" type="DirectionalLight3D" parent="." unique_id=788558579]
+transform = Transform3D(0.59999996, 0.66564023, -0.4437602, 0, 0.5547002, 0.8320503, 0.79999995, -0.49923018, 0.33282012, 0, 0, 0)
+light_color = Color(0.7882353, 0.83137256, 1, 1)
+light_energy = 1.2
+shadow_enabled = true
+directional_shadow_max_distance = 80.0
+
+[node name="Gezinme" type="NavigationRegion3D" parent="."]
+navigation_mesh = ExtResource("2_nav")
+
+[node name="YanikKutuphane" parent="Gezinme" unique_id=202660416 instance=ExtResource("1_ig7tw")]
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -9.25)
+
+[node name="Kamera" type="Camera3D" parent="." unique_id=131092679 node_paths=PackedStringArray("target")]
+transform = Transform3D(0.70710677, -0.40824828, 0.57735026, 0, 0.81649655, 0.57735026, -0.70710677, -0.40824828, 0.57735026, 20, 20, 10.75)
+projection = 1
+size = 18.0
+near = 0.1
+far = 200.0
+script = ExtResource("4_camera")
+target = NodePath("../Player")

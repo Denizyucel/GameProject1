@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://characters/player.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://assets/character/nightshade.fbx" id="2_model"]
+
+[node name="Player" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+transform = Transform3D(0.852, 0, 0, 0, 0.852, 0, 0, 0, 0.852, 0, 0, 0)
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+path_desired_distance = 0.3
+path_height_offset = 0.5
+target_desired_distance = 0.2
