@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://camera_follow.gd" id="4_camera"]
 [ext_resource type="PackedScene" path="res://hud/hud.tscn" id="5_hud"]
 [ext_resource type="Script" path="res://main.gd" id="7_main"]
+[ext_resource type="Script" path="res://levels/see_through.gd" id="10_saydam"]
 
 [sub_resource type="ProceduralSkyMaterial" id="YansimaGogu"]
 sky_top_color = Color(0.3, 0.3, 0.38, 1)
@@ -61,6 +62,12 @@ near = 0.1
 far = 200.0
 script = ExtResource("4_camera")
 target = NodePath("../Player")
+
+[node name="Saydamlik" type="Node" parent="." node_paths=PackedStringArray("player", "camera", "piece_roots")]
+script = ExtResource("10_saydam")
+player = NodePath("../Player")
+camera = NodePath("../Kamera")
+piece_roots = [NodePath("../Gezinme/YanikKutuphane/Parcalar"), NodePath("../Gezinme/KulYolu/Parcalar"), NodePath("../Cevre/Agaclar")]
 
 [node name="HUD" parent="." node_paths=PackedStringArray("player") instance=ExtResource("5_hud")]
 player = NodePath("../Player")

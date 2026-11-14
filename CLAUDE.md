@@ -165,7 +165,11 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   Dokular dünya konumuna göre döşenir, iki zemin dikişsiz birleşir. Düşmanlar main.gd ENEMY_SPAWNS'tan kodla Dusmanlar
   altına konur (main.tscn'de düşman yok): Kül Yolu'nda 1 tek, sonra 2. Doğuş hâlâ kütüphanede.
   Deneme: tools/level_test.gd (kütüphaneden Kül Yolu'na yürüyüş).
-- Henüz taşınmadı: parça saydamlaşması.
+- Parça saydamlaşması: levels/see_through.gd (main.tscn'de Saydamlik; piece_roots: iki bölgenin Parcalar'ı ve
+  Cevre/Agaclar). Açılışta her parçanın sınır kutusu (kendi uzayında) ölçülür; 0.1 sn'de bir karakterin ayak,
+  göğüs ve başından kameraya uzanan çizgi kutuyu kesiyorsa parça %70 saydamlaşır (GeometryInstance3D.transparency,
+  ~0.18 sn'de), çıkınca geri belirir. 1.2 m'den alçak parçalar (taş, moloz) sayılmaz. Ağaçta kutu dalları da
+  kapsar; birkaç ağaç birden saydamlaşabilir. Düşmanlar için yok. Deneme: tools/see_through_test.gd.
 
 ## Mimari kurallar
 - src/game/ React import etmez; src/hud/ Three.js nesnelerine dokunmaz.
