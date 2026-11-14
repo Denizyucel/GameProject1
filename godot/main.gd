@@ -81,6 +81,7 @@ func _ready() -> void:
 func on_seal_broken(enemy: Node3D) -> void:
 	spawn_effect(enemy.global_position, false)
 	hud.whisper(THANKS_WHISPER)
+	GameCamera.shake(0.6)
 
 
 func spawn_effect(at: Vector3, release: bool) -> void:
@@ -130,8 +131,12 @@ func raise_dead() -> bool:
 	var corpse := nearest_corpse()
 	if corpse == null:
 		return false
+	if player.mana < player.RAISE_MANA:
+		player.not_enough_mana.emit()
+		return false
 	if player.start_cast(corpse.global_position) < 0:
 		return false
+	player.spend_mana(player.RAISE_MANA)
 	cast_target = corpse
 	return true
 

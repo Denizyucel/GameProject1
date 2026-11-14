@@ -11,6 +11,10 @@ signal health_changed(health: float, max_health: float)
 signal died
 signal respawned
 signal arrived # enter_scene ile yürüdüğü yere vardı
+## Mana değişince (HUD'daki mana küresi dinler)
+signal mana_changed(mana: float, max_mana: float)
+## Bir büyüye mana yetmedi (HUD küreyi parlatır, Ruh Kıran "Manam yetmiyor" der)
+signal not_enough_mana
 
 const MOVE_SPEED := 3.0 # metre / saniye
 const TURN_SPEED := 12.0 # dönüşün ne kadar hızlı yetiştiği (büyüdükçe daha keskin)
@@ -55,12 +59,21 @@ const SPEAR_HEIGHT := 1.3 # mızrağın çıktığı yükseklik (göğüs)
 const SPEAR_FORWARD := 0.6 # karakterin ne kadar önünden çıktığı
 const RESPAWN_DELAY := 4.0
 
+# Mana ve yenilenme: büyülerin bedeli manadan ödenir, mana kendiliğinden dolar. Can da yavaşça dolar, ama
+# yalnızca bir süre hasar almadıysa (dövüşün ortasında iksirin yerini tutmasın).
+const SPEAR_MANA := 12.0 # bir kemik mızrağı
+const RAISE_MANA := 25.0 # bir iskelet kaldırma (main.gd okur)
+const MANA_REGEN := 5.0 # saniyede dolan mana (boştan dolmaya 20 sn)
+const HEALTH_REGEN := 1.0 # saniyede dolan can
+const HEALTH_REGEN_DELAY := 5.0 # son hasardan bu kadar saniye sonra can dolmaya başlar
+
 # Bekleme ve yürüme animasyonlarının dosyası ve dosyadaki adı
 @export_file("*.fbx", "*.glb") var idle_file := "res://assets/character/idle.fbx"
 @export var idle_name := "mixamo_com"
 @export_file("*.fbx", "*.glb") var walk_file := "res://assets/character/walk.fbx"
 @export var walk_name := "mixamo_com"
 @export var max_health := 100.0
+@export var max_mana := 100.0
 
 @onready var agent: NavigationAgent3D = $NavigationAgent3D
 @onready var model: Node3D = $Model
@@ -68,6 +81,8 @@ const RESPAWN_DELAY := 4.0
 @onready var skeleton: Skeleton3D = model.find_child("Skeleton3D")
 
 var health := max_health
+var mana := max_mana
+var last_hurt_at := -100.0 # son hasar anı (saniye); can yenilenmesi buna bakar
 var alive := true
 var spawn_point := Vector3.ZERO
 var walk_clip_speed := 0.0 # yürüme animasyonunda ayakların ilerlediği hız (metre / saniye, oyundaki ölçekte)
@@ -148,6 +163,9 @@ func take_damage(amount: float) -> void:
 	if not alive:
 		return
 	health = clampf(health - amount, 0.0, max_health)
+	if amount > 0:
+		GameCamera.shake(0.5)
+		last_hurt_at = Time.get_ticks_msec() / 1000.0
 	health_changed.emit(health, max_health)
 	if health <= 0:
 		die()
@@ -159,6 +177,28 @@ func is_target_valid() -> bool:
 
 func ground_distance(point: Vector3) -> float:
 	return Vector2(point.x - global_position.x, point.z - global_position.z).length()
+
+
+## Büyünün bedelini öde. Yetmiyorsa hiçbir şey harcamaz, not_enough_mana gönderir ve false döner.
+func spend_mana(cost: float) -> bool:
+	if mana < cost:
+		not_enough_mana.emit()
+		return false
+	mana -= cost
+	mana_changed.emit(mana, max_mana)
+	return true
+
+
+## Mana ve canın kendiliğinden dolması (her kare)
+func regenerate(delta: float) -> void:
+	if not alive:
+		return
+	if mana < max_mana:
+		mana = minf(mana + MANA_REGEN * delta, max_mana)
+		mana_changed.emit(mana, max_mana)
+	if health < max_health and Time.get_ticks_msec() / 1000.0 - last_hurt_at >= HEALTH_REGEN_DELAY:
+		health = minf(health + HEALTH_REGEN * delta, max_health)
+		health_changed.emit(health, max_health)
 
 
 ## Vuruş, büyü ya da ölüm sürerken yeni bir şey başlamaz
@@ -179,6 +219,8 @@ func enter_scene(from: Vector3, to: Vector3) -> void:
 ## Kemik mızrağı büyüsünü başlat: hedefe dön, el hareketi oynar, fırlatma anında mızrak çıkar
 func start_spear(toward: Vector3) -> bool:
 	if is_busy() or spear_moves.is_empty() or Time.get_ticks_msec() / 1000.0 < spear_ready_at:
+		return false
+	if not spend_mana(SPEAR_MANA):
 		return false
 	agent.target_position = global_position # yürümeyi bırak
 	attack_target = null
@@ -254,10 +296,12 @@ func die() -> void:
 func respawn() -> void:
 	alive = true
 	health = max_health
+	mana = max_mana
 	global_position = spawn_point
 	agent.target_position = spawn_point
 	animation_player.play("hareket/idle", ANIMATION_BLEND)
 	health_changed.emit(health, max_health)
+	mana_changed.emit(mana, max_mana)
 	respawned.emit()
 
 
@@ -344,6 +388,7 @@ func update_attack(delta: float) -> void:
 			target = attack_target
 		if target:
 			target.hit(global_position, ATTACK_DAMAGE)
+			GameCamera.shake(0.35) # darbe hissi
 	if progress >= 1.0:
 		attack = {}
 		animation_player.play("hareket/idle", ANIMATION_BLEND)
@@ -469,5 +514,6 @@ func _physics_process(delta: float) -> void:
 
 # Engebeli zeminde (Harabe Köy) yalnızca görüntü kalkar: konum (global_position) hep y = 0'da kalır,
 # model zeminin yüksekliği kadar yukarı çizilir (levels/terrain.gd)
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	regenerate(delta)
 	model.position.y = Terrain.height_at(global_position)

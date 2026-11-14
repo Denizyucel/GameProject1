@@ -6,6 +6,8 @@
 [ext_resource type="Texture2D" path="res://assets/hud/globe-liquid.png" id="4_liquid"]
 [ext_resource type="Texture2D" path="res://assets/hud/globe-frame.png" id="5_frame"]
 [ext_resource type="Shader" path="res://hud/globe_fill.gdshader" id="6_fill"]
+[ext_resource type="Texture2D" path="res://assets/hud/mana-liquid.png" id="7_mana_liquid"]
+[ext_resource type="Texture2D" path="res://assets/hud/mana-frame.png" id="8_mana_frame"]
 
 [sub_resource type="ShaderMaterial" id="KayipCanMalzemesi"]
 shader = ExtResource("6_fill")
@@ -18,6 +20,19 @@ shader = ExtResource("6_fill")
 shader_parameter/fill = 1.0
 shader_parameter/brightness = 1.0
 shader_parameter/flash = 0.0
+
+[sub_resource type="ShaderMaterial" id="KayipManaMalzemesi"]
+shader = ExtResource("6_fill")
+shader_parameter/fill = 1.0
+shader_parameter/brightness = 1.8
+shader_parameter/flash = 0.0
+
+[sub_resource type="ShaderMaterial" id="ManaSiviMalzemesi"]
+shader = ExtResource("6_fill")
+shader_parameter/fill = 1.0
+shader_parameter/brightness = 1.0
+shader_parameter/flash = 0.0
+shader_parameter/flash_color = Color(0.75, 0.85, 1, 1)
 
 [sub_resource type="LabelSettings" id="SayiYazisi"]
 font_size = 15
@@ -101,6 +116,71 @@ texture = ExtResource("5_frame")
 expand_mode = 1
 
 [node name="Sayi" type="Label" parent="CanKuresi"]
+layout_mode = 1
+anchor_left = 0.275
+anchor_top = 0.253
+anchor_right = 0.765
+anchor_bottom = 0.744
+mouse_filter = 2
+text = "100 / 100"
+label_settings = SubResource("SayiYazisi")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ManaKuresi" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -200.0
+offset_top = -208.0
+offset_bottom = -8.0
+grow_horizontal = 0
+grow_vertical = 0
+script = ExtResource("2_globe")
+
+[node name="BosKure" type="TextureRect" parent="ManaKuresi"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture = ExtResource("3_empty")
+expand_mode = 1
+
+[node name="KayipCan" type="TextureRect" parent="ManaKuresi"]
+modulate = Color(1, 1, 1, 0.7)
+material = SubResource("KayipManaMalzemesi")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture = ExtResource("7_mana_liquid")
+expand_mode = 1
+
+[node name="Sivi" type="TextureRect" parent="ManaKuresi"]
+material = SubResource("ManaSiviMalzemesi")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture = ExtResource("7_mana_liquid")
+expand_mode = 1
+
+[node name="Cerceve" type="TextureRect" parent="ManaKuresi"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture = ExtResource("8_mana_frame")
+expand_mode = 1
+
+[node name="Sayi" type="Label" parent="ManaKuresi"]
 layout_mode = 1
 anchor_left = 0.275
 anchor_top = 0.253

@@ -53,6 +53,7 @@ func _physics_process(delta: float) -> void:
 		if Vector2(to_enemy.x, to_enemy.z).length() <= HIT_RADIUS:
 			already_hit.append(enemy)
 			enemy.hit(global_position - direction, DAMAGE)
+			GameCamera.shake(0.3)
 
 	if travelled >= RANGE or hit_wall():
 		break_apart()

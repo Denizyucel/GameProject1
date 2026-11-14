@@ -196,6 +196,19 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   (POTION_CHANCE) main.drop_potion: cesedin 1 m yanına (navmesh'e çekilir) yayla sıçrar, yerde dönüp süzülür,
   kırmızı ışığı var. Oyuncu 1.1 m'ye gelince kendiliğinden alınır, 25 can (HEAL; player.heal); can tamsa
   alınmaz, yerde bekler. Deneme: tools/potion_test.gd.
+- Mana ve yenilenme (player.gd): max_mana 100, MANA_REGEN 5/sn. Kemik mızrağı SPEAR_MANA 12 (start_spear
+  harcar), iskelet kaldırma RAISE_MANA 25 (main.raise_dead önce bakar, büyü başlayınca harcar; büyü yarıda
+  kalırsa geri gelmez). player.spend_mana(bedel) yetmezse harcamaz, not_enough_mana sinyali → HUD mana küresini
+  parlatır (globe.blink) ve en sık 2 sn'de bir "Manam yetmiyor." der. Can: son hasardan 5 sn sonra
+  (HEALTH_REGEN_DELAY) 1/sn dolar. Doğuşta mana da tam. mana_changed sinyali → HUD ManaKuresi (sağ alt; can
+  küresinin aynısı; kendi görselleri assets/hud/mana-frame.png (kafatası sağda) ve mana-liquid.png, asılları
+  public/models/hud/mana-globe; boş küre ortak globe-empty.png). globe_fill.gdshader rengi COLOR'dan alır (COLOR
+  zaten doku x modulate; eskiden doku bir kez daha çarpılıp sıvı koyulaşıyordu, düzeltildi: renkler görseldeki gibi). health_globe.gd artık Tween değil _process ile akar (yenilenme her kare küçük artış
+  gönderse de boşalma animasyonu kesilmez). Deneme: tools/mana_test.gd.
+- Ekran sarsıntısı: camera_follow.gd artık class_name GameCamera; GameCamera.shake(miktar 0..1) her yerden
+  çağrılır (static active; ara sahnede kamera yok, hiçbir şey yapmaz). Miktar "trauma"da birikir, saniyede 2
+  söner; kayma ekran düzleminde, trauma'nın karesi x SHAKE_REACH (1 m) / zoom. Kılıç darbesi 0.35 (~5 piksel),
+  mızrak isabeti 0.3, oyuncu hasar alınca 0.5, mühür kırılınca 0.6; iskeletlerin vuruşu sarsmaz.
 - Parça saydamlaşması: levels/see_through.gd (main.tscn'de Saydamlik; piece_roots: iki bölgenin Parcalar'ı ve
   Cevre/Agaclar). Açılışta her parçanın sınır kutusu (kendi uzayında) ölçülür; 0.1 sn'de bir karakterin ayak,
   göğüs ve başından kameraya uzanan çizgi kutuyu kesiyorsa parça %70 saydamlaşır (GeometryInstance3D.transparency,
@@ -296,14 +309,14 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Kül Yolu'nda ölünce kütüphane yerine Kül Yolu girişinde doğma (kontrol noktası)
 - Kullanılmayan Environment.ts'yi sil
 - A* açık listesini öncelik kuyruğuna çevir (harita büyüyünce)
-- Vuruşta kan/parça efekti, ekran sarsıntısı gibi vuruş hissi efektleri
+- Vuruşta kan/parça efekti, kısa duraklama (hit stop) gibi vuruş hissi efektleri
 - İskelete yerden kalkma (Standing Up) ve kendine özgü (zombi) yürüme animasyonu
 - skeleton.fbx'i hafiflet (278 bin üçgen; çok minionda ağırlaşır)
 - Vampire kendi animasyonları (vurulma, ölüm) ve can barı
 - Hareketli çarpışma: karakter, vampir ve minionlar birbirinin içinden geçmesin
 - Minionların canı olsun, vampirler minionlara da saldırsın
-- Mana ve diriltmenin mana maliyeti; iksir alma sesi ve yerdeki iksirin süreyle kaybolması
+- Mana iksiri; iksir alma sesi ve yerdeki iksirin süreyle kaybolması
 - Karakter için ölüm ve vurulma animasyonu (şimdi sadece devriliyor)
 - Walking.fbx'i Without Skin indir (15 MB → ~0.5 MB)
-- Mühür kırılma sesi (cam kırılması) ve fısıltı sesi
+- Sesler: mühür kırılması (freesound CC0 "glass shatter"), fısıltı (kendi Türkçe kaydımız), kılıç darbesi
 - Minionlar birbirinin ve karakterin içinden geçmesin
