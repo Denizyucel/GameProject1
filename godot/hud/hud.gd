@@ -1,10 +1,12 @@
 # Oyunun üstündeki arayüz (HUD). Oyuncunun sinyallerini dinler: can küresini günceller, ölünce
-# "Öldün" yazısını gösterir, yeniden doğunca gizler. Kurtarılan ruhların fısıltısını gösterir.
+# "Öldün" yazısını gösterir, yeniden doğunca gizler. Kurtarılan ruhların fısıltısını ve Ruh Kıran'ın
+# kendi sözlerini (alt yazı) gösterir.
 
 extends CanvasLayer
 
 const WHISPER_TIME := 3.0 # fısıltının ekranda kalma süresi (saniye)
 const WHISPER_RISE := 18.0 # kaybolurken ne kadar yukarı süzüldüğü (piksel)
+const SAY_TIME := 3.5 # Ruh Kıran'ın sözünün ekranda kalma süresi (saniye)
 
 @export var player: Node
 
@@ -12,9 +14,11 @@ const WHISPER_RISE := 18.0 # kaybolurken ne kadar yukarı süzüldüğü (piksel
 @onready var death_label: Label = $OlumYazisi
 @onready var whisper_label: Label = $Fisilti
 @onready var minion_label: Label = $IskeletSayisi
+@onready var say_label: Label = $Konusma
 
 var whisper_tween: Tween
 var whisper_top := 0.0
+var say_tween: Tween
 
 
 func _ready() -> void:
@@ -39,6 +43,17 @@ func whisper(text: String) -> void:
 	whisper_tween.tween_interval(WHISPER_TIME * 0.35)
 	whisper_tween.tween_property(whisper_label, "modulate:a", 0.0, WHISPER_TIME * 0.45)
 	whisper_tween.parallel().tween_property(whisper_label, "position:y", whisper_top - WHISPER_RISE, WHISPER_TIME * 0.45)
+
+
+## Ruh Kıran'ın kendi sözü: ekranın altında alt yazı gibi belirir, biraz kalır, söner
+func say(text: String) -> void:
+	if say_tween:
+		say_tween.kill()
+	say_label.text = text
+	say_tween = create_tween()
+	say_tween.tween_property(say_label, "modulate:a", 1.0, 0.3)
+	say_tween.tween_interval(SAY_TIME)
+	say_tween.tween_property(say_label, "modulate:a", 0.0, 0.6)
 
 
 ## Kürenin yanındaki iskelet sayısı

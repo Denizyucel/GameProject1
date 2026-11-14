@@ -1,11 +1,12 @@
 [gd_scene format=3]
 
 [ext_resource type="PackedScene" path="res://levels/yanik_kutuphane.tscn" id="1_ig7tw"]
-[ext_resource type="NavigationMesh" path="res://levels/yanik_kutuphane_nav.tres" id="2_nav"]
+[ext_resource type="NavigationMesh" path="res://levels/act1_nav.tres" id="2_nav"]
+[ext_resource type="PackedScene" path="res://levels/kul_yolu.tscn" id="8_kul_yolu"]
+[ext_resource type="PackedScene" path="res://levels/cevre.tscn" id="9_cevre"]
 [ext_resource type="PackedScene" path="res://characters/player.tscn" id="3_player"]
 [ext_resource type="Script" path="res://camera_follow.gd" id="4_camera"]
 [ext_resource type="PackedScene" path="res://hud/hud.tscn" id="5_hud"]
-[ext_resource type="PackedScene" path="res://enemies/enemy.tscn" id="6_enemy"]
 [ext_resource type="Script" path="res://main.gd" id="7_main"]
 
 [sub_resource type="ProceduralSkyMaterial" id="YansimaGogu"]
@@ -39,10 +40,15 @@ light_energy = 1.2
 shadow_enabled = true
 directional_shadow_max_distance = 80.0
 
+[node name="Cevre" parent="." instance=ExtResource("9_cevre")]
+
 [node name="Gezinme" type="NavigationRegion3D" parent="."]
 navigation_mesh = ExtResource("2_nav")
 
 [node name="YanikKutuphane" parent="Gezinme" unique_id=202660416 instance=ExtResource("1_ig7tw")]
+
+[node name="KulYolu" parent="Gezinme" instance=ExtResource("8_kul_yolu")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 40)
 
 [node name="Player" parent="." instance=ExtResource("3_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -9.25)
@@ -60,18 +66,3 @@ target = NodePath("../Player")
 player = NodePath("../Player")
 
 [node name="Dusmanlar" type="Node3D" parent="."]
-
-[node name="Dusman1" parent="Dusmanlar" instance=ExtResource("6_enemy")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 0, -7)
-
-[node name="Dusman2" parent="Dusmanlar" instance=ExtResource("6_enemy")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, -7)
-
-[node name="Dusman3" parent="Dusmanlar" instance=ExtResource("6_enemy")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13, 0, 8)
-
-[node name="Dusman4" parent="Dusmanlar" instance=ExtResource("6_enemy")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, 13)
-
-[node name="Dusman5" parent="Dusmanlar" instance=ExtResource("6_enemy")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 15)

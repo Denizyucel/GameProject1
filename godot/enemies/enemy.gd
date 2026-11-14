@@ -26,9 +26,8 @@ const HIT_REACH := 2.2 # darbe anında oyuncu bu kadar yakındaysa hasar alır
 # Vurulma ve ölüm
 const HIT_FLASH := 0.3 # kırmızı parlamanın süresi
 const STUN_TIME := 0.4 # vurulunca şaşırıp durduğu süre
-const SINK_AFTER := 0.8 # ölüm animasyonu bittikten kaç saniye sonra gömülmeye başlar
-const SINK_TIME := 1.2
-const SINK_DEPTH := 2.3
+const DEATH_SPEED := 1.5 # devrilme animasyonu kaç kat hızlı oynasın
+const FADE_OUT := 0.7 # yere düşünce bedenin yumuşakça kaybolma süresi (ceset aynı anda belirir)
 const TURN_SPEED := 10.0
 const ANIMATION_BLEND := 0.2
 
@@ -59,6 +58,7 @@ const ANIMATIONS := [
 static var shared_library: AnimationLibrary
 static var clip_speeds := {} # yürüme/koşmanın ayak hızı, boy 1 iken (metre / saniye)
 static var claw_hit_moment := 0.45
+static var landing_moment := 1.0 # ölüm animasyonunda bedenin yere vardığı an (saniye); o an cesede döner
 static var style_bag: Array = []
 
 @onready var agent: NavigationAgent3D = $NavigationAgent3D
@@ -124,6 +124,8 @@ func prepare_shared_animations() -> void:
 	for move in ["walk", "run"]:
 		clip_speeds[move] = RigAnimations.stride_speed(animation_player, skeleton, "hareket/" + move) / style["size"]
 	claw_hit_moment = RigAnimations.fastest_hand_moment(animation_player, skeleton, "hareket/pence", 0.45)
+	if shared_library.has_animation("olum"):
+		landing_moment = RigAnimations.landing_moment(animation_player, skeleton, "hareket/olum")
 	animation_player.remove_animation_library("hareket")
 
 
@@ -157,7 +159,7 @@ func die() -> void:
 	attack_time = -1.0
 	agent.target_position = global_position
 	remove_from_group("dusman")
-	animation_player.speed_scale = 1.0
+	animation_player.speed_scale = DEATH_SPEED
 	play("hareket/olum")
 	seal_broken.emit(self)
 
@@ -281,17 +283,23 @@ func update_flash() -> void:
 	flash_material.albedo_color.a = 0.0 if t >= 1.0 else (1.0 - t) * 0.6
 
 
-# Ölüm animasyonu bitince bir süre yatar, sonra toprağa gömülür ve silinir
+# Devrilir; bedeni yere vardığı an yumuşakça kaybolurken yerinde ceset belirir (main.gd buried'i dinler)
 func update_death(delta: float) -> void:
+	if death_time < 0:
+		return # kayboluyor
 	death_time += delta
-	var length := animation_player.get_animation("hareket/olum").length if shared_library.has_animation("olum") else 1.0
-	var sinking := death_time - length - SINK_AFTER
-	if sinking > 0:
-		var t := minf(sinking / SINK_TIME, 1.0)
-		model.position.y = -t * t * SINK_DEPTH
-		if t >= 1.0:
-			buried.emit(Vector3(global_position.x, 0, global_position.z))
-			queue_free()
+	if death_time >= landing_moment / animation_player.speed_scale:
+		death_time = -1.0
+		var hips := skeleton.find_bone(RigAnimations.HIPS_BONE)
+		var at := global_position
+		if hips != -1:
+			at = skeleton.global_transform * skeleton.get_bone_global_pose(hips).origin
+		buried.emit(Vector3(at.x, 0, at.z))
+		# Saydamlık her şekle ayrı ayrı: 0 = tam görünür, 1 = görünmez
+		var tween := create_tween().set_parallel()
+		for mesh in model.find_children("*", "GeometryInstance3D", true, false):
+			tween.tween_property(mesh, "transparency", 1.0, FADE_OUT)
+		tween.chain().tween_callback(queue_free)
 
 
 func play(animation: String) -> void:

@@ -43,7 +43,7 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   açık gökyüzü zemini puslandırıyordu.
 - godot/main.tscn: ortam ışığı, ay ışığı (gölgeli), Gezinme (NavigationRegion3D; içinde bölge),
   Player, ortografik izometrik kamera (camera_follow.gd: takip, tekerlek/pinch zoom).
-- Navmesh: levels/yanik_kutuphane_nav.tres (ajan 0.4 m yarıçap, 1.8 m boy, 0.25 m tırmanma). Bölgede
+- Navmesh: levels/act1_nav.tres (ajan 0.4 m yarıçap, 1.8 m boy, 0.25 m tırmanma). Bölgede
   parça taşıyınca yeniden çıkar: `godot --path godot -s tools/bake_navmesh.gd` ya da editörde Gezinme →
   Bake NavigationMesh. Navmesh zeminden 0.5 m yukarıda çıkıyor; ajanın path_height_offset'i 0.5.
 - characters/player.tscn + player.gd: yeni Necromancer (assets/character/necromancer-kadin.glb; Meshy
@@ -81,8 +81,9 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   ve 12 m'ye kadar kovalama, pençe (mutant-swiping, darbe anı ölçülür), 4 dövüş tarzı torbadan (STYLES:
   can, hasar, boy, kovalama animasyonu/hızı, pençe hızı, mola, kas gösterisi). Animasyonlar ilk
   düşmanda bir kez hazırlanıp hepsi arasında paylaşılır (static shared_library). Vurulunca
-  material_overlay ile kırmızı parlar, 0.4 sn şaşırır. Ölüm: mutant-dying.fbx (Godot okuyabiliyor),
-  sonra toprağa gömülüp silinir; seal_broken sinyali gönderir (mühür kırma efekti buna bağlanacak).
+  material_overlay ile kırmızı parlar, 0.4 sn şaşırır. Ölüm: mutant-dying.fbx (Godot okuyabiliyor; 1.5 kat
+  hızlı), bedeni yere vardığı an (RigAnimations.landing_moment, kalçanın en alçağa indiği an) 0.7 sn'de
+  saydamlaşıp silinir, yerinde ceset aynı sürede belirir (GeometryInstance3D.transparency); seal_broken sinyali gönderir (mühür kırma efekti buna bağlanacak).
   Gruplar: "dusman" (canlı düşmanlar), "oyuncu".
 - Oyuncu dövüşü: Shift + tık vuruşunun darbe anında (sağ elin en hızlı anı) önündeki 2.2 m içindeki
   en yakın düşmana 10 hasar. Can 0 → ölüm animasyonu, HUD'da "Öldün", 4 sn sonra doğuş noktasında tam can.
@@ -97,7 +98,7 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   Godot Forward+'ta sahneye ışık eklemek shader derletmez; ışık havuzu gerekmedi.
   Deneme: tools/seal_test.gd (efektin kendi saatine göre görüntü alır; ekran görüntüsü oyunu dondurur ve
   Godot o süreyi oyun zamanına saymaz, duvar saatine göre beklemek yanıltır).
-- Ceset ve iskeletler (main.gd yönetir): düşman gömülünce buried sinyali → minions/corpse.tscn (flesh.glb,
+- Ceset ve iskeletler (main.gd yönetir): düşman yere düşünce buried sinyali → minions/corpse.tscn (flesh.glb,
   1.1 m, rastgele yön, "ceset" grubu). 1 tuşu (fiziksel; numpad 1 de): oyuncu 8 m içindeki en yakın cesede
   döner, Magic Spell Pack'ten rastgele büyü (assets/animations/spell/spell1-12.fbx, 1.5 kat hızlı;
   player.start_cast/cast_progress/is_busy); ceset ilk yarıda mavi parlar, yarısında iskelet kalkar, ceset
@@ -132,9 +133,38 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   finish. Akış: 0-6 kaidede üç dik gümüş mühür, 6-15 X güney kapıdan kaideye yürür, 15-18 kaidenin
   önünde bekler, 18-21 büyü (spell4), mühürler yükselip altına döner ve X'e çekilir, 22 yangın, 24-30 X
   yanan kütüphaneden çıkar, kararma. Ruh Kıran ara sahnede görünmez (kullanıcı istedi). Esc ya da tık:
-  geç. Bitince MainScene.wake_at = (3, 0, -8.5) → main.tscn; player.wake_up ölüm animasyonunu tersten
-  oynatır (küller arasında uyanış; 3.2 sn kontrol yok). main.gd artık class_name MainScene. Deneme: tools/cutscene_test.gd.
+  geç. Bitince MainScene.after_intro = true → main.tscn; Ruh Kıran uyumaz: player.enter_scene ile güney
+  kapıdan (0, 0, 8) salonun ortasına (0, 0, -5) kendiliğinden yürür (bu sırada kontrol yok), varınca
+  arrived sinyali → HUD.say("Buraya ne oldu böyle?") (Konusma etiketi, altta alt yazı). Yanan 10 raf
+  (MainScene.FIRE_POINTS; ara sahne de bunları kullanır) oyunda da yanmaya devam eder: main.gd her
+  açılışta effects/fire.tscn koyar. main.gd class_name MainScene. Deneme: tools/cutscene_test.gd.
   Oyunu ara sahnesiz denemek: editörde main.tscn açıkken F6 (Run Current Scene).
+- Harita tek parça (geçiş/yükleme yok): main.tscn'de Gezinme altında YanikKutuphane ve hemen güneyinde
+  KulYolu (z = 40'a kaydırılmış; ikisi de 40 x 40 m). Navmesh ikisini birlikte kapsar:
+  levels/act1_nav.tres. Yanık Kütüphane düşmansız (Hikaye.md), 10 raf yanıyor. Kül Yolu
+  (levels/kul_yolu.tscn, tools/build_kul_yolu.gd ile bir kez üretildi; artık editörde): kuzeyi
+  kütüphaneye açık (ikinci kapı kaldırıldı), yolun iki yanında yıkık duvar, sütun, moloz, kuru ağaç; zemin kütüphanenin dışıyla aynı
+  malzeme (renk farkı sınırda çizgi yapıyordu): materials/disarisi.tres (ShaderMaterial,
+  materials/zemin.gdshader): her yer çimen assets/floor/cimen (Grass001), üstünde toprak
+  assets/floor/zemin (Ground110) bir yol; ikisi de public/models/floor'dan kopya. Yol: road_points (dünya
+  x, z), kütüphanenin kapısından (0, 6.9) Kül Yolu'nun güney ucuna (0, 60) kıvrılarak iner; road_width 3.6,
+  kenarlar gürültüyle düzensiz (edge_wobble). Yolu değiştirmek: disarisi.tres → Inspector → road_points.
+  Yol dışına sonradan kuru ağaçlar eklendi (kütüphane bölgesinde 69, Kül Yolu'nda 83; harita kenarlarında
+  sık orman; build betiklerinde yok). Kit'in agaclar/ klasöründen büyük dallı ağaç agac2.glb (18 bin
+  üçgen, ~6.5 m; 0.6 ölçek, gövde modelin kökünde) de serpiştirildi: kütüphanede 13, Kül Yolu'nda 10 ("agac2-N";
+  yoldan 5 m uzak). agac1.glb kuru-agac.glb ile aynı dosya. ~3 milyon üçgen.
+  Harita kenarında siyah boşluk yok: levels/cevre.tscn (main.tscn'de Cevre; Gezinme'nin DIŞINDA, navmesh'e
+  girmez, oyuncu oraya yürüyemez): 120 x 160 m DisZemin (aynı disarisi.tres, y = -0.02) ve oynanan alanın
+  çevresinde 30 m'lik orman (711 ağaç; ilk 12 m sık). 30 m = en uzak zoom'da (0.6) ekranın gördüğü kadar;
+  MIN_ZOOM küçülürse halka da büyümeli. Yol güneye z = 101'e kadar devam eder (road_count 13). Ara sahnede
+  (acilis.tscn) de KulYolu (z = 40) ve Cevre var; kenarlar orada da siyah değil.
+  Taşlar: assets/kit/tas/tas1-3.glb (dokusuz, rengi köşe renklerinde/COLOR_0; Godot bunu kendiliğinden
+  kullanmıyor, bembeyaz çıkıyordu). props/tas1-3.tscn glb'yi sarıp materials/tas.tres'i takar
+  (vertex_color_use_as_albedo + is_srgb); sahnelerde glb değil bu props sahneleri kullanılır. Kütüphane
+  bölgesinde 14, Kül Yolu'nda 18 (Parcalar altında "tasN-M", navmesh'te engel), Cevre'de 110 (Taslar altında).
+  Dokular dünya konumuna göre döşenir, iki zemin dikişsiz birleşir. Düşmanlar main.gd ENEMY_SPAWNS'tan kodla Dusmanlar
+  altına konur (main.tscn'de düşman yok): Kül Yolu'nda 1 tek, sonra 2. Doğuş hâlâ kütüphanede.
+  Deneme: tools/level_test.gd (kütüphaneden Kül Yolu'na yürüyüş).
 - Henüz taşınmadı: parça saydamlaşması.
 
 ## Mimari kurallar
@@ -223,10 +253,10 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Yol düzleştirme: ızgara yolundaki gereksiz kırılmaları kaldır (görüş hattı kontrolü)
 - Tıklanan yere kısa süreli işaret (Diablo'daki tıklama halkası)
 - Fare basılı tutulunca sürekli yürüme
-- Harita kenarı: siyah boşluk yerine duvar/sis; gölge alanı karakteri takip etsin
 - Sahneye biraz daha ışık; parçalar şu an çok koyu
 - planlar/yanik-kutuphane-ornek.svg'yi koda göre güncelle (yüksek duvar, duvar rafı, çatı kemeri yok)
-- Bölge çıkışı: "cikis" işaretine gelince sonraki bölgeye (Kül Yolu) geçiş
+- Kül Yolu'nun güneyine 3. bölge Harabe Köy
+- Kül Yolu'nda ölünce kütüphane yerine Kül Yolu girişinde doğma (kontrol noktası)
 - Kullanılmayan Environment.ts'yi sil
 - A* açık listesini öncelik kuyruğuna çevir (harita büyüyünce)
 - Vuruşta kan/parça efekti, ekran sarsıntısı gibi vuruş hissi efektleri

@@ -2,18 +2,34 @@
 #   - Düşmanın mührü kırılınca (canı bitince): mühür kırma efekti ve "Teşekkür ederiz…" fısıltısı
 #   - Bedeni gömülünce: yerinde ceset (et yığını)
 #   - 1 tuşu: oyuncu 8 m içindeki en yakın cesede büyü yapar; büyünün yarısında cesetten iskelet kalkar
+#   - Harita tek parça: Yanık Kütüphane (düşmansız) ve hemen güneyinde Kül Yolu (düşmanlar burada).
+#     Düşmanlar ENEMY_SPAWNS'taki yerlere kodla konur.
+#   - Kütüphane yanıyor: açılışta X'in tutuşturduğu raflar oyunda da yanmaya devam eder
 #   - En fazla 5 iskelet: sınır doluyken yenisi kalkarsa rastgele biri ruhunu serbest bırakıp yok olur
 
 class_name MainScene
 extends Node3D
 
-## Açılış ara sahnesi oyuncunun nerede uyanacağını buraya yazar (yoksa null: normal doğuş noktası)
-static var wake_at: Variant = null
+## Açılış ara sahnesinden gelindiyse true: Ruh Kıran kapıdan yürüyerek girer
+static var after_intro := false
 
 const SEAL_BREAK := preload("res://effects/seal_break.tscn")
+const FIRE := preload("res://effects/fire.tscn")
+# Açılışta X'in kıvılcımlarının tutuşturduğu raflar (en yakından uzağa); oyunda da yanmaya devam ederler
+const FIRE_POINTS := [
+	Vector3(-4, 0.4, -12.3), Vector3(4, 0.4, -12.3), Vector3(-7.5, 0.3, -8.5), Vector3(7.5, 0.3, -7.5),
+	Vector3(-8, 0.4, -12.3), Vector3(8, 0.4, -12.3), Vector3(-7.5, 0.3, -6), Vector3(7.5, 0.3, -4.5),
+	Vector3(-7.5, 0.3, -2), Vector3(7.5, 0.3, 1),
+]
+const ENEMY := preload("res://enemies/enemy.tscn")
 const CORPSE := preload("res://minions/corpse.tscn")
 const MINION := preload("res://minions/minion.tscn")
 const THANKS_WHISPER := "Teşekkür ederiz…"
+# Düşmanların yerleri (evleri): Kül Yolu'nda önce tek devriye, sonra iki (Hikaye.md)
+const ENEMY_SPAWNS := [Vector3(0.5, 0, 36), Vector3(-1.5, 0, 48), Vector3(2, 0, 50)]
+const ENTER_FROM := Vector3(0, 0, 8) # güney kapı (X'in de girdiği yer)
+const ENTER_TO := Vector3(0, 0, -5) # salonun ortası; yanmış raflara bakar
+const ENTER_LINE := "Buraya ne oldu böyle?"
 const RAISE_KEYS := [KEY_1, KEY_KP_1] # üst sıradaki 1 ve sayı tuş takımındaki 1
 const RAISE_RANGE := 8.0 # oyuncudan en fazla bu uzaklıktaki ceset kaldırılabilir
 const RAISE_MOMENT := 0.5 # iskeletin büyünün hangi anında (0..1) kalktığı
@@ -24,6 +40,7 @@ const GOLDEN_ANGLE := PI * (3.0 - sqrt(5.0))
 
 @onready var hud = $HUD
 @onready var player = $Player
+@onready var enemies_root: Node3D = $Dusmanlar
 
 var minions: Array[Node3D] = []
 var raised_count := 0 # şimdiye kadar kaldırılan iskelet sayısı (yerlerini seçer)
@@ -31,16 +48,23 @@ var cast_target: Node3D # bu büyüyle kalkacak ceset; kalkınca null
 
 
 func _ready() -> void:
-	# Düşmanlar kendi _ready'lerinde "dusman" grubuna girdi (çocuklar ebeveynden önce hazırlanır)
-	for enemy in get_tree().get_nodes_in_group("dusman"):
+	hud.set_minions(0)
+	for point in FIRE_POINTS:
+		var fire := FIRE.instantiate()
+		add_child(fire)
+		fire.global_position = point
+		fire.ignite()
+	for point in ENEMY_SPAWNS:
+		var enemy := ENEMY.instantiate()
+		enemy.position = point # evi burası olur (_ready'de)
+		enemies_root.add_child(enemy)
 		enemy.seal_broken.connect(on_seal_broken)
 		enemy.buried.connect(on_buried)
-	hud.set_minions(0)
-	# Açılıştan geldiyse: Ruh Kıran küller arasında, uyuduğu yerde uyanır
-	if wake_at != null:
-		player.global_position = wake_at
-		player.wake_up()
-		wake_at = null
+	# Açılıştan geldiyse: Ruh Kıran kapıdan girer, salonun ortasında durup yangının izlerine bakar
+	if after_intro:
+		after_intro = false
+		player.enter_scene(ENTER_FROM, ENTER_TO)
+		player.arrived.connect(func(): hud.say(ENTER_LINE), CONNECT_ONE_SHOT)
 
 
 func on_seal_broken(enemy: Node3D) -> void:

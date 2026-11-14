@@ -1,5 +1,5 @@
 # Ana sahnedeki "Gezinme" (NavigationRegion3D) bölgesinin navmesh'ini, içindeki şekillerden çıkarıp
-# levels/yanik_kutuphane_nav.tres dosyasına kaydeder. Bölgede parça taşıyınca yeniden çalıştır
+# levels/act1_nav.tres dosyasına (Yanık Kütüphane + Kül Yolu) kaydeder. Bölgede parça taşıyınca yeniden çalıştır
 # (ya da editörde Gezinme düğümünü seçip üstteki "Bake NavigationMesh" düğmesine bas).
 #
 # Çalıştırma (pencere kısa süre açılır; şekil verisi için gerçek çizici gerekir):

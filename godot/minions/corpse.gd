@@ -9,6 +9,7 @@ const GLOW := Color(0.49, 0.77, 1.0)
 const MAX_GLOW := 0.5
 const SINK_TIME := 1.2
 const SINK_DEPTH := 0.45
+const FADE_IN := 0.7 # düşmanın bedeni kaybolurken ceset bu sürede belirir
 
 var glow_material := StandardMaterial3D.new()
 var sink_time := -1.0 # gömülmeye başladıysa kaç saniyedir; -1 ise yerinde duruyor
@@ -30,8 +31,11 @@ func _ready() -> void:
 	glow_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	glow_material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	glow_material.albedo_color = Color(GLOW, 0.0)
+	var tween := create_tween().set_parallel()
 	for mesh in model.find_children("*", "MeshInstance3D", true, false):
 		(mesh as MeshInstance3D).material_overlay = glow_material
+		mesh.transparency = 1.0 # görünmez başla, yumuşakça belir
+		tween.tween_property(mesh, "transparency", 0.0, FADE_IN)
 
 
 ## Parlama: 0 = yok, 1 = en parlak

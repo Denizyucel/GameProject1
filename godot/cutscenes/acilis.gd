@@ -1,5 +1,6 @@
 # Açılış ara sahnesi (Hikaye.md, "Açılış: X gece mühürleri çalar, kütüphaneyi yakar. Ruh Kıran küller
-# arasında uyanır."). Zaman çizelgesi Senaryo (AnimationPlayer) düğümünde, "acilis" animasyonunda:
+# arasında uyanır."; burada uyumaz: ara sahneden sonra kapıdan girip olanları görür). Zaman çizelgesi
+# Senaryo (AnimationPlayer) düğümünde, "acilis" animasyonunda:
 # kamera, X'in yolu ve dönüşleri, ışıklar ve kararma oradaki anahtar karelerle; aşağıdaki fonksiyonlar da
 # oradaki "Call Method" izinden belirli saniyelerde çağrılır. Zamanlamayı editörde, anahtar kareleri
 # sürükleyerek değiştir. Esc ya da tık: sahneyi geç.
@@ -10,17 +11,10 @@ const MAIN_SCENE := "res://main.tscn"
 const FIRE := preload("res://effects/fire.tscn")
 const SILVER := Color(0.82, 0.86, 0.95)
 const GOLD := Color("#ffc95a")
-const WAKE_AT := Vector3(3.0, 0, -8.5) # ara sahneden sonra Ruh Kıran'ın küller arasında uyandığı yer
 const SEAL_RADIUS := 0.16
 const SEAL_SPREAD := 0.28 # mühürlerin kaidenin ortasına uzaklığı (üçgen dizilim)
 const SPARK_TIME := 0.45 # kıvılcımın X'ten rafa uçuş süresi
 const SPARK_GAP := 0.18 # iki kıvılcım arası
-# Kıvılcımların tutuşturduğu yerler (raflar; en yakından uzağa)
-const FIRE_POINTS := [
-	Vector3(-4, 0.4, -12.3), Vector3(4, 0.4, -12.3), Vector3(-7.5, 0.3, -8.5), Vector3(7.5, 0.3, -7.5),
-	Vector3(-8, 0.4, -12.3), Vector3(8, 0.4, -12.3), Vector3(-7.5, 0.3, -6), Vector3(7.5, 0.3, -4.5),
-	Vector3(-7.5, 0.3, -2), Vector3(7.5, 0.3, 1),
-]
 # X'in animasyonları: [ad, dosya, dosyadaki ad]
 const X_ANIMATIONS := [
 	["idle", "res://assets/character/idle.fbx", "mixamo_com"],
@@ -120,8 +114,8 @@ func seals_absorb() -> void:
 ## Altın kıvılcımlar X'ten raflara sıçrar, değdikleri yer tutuşur
 func fire_wave() -> void:
 	var from := x.global_position + Vector3.UP * 1.3
-	for i in FIRE_POINTS.size():
-		var point: Vector3 = FIRE_POINTS[i]
+	for i in MainScene.FIRE_POINTS.size():
+		var point: Vector3 = MainScene.FIRE_POINTS[i]
 		get_tree().create_timer(i * SPARK_GAP).timeout.connect(func(): throw_spark(from, point))
 
 
@@ -167,10 +161,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		finish()
 
 
-## Oyuna geç: Ruh Kıran küller arasında, yerden kalkarak başlar
+## Oyuna geç: Ruh Kıran kapıdan yürüyerek girer (main.gd)
 func finish() -> void:
 	if finished:
 		return
 	finished = true
-	MainScene.wake_at = WAKE_AT
+	MainScene.after_intro = true
 	get_tree().change_scene_to_file(MAIN_SCENE)

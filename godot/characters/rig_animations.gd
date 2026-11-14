@@ -87,6 +87,28 @@ static func fastest_hand_moment(player: AnimationPlayer, skeleton: Skeleton3D, a
 	return float(best_step) / SAMPLES
 
 
+## Düşüş animasyonunda bedenin yere vardığı an (saniye): kalçanın en alçak yüksekliğe ilk kez (neredeyse)
+## indiği an. Ölüm animasyonları devrildikten sonra bir süre yerde yatmaya devam eder; bu, yatışın başı.
+static func landing_moment(player: AnimationPlayer, skeleton: Skeleton3D, animation_name: String) -> float:
+	var hips := skeleton.find_bone(HIPS_BONE)
+	var animation := player.get_animation(animation_name)
+	if hips == -1 or animation == null:
+		return 1.0
+	player.play(animation_name)
+	const SAMPLES := 80
+	var heights: Array[float] = []
+	for step in SAMPLES + 1:
+		player.seek(animation.length * step / SAMPLES, true)
+		heights.append(skeleton.get_bone_global_pose(hips).origin.y)
+	player.stop()
+	var lowest: float = heights.min()
+	var landed := lowest + (heights[0] - lowest) * 0.08 # düşüşün %92'si tamam
+	for step in heights.size():
+		if heights[step] <= landed:
+			return animation.length * step / SAMPLES
+	return animation.length
+
+
 ## Ajanın bulduğu yolda bir adım yürü. Gidilen yönü döndürür (yürümediyse sıfır); dönüşü çağıran yapar.
 static func step_along_path(agent: NavigationAgent3D, body: Node3D, speed: float, delta: float) -> Vector3:
 	if agent.is_navigation_finished():

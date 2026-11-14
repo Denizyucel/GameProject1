@@ -1,0 +1,9 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/kit/tas/tas1.glb" id="1_model"]
+[ext_resource type="Material" path="res://materials/tas.tres" id="2_tas"]
+
+[node name="tas1" instance=ExtResource("1_model")]
+
+[node name="tas_kaya_1234" parent="." index="0"]
+material_override = ExtResource("2_tas")

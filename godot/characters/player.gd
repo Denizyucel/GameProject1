@@ -10,6 +10,7 @@ signal health_changed(health: float, max_health: float)
 ## Ölünce ve yeniden doğunca gönderilir (HUD "Öldün" yazısını gösterir/gizler)
 signal died
 signal respawned
+signal arrived # enter_scene ile yürüdüğü yere vardı
 
 const MOVE_SPEED := 3.0 # metre / saniye
 const TURN_SPEED := 12.0 # dönüşün ne kadar hızlı yetiştiği (büyüdükçe daha keskin)
@@ -53,7 +54,6 @@ const SPEAR_COOLDOWN := 0.8 # iki mızrak arasında en az bu kadar saniye
 const SPEAR_HEIGHT := 1.3 # mızrağın çıktığı yükseklik (göğüs)
 const SPEAR_FORWARD := 0.6 # karakterin ne kadar önünden çıktığı
 const RESPAWN_DELAY := 4.0
-const WAKE_SPEED := 1.4 # uyanırken yerden kalkma hızı (ölüm animasyonu tersten, bu kat hızlı)
 
 # Bekleme ve yürüme animasyonlarının dosyası ve dosyadaki adı
 @export_file("*.fbx", "*.glb") var idle_file := "res://assets/character/idle.fbx"
@@ -77,7 +77,7 @@ var attack: Dictionary = {} # süren vuruş; boşsa vurmuyor
 var attack_time := 0.0 # süren vuruşun kaç saniyedir sürdüğü
 var attack_has_hit := false
 var death_time := 0.0
-var wake_left := 0.0 # yerden kalkmanın bitmesine kalan süre (saniye)
+var entering := false # sahneye kendiliğinden yürüyerek giriyor (açılıştan sonra); bu sırada kontrol yok
 var attack_target: Node3D # tıklanıp kovalanan düşman; null ise kimseyi kovalamıyor
 var chase_timer := 0.0
 var spell_names: Array[String] = []
@@ -158,16 +158,17 @@ func ground_distance(point: Vector3) -> float:
 
 ## Vuruş, büyü ya da ölüm sürerken yeni bir şey başlamaz
 func is_busy() -> bool:
-	return not alive or not attack.is_empty() or cast_time >= 0 or not spear.is_empty() or wake_left > 0
+	return not alive or not attack.is_empty() or cast_time >= 0 or not spear.is_empty() or entering
 
 
-## Yerde yatarken kalk (açılış ara sahnesinden sonra): ölüm animasyonu tersten oynar, bitene kadar kontrol yok
-func wake_up() -> void:
-	if not animation_player.has_animation("hareket/olum"):
-		return
-	animation_player.play_backwards("hareket/olum")
-	animation_player.speed_scale = WAKE_SPEED
-	wake_left = animation_player.get_animation("hareket/olum").length / WAKE_SPEED
+## Sahneye yürüyerek gir (açılış ara sahnesinden sonra): from'da başlar, to'ya kendiliğinden yürür,
+## varınca arrived sinyali gelir. O zamana kadar kontrol oyuncuda değil.
+func enter_scene(from: Vector3, to: Vector3) -> void:
+	global_position = from
+	rotation.y = atan2(to.x - from.x, to.z - from.z) # gideceği yöne dönük başlasın
+	attack_target = null
+	agent.target_position = to
+	entering = true
 
 
 ## Kemik mızrağı büyüsünü başlat: hedefe dön, el hareketi oynar, fırlatma anında mızrak çıkar
@@ -409,12 +410,6 @@ func _physics_process(delta: float) -> void:
 		if death_time >= RESPAWN_DELAY:
 			respawn()
 		return
-	if wake_left > 0:
-		wake_left -= delta
-		if wake_left <= 0:
-			animation_player.play("hareket/idle", ANIMATION_BLEND)
-			animation_player.speed_scale = 1.0
-		return # kalkarken yürümez
 	if not attack.is_empty():
 		update_attack(delta)
 		return # vururken yürümez
@@ -430,7 +425,7 @@ func _physics_process(delta: float) -> void:
 		return # büyü yaparken yürümez
 
 	var was_walking := walking
-	var key_direction := keyboard_direction()
+	var key_direction := Vector3.ZERO if entering else keyboard_direction()
 	if key_direction != Vector3.ZERO:
 		# Klavyeyle yürürken tıklanan hedef ve kovalanan düşman unutulur
 		attack_target = null
@@ -463,3 +458,6 @@ func _physics_process(delta: float) -> void:
 		else:
 			animation_player.play("hareket/idle", ANIMATION_BLEND)
 			animation_player.speed_scale = 1.0
+	if entering and not walking and agent.is_navigation_finished():
+		entering = false
+		arrived.emit()

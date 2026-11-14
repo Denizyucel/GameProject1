@@ -3,6 +3,8 @@
 [ext_resource type="Script" path="res://cutscenes/acilis.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://levels/yanik_kutuphane.tscn" id="2_level"]
 [ext_resource type="PackedScene" path="res://assets/x/x.glb" id="3_x"]
+[ext_resource type="PackedScene" path="res://levels/kul_yolu.tscn" id="4_kul_yolu"]
+[ext_resource type="PackedScene" path="res://levels/cevre.tscn" id="5_cevre"]
 
 [sub_resource type="ProceduralSkyMaterial" id="YansimaGogu"]
 sky_top_color = Color(0.18, 0.2, 0.3, 1)
@@ -174,6 +176,11 @@ shadow_enabled = true
 directional_shadow_max_distance = 80.0
 
 [node name="YanikKutuphane" parent="." instance=ExtResource("2_level")]
+
+[node name="KulYolu" parent="." instance=ExtResource("4_kul_yolu")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 40)
+
+[node name="Cevre" parent="." instance=ExtResource("5_cevre")]
 
 [node name="Muhurler" type="Node3D" parent="."]
 
