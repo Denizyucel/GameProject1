@@ -1,8 +1,8 @@
 # Ana sahne: oyunun parçalarını birbirine bağlar (Hikaye.md, çekirdek döngü).
 #   - Düşmanın mührü kırılınca (canı bitince): mühür kırma efekti ve "Teşekkür ederiz…" fısıltısı
-#   - Bedeni gömülünce: yerinde ceset (et yığını)
+#   - Bedeni gömülünce: yerinde ceset (et yığını); ara sıra can iksiri de düşer (alınınca can verir)
 #   - 1 tuşu: oyuncu 8 m içindeki en yakın cesede büyü yapar; büyünün yarısında cesetten iskelet kalkar
-#   - Harita tek parça: Yanık Kütüphane (düşmansız) ve hemen güneyinde Kül Yolu (düşmanlar burada).
+#   - Harita tek parça: Yanık Kütüphane (düşmansız), güneyinde Kül Yolu, onun güneyinde Harabe Köy.
 #     Düşmanlar ENEMY_SPAWNS'taki yerlere kodla konur.
 #   - Kütüphane yanıyor: açılışta X'in tutuşturduğu raflar oyunda da yanmaya devam eder
 #   - En fazla 5 iskelet: sınır doluyken yenisi kalkarsa rastgele biri ruhunu serbest bırakıp yok olur
@@ -24,9 +24,18 @@ const FIRE_POINTS := [
 const ENEMY := preload("res://enemies/enemy.tscn")
 const CORPSE := preload("res://minions/corpse.tscn")
 const MINION := preload("res://minions/minion.tscn")
+const POTION := preload("res://items/health_potion.tscn")
+const POTION_CHANCE := 0.3 # ölen düşmanın can iksiri düşürme olasılığı (0..1)
+const POTION_DISTANCE := 1.0 # iksir cesedin bu kadar yanına düşer (üstüne değil)
 const THANKS_WHISPER := "Teşekkür ederiz…"
-# Düşmanların yerleri (evleri): Kül Yolu'nda önce tek devriye, sonra iki (Hikaye.md)
-const ENEMY_SPAWNS := [Vector3(0.5, 0, 36), Vector3(-1.5, 0, 48), Vector3(2, 0, 50)]
+# Düşmanların yerleri (evleri; Hikaye.md): Kül Yolu'nda önce tek devriye, sonra iki;
+# Harabe Köy'de 3, 4 ve 5'lik gruplar (köy girişi, meydan, güney ucu)
+const ENEMY_SPAWNS := [
+	Vector3(0.5, 0, 36), Vector3(-1.5, 0, 48), Vector3(2, 0, 50),
+	Vector3(-1.5, 0, 66.5), Vector3(1.5, 0, 67.5), Vector3(0, 0, 69.5),
+	Vector3(-2, 0, 79), Vector3(2, 0, 80), Vector3(0, 0, 82), Vector3(-3, 0, 82.5),
+	Vector3(-2, 0, 92), Vector3(2, 0, 92.5), Vector3(0, 0, 94), Vector3(-3.5, 0, 95), Vector3(3, 0, 95.5),
+]
 const ENTER_FROM := Vector3(0, 0, 8) # güney kapı (X'in de girdiği yer)
 const ENTER_TO := Vector3(0, 0, -5) # salonun ortası; yanmış raflara bakar
 const ENTER_LINE := "Buraya ne oldu böyle?"
@@ -59,7 +68,7 @@ func _ready() -> void:
 		enemy.position = point # evi burası olur (_ready'de)
 		enemies_root.add_child(enemy)
 		enemy.seal_broken.connect(on_seal_broken)
-		enemy.buried.connect(on_buried)
+		enemy.buried.connect(on_enemy_fell)
 	# Açılıştan geldiyse: Ruh Kıran kapıdan girer, salonun ortasında durup yangının izlerine bakar
 	if after_intro:
 		after_intro = false
@@ -77,6 +86,24 @@ func spawn_effect(at: Vector3, release: bool) -> void:
 	effect.release = release
 	add_child(effect)
 	effect.global_position = Vector3(at.x, 0, at.z)
+
+
+## Düşman yere düştü: yerinde ceset kalır, ara sıra da can iksiri düşer
+func on_enemy_fell(at: Vector3) -> void:
+	on_buried(at)
+	if randf() < POTION_CHANCE:
+		drop_potion(at)
+
+
+## at noktasından yanındaki rastgele bir yere can iksiri düşür (yürünebilir zemine çekilir)
+func drop_potion(at: Vector3) -> Node3D:
+	var angle := randf() * TAU
+	var wanted := at + Vector3(sin(angle), 0, cos(angle)) * POTION_DISTANCE
+	var landing := NavigationServer3D.map_get_closest_point(get_world_3d().navigation_map, wanted)
+	var potion := POTION.instantiate()
+	add_child(potion)
+	potion.drop(at + Vector3.UP * 0.5, Vector3(landing.x, 0, landing.z))
+	return potion
 
 
 func on_buried(at: Vector3) -> void:

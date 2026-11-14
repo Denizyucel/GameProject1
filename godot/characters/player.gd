@@ -138,6 +138,11 @@ func _ready() -> void:
 			sword.free()
 
 
+## Canı artır (can iksiri); en fazla max_health. Ölüyken işe yaramaz.
+func heal(amount: float) -> void:
+	take_damage(-amount)
+
+
 ## Canı azalt (eksi değer canı artırır). Can biterse ölür.
 func take_damage(amount: float) -> void:
 	if not alive:

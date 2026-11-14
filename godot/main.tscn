@@ -3,6 +3,7 @@
 [ext_resource type="PackedScene" path="res://levels/yanik_kutuphane.tscn" id="1_ig7tw"]
 [ext_resource type="NavigationMesh" path="res://levels/act1_nav.tres" id="2_nav"]
 [ext_resource type="PackedScene" path="res://levels/kul_yolu.tscn" id="8_kul_yolu"]
+[ext_resource type="PackedScene" path="res://levels/harabe_koy.tscn" id="11_harabe_koy"]
 [ext_resource type="PackedScene" path="res://levels/cevre.tscn" id="9_cevre"]
 [ext_resource type="PackedScene" path="res://characters/player.tscn" id="3_player"]
 [ext_resource type="Script" path="res://camera_follow.gd" id="4_camera"]
@@ -51,6 +52,9 @@ navigation_mesh = ExtResource("2_nav")
 [node name="KulYolu" parent="Gezinme" instance=ExtResource("8_kul_yolu")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 40)
 
+[node name="HarabeKoy" parent="Gezinme" instance=ExtResource("11_harabe_koy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 80)
+
 [node name="Player" parent="." instance=ExtResource("3_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -9.25)
 
@@ -67,7 +71,7 @@ target = NodePath("../Player")
 script = ExtResource("10_saydam")
 player = NodePath("../Player")
 camera = NodePath("../Kamera")
-piece_roots = [NodePath("../Gezinme/YanikKutuphane/Parcalar"), NodePath("../Gezinme/KulYolu/Parcalar"), NodePath("../Cevre/Agaclar")]
+piece_roots = [NodePath("../Gezinme/YanikKutuphane/Parcalar"), NodePath("../Gezinme/KulYolu/Parcalar"), NodePath("../Gezinme/HarabeKoy/Parcalar"), NodePath("../Cevre/Agaclar")]
 
 [node name="HUD" parent="." node_paths=PackedStringArray("player") instance=ExtResource("5_hud")]
 player = NodePath("../Player")

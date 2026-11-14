@@ -158,6 +158,14 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   çevresinde 30 m'lik orman (711 ağaç; ilk 12 m sık). 30 m = en uzak zoom'da (0.6) ekranın gördüğü kadar;
   MIN_ZOOM küçülürse halka da büyümeli. Yol güneye z = 101'e kadar devam eder (road_count 13). Ara sahnede
   (acilis.tscn) de KulYolu (z = 40) ve Cevre var; kenarlar orada da siyah değil.
+  Harabe Köy (Act I 3. bölge; levels/harabe_koy.tscn, main.tscn'de Gezinme/HarabeKoy, z = 80; dünya z 60-100):
+  bir kerelik Python betiğiyle üretildi (saklanmadı), artık editörde düzenlenir. Kit'te ev parçası yok; 6 yıkık
+  "ev" yikik-duvar (4 m, 1.9 m yüksek) ve yuksek-duvar'dan (arka duvar, 6 m) U biçiminde, ağzı yola dönük;
+  meydanda sütunlar, moloz; kenarlarda ağaç ve taş. Düşmanlar ENEMY_SPAWNS'ta: köy girişinde 3 (z ~67),
+  meydanda 4 (z ~80), güney ucunda 5 (z ~94); toplam 15 düşman. Yol köyün içinden geçip z = 131'e iner
+  (road_count 16 = shader'daki MAX_POINTS; daha fazla nokta için shader'da MAX_POINTS büyütülmeli).
+  Cevre halkası güneye uzatıldı (DisZemin 120 x 200, z = 40 merkezli; 853 ağaç). Ara sahnede köy yok.
+  Deneme: tools/village_test.gd.
   Taşlar: assets/kit/tas/tas1-3.glb (dokusuz, rengi köşe renklerinde/COLOR_0; Godot bunu kendiliğinden
   kullanmıyor, bembeyaz çıkıyordu). props/tas1-3.tscn glb'yi sarıp materials/tas.tres'i takar
   (vertex_color_use_as_albedo + is_srgb); sahnelerde glb değil bu props sahneleri kullanılır. Kütüphane
@@ -165,6 +173,12 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   Dokular dünya konumuna göre döşenir, iki zemin dikişsiz birleşir. Düşmanlar main.gd ENEMY_SPAWNS'tan kodla Dusmanlar
   altına konur (main.tscn'de düşman yok): Kül Yolu'nda 1 tek, sonra 2. Doğuş hâlâ kütüphanede.
   Deneme: tools/level_test.gd (kütüphaneden Kül Yolu'na yürüyüş).
+- Can iksiri: items/health_potion.tscn + .gd; model assets/items/health-potion.glb (asıl public/models/kit/
+  health-potion.glb 1.3 milyon üçgen, 43 MB; `npx @gltf-transform/cli` weld → simplify --ratio 0.004 --error
+  0.02 → resize 512 ile 9 bin üçgen, 0.6 MB). Düşman yere düşünce main.on_enemy_fell: ceset + %30 olasılıkla
+  (POTION_CHANCE) main.drop_potion: cesedin 1 m yanına (navmesh'e çekilir) yayla sıçrar, yerde dönüp süzülür,
+  kırmızı ışığı var. Oyuncu 1.1 m'ye gelince kendiliğinden alınır, 25 can (HEAL; player.heal); can tamsa
+  alınmaz, yerde bekler. Deneme: tools/potion_test.gd.
 - Parça saydamlaşması: levels/see_through.gd (main.tscn'de Saydamlik; piece_roots: iki bölgenin Parcalar'ı ve
   Cevre/Agaclar). Açılışta her parçanın sınır kutusu (kendi uzayında) ölçülür; 0.1 sn'de bir karakterin ayak,
   göğüs ve başından kameraya uzanan çizgi kutuyu kesiyorsa parça %70 saydamlaşır (GeometryInstance3D.transparency,
@@ -259,7 +273,8 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Fare basılı tutulunca sürekli yürüme
 - Sahneye biraz daha ışık; parçalar şu an çok koyu
 - planlar/yanik-kutuphane-ornek.svg'yi koda göre güncelle (yüksek duvar, duvar rafı, çatı kemeri yok)
-- Kül Yolu'nun güneyine 3. bölge Harabe Köy
+- Harabe Köy'e gerçek ev parçaları (çatı, kapı, kuyu); şimdi sadece yıkık duvarlardan
+- Harabe Köy'ün güneyine 4. bölge Sisli Orman
 - Kül Yolu'nda ölünce kütüphane yerine Kül Yolu girişinde doğma (kontrol noktası)
 - Kullanılmayan Environment.ts'yi sil
 - A* açık listesini öncelik kuyruğuna çevir (harita büyüyünce)
@@ -269,7 +284,7 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Vampire kendi animasyonları (vurulma, ölüm) ve can barı
 - Hareketli çarpışma: karakter, vampir ve minionlar birbirinin içinden geçmesin
 - Minionların canı olsun, vampirler minionlara da saldırsın
-- Can yenilenmesi (iksir ya da zamanla), mana ve diriltmenin mana maliyeti
+- Mana ve diriltmenin mana maliyeti; iksir alma sesi ve yerdeki iksirin süreyle kaybolması
 - Karakter için ölüm ve vurulma animasyonu (şimdi sadece devriliyor)
 - Walking.fbx'i Without Skin indir (15 MB → ~0.5 MB)
 - Mühür kırılma sesi (cam kırılması) ve fısıltı sesi
