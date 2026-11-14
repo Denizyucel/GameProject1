@@ -108,7 +108,7 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   anı ölçülür). Topraktan 0.9 sn'de mavi parıltıyla yükselir; oyuncuyu takip eder (altın açılı yer, 1.6 m;
   3 m'den uzaklaşınca, 3.4 m/sn); 6 m içindeki ve oyuncudan 10 m'den yakın düşmana koşup vurur (5 hasar,
   0.5 sn mola). En fazla 5 (MAX_MINIONS); fazlasında rastgele biri seal_break release efektiyle yok olur.
-  HUD'da "İskelet: N". Deneme: tools/minion_test.gd.
+  Ayaktaki iskelet sayısı HUD'da mana küresinin kafatasının üstündeki rozette (ManaKuresi/Rozet; HUD.set_minions). Deneme: tools/minion_test.gd.
 - Düşmana tıklayarak dövüş: player.enemy_under_cursor ekranda düşmanın ayağından 2 m yukarısına uzanan
   çizgiye bakar (0.6 m yarıçap, fizik/çarpışma kutusu yok). Tıklanan düşman attack_target olur: oyuncu
   kovalar (yol 0.3 sn'de bir), 1.7 m'ye yetişince vurur, ölene kadar vuruşları zincirler; zemine tık ya da
@@ -201,7 +201,7 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   kalırsa geri gelmez). player.spend_mana(bedel) yetmezse harcamaz, not_enough_mana sinyali → HUD mana küresini
   parlatır (globe.blink) ve en sık 2 sn'de bir "Manam yetmiyor." der. Can: son hasardan 5 sn sonra
   (HEALTH_REGEN_DELAY) 1/sn dolar. Doğuşta mana da tam. mana_changed sinyali → HUD ManaKuresi (sağ alt; can
-  küresinin aynısı; kendi görselleri assets/hud/mana-frame.png (kafatası sağda) ve mana-liquid.png, asılları
+  küresinin aynısı; kendi görselleri assets/hud/mana-frame.png (kafatası sağda; tools/prepare_mana_frame.gd asıl görseldeki rozetten örnek "1"i silerek üretir, görsel güncellenince yeniden çalıştır) ve mana-liquid.png, asılları
   public/models/hud/mana-globe; boş küre ortak globe-empty.png). globe_fill.gdshader rengi COLOR'dan alır (COLOR
   zaten doku x modulate; eskiden doku bir kez daha çarpılıp sıvı koyulaşıyordu, düzeltildi: renkler görseldeki gibi). health_globe.gd artık Tween değil _process ile akar (yenilenme her kare küçük artış
   gönderse de boşalma animasyonu kesilmez). Deneme: tools/mana_test.gd.

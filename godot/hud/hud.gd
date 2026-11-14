@@ -16,7 +16,7 @@ const NO_MANA_GAP := 2.0 # bu sözü en sık bu kadar saniyede bir söyler (tık
 @onready var mana_globe = $ManaKuresi
 @onready var death_label: Label = $OlumYazisi
 @onready var whisper_label: Label = $Fisilti
-@onready var minion_label: Label = $IskeletSayisi
+@onready var minion_label: Label = $ManaKuresi/Rozet # kafatasının üstündeki rozet
 @onready var say_label: Label = $Konusma
 
 var whisper_tween: Tween
@@ -63,9 +63,9 @@ func say(text: String) -> void:
 	say_tween.tween_property(say_label, "modulate:a", 0.0, 0.6)
 
 
-## Kürenin yanındaki iskelet sayısı
+## Ayaktaki iskelet sayısı: mana küresinin kafatasının üstündeki rozette (kalkınca artar, gidince azalır)
 func set_minions(count: int) -> void:
-	minion_label.text = "İskelet: %d" % count
+	minion_label.text = str(count)
 
 
 ## Büyüye mana yetmedi: mana küresi parlar, Ruh Kıran söyler

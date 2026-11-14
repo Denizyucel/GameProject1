@@ -41,7 +41,7 @@ func _initialize() -> void:
 	await save(out_dir + "/2-kalkis.png")
 	await create_timer(1.0).timeout
 	await save(out_dir + "/3-iskelet.png")
-	print("İskelet: konum %s, HUD '%s'" % [minion.global_position, main.get_node("HUD/IskeletSayisi").text])
+	print("İskelet: konum %s, HUD '%s'" % [minion.global_position, main.get_node("HUD/ManaKuresi/Rozet").text])
 
 	# 3. Bir düşmanı iskeletin yakınına getir: iskelet saldırmalı
 	var second = enemies[1]
@@ -60,7 +60,7 @@ func _initialize() -> void:
 			await physics_frame
 		while player.cast_progress() >= 0:
 			await physics_frame
-		print("Kaldırma %d: iskelet sayısı %d, HUD '%s'" % [i + 2, main.minions.size(), main.get_node("HUD/IskeletSayisi").text])
+		print("Kaldırma %d: iskelet sayısı %d, HUD '%s'" % [i + 2, main.minions.size(), main.get_node("HUD/ManaKuresi/Rozet").text])
 	await save(out_dir + "/5-bes.png")
 	quit()
 

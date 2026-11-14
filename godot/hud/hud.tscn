@@ -39,6 +39,17 @@ font_size = 15
 outline_size = 4
 outline_color = Color(0, 0, 0, 0.8)
 
+[sub_resource type="SystemFont" id="RozetYazitipi"]
+font_italic = true
+font_weight = 600
+
+[sub_resource type="LabelSettings" id="RozetAyari"]
+font = SubResource("RozetYazitipi")
+font_size = 19
+font_color = Color(0.93, 0.93, 0.93, 1)
+outline_size = 3
+outline_color = Color(0.12, 0.13, 0.13, 0.9)
+
 [sub_resource type="LabelSettings" id="OlumYazisiAyari"]
 font_size = 40
 font_color = Color(0.88, 0.28, 0.28, 1)
@@ -192,6 +203,18 @@ label_settings = SubResource("SayiYazisi")
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="Rozet" type="Label" parent="ManaKuresi"]
+layout_mode = 1
+anchor_left = 0.789
+anchor_top = 0.523
+anchor_right = 0.933
+anchor_bottom = 0.667
+mouse_filter = 2
+text = "0"
+label_settings = SubResource("RozetAyari")
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="OlumYazisi" type="Label" parent="."]
 visible = false
 anchors_preset = 8
@@ -236,17 +259,3 @@ mouse_filter = 2
 label_settings = SubResource("KonusmaAyari")
 horizontal_alignment = 1
 vertical_alignment = 1
-
-[node name="IskeletSayisi" type="Label" parent="."]
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 196.0
-offset_top = -120.0
-offset_right = 320.0
-offset_bottom = -96.0
-grow_vertical = 0
-mouse_filter = 2
-modulate = Color(1, 1, 1, 0.8)
-text = "İskelet: 0"
-
