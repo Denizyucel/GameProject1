@@ -18,7 +18,7 @@ var zoom_target := 1.0
 
 func _ready() -> void:
 	if target:
-		focus = target.global_position
+		focus = Terrain.on_ground(target.global_position)
 	global_position = focus + OFFSET
 
 
@@ -36,7 +36,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	if target:
-		focus = focus.lerp(target.global_position, 1.0 - exp(-FOLLOW * delta))
+		# Hedefin konumu hep y = 0'da; engebeli zeminde göründüğü yükseklik eklenir (levels/terrain.gd)
+		focus = focus.lerp(Terrain.on_ground(target.global_position), 1.0 - exp(-FOLLOW * delta))
 	global_position = focus + OFFSET
 	zoom = lerpf(zoom, zoom_target, 1.0 - exp(-ZOOM_SMOOTH * delta))
 	size = VIEW_HEIGHT / zoom

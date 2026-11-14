@@ -4,6 +4,7 @@
 [ext_resource type="NavigationMesh" path="res://levels/act1_nav.tres" id="2_nav"]
 [ext_resource type="PackedScene" path="res://levels/kul_yolu.tscn" id="8_kul_yolu"]
 [ext_resource type="PackedScene" path="res://levels/harabe_koy.tscn" id="11_harabe_koy"]
+[ext_resource type="PackedScene" path="res://levels/koy.tscn" id="12_koy"]
 [ext_resource type="PackedScene" path="res://levels/cevre.tscn" id="9_cevre"]
 [ext_resource type="PackedScene" path="res://characters/player.tscn" id="3_player"]
 [ext_resource type="Script" path="res://camera_follow.gd" id="4_camera"]
@@ -43,6 +44,8 @@ shadow_enabled = true
 directional_shadow_max_distance = 80.0
 
 [node name="Cevre" parent="." instance=ExtResource("9_cevre")]
+
+[node name="Koy" parent="." instance=ExtResource("12_koy")]
 
 [node name="Gezinme" type="NavigationRegion3D" parent="."]
 navigation_mesh = ExtResource("2_nav")

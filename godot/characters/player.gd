@@ -271,10 +271,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if is_busy():
 		return # ölüyken, vururken ya da büyü yaparken yeni bir şey başlamaz
 	var camera := get_viewport().get_camera_3d()
-	# Kameradan farenin altına doğru bir ışın gönder, zemin düzlemine (y = 0) çarptığı yeri bul
+	# Kameradan farenin altına doğru bir ışın gönder, zemine çarptığı yeri bul
 	var origin := camera.project_ray_origin(click.position)
 	var direction := camera.project_ray_normal(click.position)
-	var hit = Plane(Vector3.UP, 0).intersects_ray(origin, direction)
+	var hit = Terrain.ray_to_ground(origin, direction) # engebeli zeminde de doğru yeri bulur; y = 0 döner
 	if hit == null:
 		return
 	var enemy := enemy_under_cursor(click.position)
@@ -300,7 +300,7 @@ func enemy_under_cursor(screen_point: Vector2) -> Node3D:
 	var best: Node3D = null
 	var best_distance := INF
 	for enemy in get_tree().get_nodes_in_group("dusman"):
-		var feet: Vector3 = enemy.global_position
+		var feet: Vector3 = Terrain.on_ground(enemy.global_position) # düşman ekranda zeminin üstünde durur
 		var head := feet + Vector3.UP * PICK_HEIGHT
 		var feet_on_screen := camera.unproject_position(feet)
 		var head_on_screen := camera.unproject_position(head)
@@ -466,3 +466,8 @@ func _physics_process(delta: float) -> void:
 	if entering and not walking and agent.is_navigation_finished():
 		entering = false
 		arrived.emit()
+
+# Engebeli zeminde (Harabe Köy) yalnızca görüntü kalkar: konum (global_position) hep y = 0'da kalır,
+# model zeminin yüksekliği kadar yukarı çizilir (levels/terrain.gd)
+func _process(_delta: float) -> void:
+	model.position.y = Terrain.height_at(global_position)

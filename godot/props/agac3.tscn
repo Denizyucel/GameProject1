@@ -1,0 +1,9 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/kit/agaclar/agac3.glb" id="1_model"]
+[ext_resource type="Material" path="res://materials/yaprak.tres" id="2_yaprak"]
+
+[node name="agac3" instance=ExtResource("1_model")]
+
+[node name="yapraklar" parent="agac/agac-48220" index="1"]
+material_override = ExtResource("2_yaprak")

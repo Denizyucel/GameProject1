@@ -25,16 +25,17 @@ const ENEMY := preload("res://enemies/enemy.tscn")
 const CORPSE := preload("res://minions/corpse.tscn")
 const MINION := preload("res://minions/minion.tscn")
 const POTION := preload("res://items/health_potion.tscn")
-const POTION_CHANCE := 0.3 # ölen düşmanın can iksiri düşürme olasılığı (0..1)
+const POTION_CHANCE := 0.2 # ölen düşmanın can iksiri düşürme olasılığı (0..1)
+const POTION_GAP := 2 # bir iksir düştükten sonra en az bu kadar ölümde iksir düşmez (art arda gelmesin)
 const POTION_DISTANCE := 1.0 # iksir cesedin bu kadar yanına düşer (üstüne değil)
 const THANKS_WHISPER := "Teşekkür ederiz…"
 # Düşmanların yerleri (evleri; Hikaye.md): Kül Yolu'nda önce tek devriye, sonra iki;
-# Harabe Köy'de 3, 4 ve 5'lik gruplar (köy girişi, meydan, güney ucu)
+# Harabe Köy'de 3, 4 ve 5'lik gruplar (köy girişi, meydan, batıdaki yokuş)
 const ENEMY_SPAWNS := [
 	Vector3(0.5, 0, 36), Vector3(-1.5, 0, 48), Vector3(2, 0, 50),
-	Vector3(-1.5, 0, 66.5), Vector3(1.5, 0, 67.5), Vector3(0, 0, 69.5),
-	Vector3(-2, 0, 79), Vector3(2, 0, 80), Vector3(0, 0, 82), Vector3(-3, 0, 82.5),
-	Vector3(-2, 0, 92), Vector3(2, 0, 92.5), Vector3(0, 0, 94), Vector3(-3.5, 0, 95), Vector3(3, 0, 95.5),
+	Vector3(2, 0, 67), Vector3(5, 0, 68.5), Vector3(0, 0, 70.5),
+	Vector3(0, 0, 75), Vector3(4, 0, 74.5), Vector3(2, 0, 77.5), Vector3(7, 0, 76.5),
+	Vector3(-10, 0, 75.5), Vector3(-8, 0, 77.5), Vector3(-10, 0, 85), Vector3(-8, 0, 85.5), Vector3(-6.5, 0, 84.5),
 ]
 const ENTER_FROM := Vector3(0, 0, 8) # güney kapı (X'in de girdiği yer)
 const ENTER_TO := Vector3(0, 0, -5) # salonun ortası; yanmış raflara bakar
@@ -53,6 +54,7 @@ const GOLDEN_ANGLE := PI * (3.0 - sqrt(5.0))
 
 var minions: Array[Node3D] = []
 var raised_count := 0 # şimdiye kadar kaldırılan iskelet sayısı (yerlerini seçer)
+var kills_since_potion := POTION_GAP # son iksirden beri ölen düşman sayısı (ilk ölümde düşebilir)
 var cast_target: Node3D # bu büyüyle kalkacak ceset; kalkınca null
 
 
@@ -85,14 +87,17 @@ func spawn_effect(at: Vector3, release: bool) -> void:
 	var effect := SEAL_BREAK.instantiate()
 	effect.release = release
 	add_child(effect)
-	effect.global_position = Vector3(at.x, 0, at.z)
+	effect.global_position = Terrain.on_ground(at)
 
 
 ## Düşman yere düştü: yerinde ceset kalır, ara sıra da can iksiri düşer
 func on_enemy_fell(at: Vector3) -> void:
 	on_buried(at)
-	if randf() < POTION_CHANCE:
+	if kills_since_potion >= POTION_GAP and randf() < POTION_CHANCE:
+		kills_since_potion = 0
 		drop_potion(at)
+	else:
+		kills_since_potion += 1
 
 
 ## at noktasından yanındaki rastgele bir yere can iksiri düşür (yürünebilir zemine çekilir)
@@ -102,14 +107,14 @@ func drop_potion(at: Vector3) -> Node3D:
 	var landing := NavigationServer3D.map_get_closest_point(get_world_3d().navigation_map, wanted)
 	var potion := POTION.instantiate()
 	add_child(potion)
-	potion.drop(at + Vector3.UP * 0.5, Vector3(landing.x, 0, landing.z))
+	potion.drop(Terrain.on_ground(at) + Vector3.UP * 0.5, Terrain.on_ground(landing))
 	return potion
 
 
 func on_buried(at: Vector3) -> void:
 	var corpse := CORPSE.instantiate()
 	add_child(corpse)
-	corpse.global_position = at
+	corpse.global_position = Terrain.on_ground(at)
 
 
 func _unhandled_input(event: InputEvent) -> void:

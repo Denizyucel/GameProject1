@@ -18,6 +18,7 @@
 [ext_resource type="PackedScene" path="res://props/tas1.tscn" id="tas1"]
 [ext_resource type="PackedScene" path="res://props/tas2.tscn" id="tas2"]
 [ext_resource type="PackedScene" path="res://props/tas3.tscn" id="tas3"]
+[ext_resource type="PackedScene" path="res://props/agac3.tscn" id="agac3"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_c3aq7"]
 size = Vector2(40, 40)
@@ -937,3 +938,51 @@ transform = Transform3D(-0.30052, 0, -1.19280, 0, 1.23007, 0, 1.19280, 0, -0.300
 
 [node name="Model" parent="Parcalar/tas1-14" instance=ExtResource("tas1")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.03, 0)
+
+[node name="agac3-1" type="Node3D" parent="Parcalar"]
+transform = Transform3D(0.69919, 0, -0.85908, 0, 1.10764, 0, 0.85908, 0, 0.69919, 14.43, 0, 14.06)
+
+[node name="Model" parent="Parcalar/agac3-1" instance=ExtResource("agac3")]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0, 0, 0)
+
+[node name="agac3-2" type="Node3D" parent="Parcalar"]
+transform = Transform3D(-1.18035, 0, -0.20925, 0, 1.19876, 0, 0.20925, 0, -1.18035, -14.56, 0, 7.62)
+
+[node name="Model" parent="Parcalar/agac3-2" instance=ExtResource("agac3")]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0, 0, 0)
+
+[node name="agac3-3" type="Node3D" parent="Parcalar"]
+transform = Transform3D(-0.90167, 0, -0.09272, 0, 0.90643, 0, 0.09272, 0, -0.90167, 15.34, 0, -4.04)
+
+[node name="Model" parent="Parcalar/agac3-3" instance=ExtResource("agac3")]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0, 0, 0)
+
+[node name="agac3-4" type="Node3D" parent="Parcalar"]
+transform = Transform3D(-0.62704, 0, -0.62227, 0, 0.88340, 0, 0.62227, 0, -0.62704, -12.86, 0, -13.63)
+
+[node name="Model" parent="Parcalar/agac3-4" instance=ExtResource("agac3")]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0, 0, 0)
+
+[node name="agac3-5" type="Node3D" parent="Parcalar"]
+transform = Transform3D(0.98673, 0, -0.13417, 0, 0.99581, 0, 0.13417, 0, 0.98673, -5.74, 0, 14.40)
+
+[node name="Model" parent="Parcalar/agac3-5" instance=ExtResource("agac3")]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0, 0, 0)
+
+[node name="agac3-6" type="Node3D" parent="Parcalar"]
+transform = Transform3D(0.88930, 0, 0.28743, 0, 0.93459, 0, -0.28743, 0, 0.88930, 7.29, 0, 13.87)
+
+[node name="Model" parent="Parcalar/agac3-6" instance=ExtResource("agac3")]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0, 0, 0)
+
+[node name="agac3-7" type="Node3D" parent="Parcalar"]
+transform = Transform3D(0.06465, 0, 1.13613, 0, 1.13797, 0, -1.13613, 0, 0.06465, 13.87, 0, -13.41)
+
+[node name="Model" parent="Parcalar/agac3-7" instance=ExtResource("agac3")]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0, 0, 0)
+
+[node name="agac3-8" type="Node3D" parent="Parcalar"]
+transform = Transform3D(-0.03130, 0, 1.09137, 0, 1.09182, 0, -1.09137, 0, -0.03130, -13.14, 0, 15.44)
+
+[node name="Model" parent="Parcalar/agac3-8" instance=ExtResource("agac3")]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0, 0, 0)

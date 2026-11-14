@@ -152,20 +152,37 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   Yol dışına sonradan kuru ağaçlar eklendi (kütüphane bölgesinde 69, Kül Yolu'nda 83; harita kenarlarında
   sık orman; build betiklerinde yok). Kit'in agaclar/ klasöründen büyük dallı ağaç agac2.glb (18 bin
   üçgen, ~6.5 m; 0.6 ölçek, gövde modelin kökünde) de serpiştirildi: kütüphanede 13, Kül Yolu'nda 10 ("agac2-N";
-  yoldan 5 m uzak). agac1.glb kuru-agac.glb ile aynı dosya. ~3 milyon üçgen.
+  yoldan 5 m uzak). agac3.glb: yapraklı, az üçgenli ağaç (1.8 bin üçgen, 9.3 m; 0.6 ölçek; dokusuz, yaprak
+  rengi köşe renklerinde). props/agac3.tscn glb'yi sarıp yapraklara materials/yaprak.tres takar (taşlardaki
+  gibi; ama vertex_color_is_srgb YOK, açılırsa yapraklar simsiyah olur); sahnelerde bu props sahnesi
+  kullanılır ("agac3-N": kütüphanede 8, Kül Yolu'nda 8, Harabe Köy kenarında 5, Cevre'de 45).
+  agac1.glb kuru-agac.glb ile aynı dosya. ~3 milyon üçgen.
   Harita kenarında siyah boşluk yok: levels/cevre.tscn (main.tscn'de Cevre; Gezinme'nin DIŞINDA, navmesh'e
   girmez, oyuncu oraya yürüyemez): 120 x 160 m DisZemin (aynı disarisi.tres, y = -0.02) ve oynanan alanın
   çevresinde 30 m'lik orman (711 ağaç; ilk 12 m sık). 30 m = en uzak zoom'da (0.6) ekranın gördüğü kadar;
   MIN_ZOOM küçülürse halka da büyümeli. Yol güneye z = 101'e kadar devam eder (road_count 13). Ara sahnede
   (acilis.tscn) de KulYolu (z = 40) ve Cevre var; kenarlar orada da siyah değil.
-  Harabe Köy (Act I 3. bölge; levels/harabe_koy.tscn, main.tscn'de Gezinme/HarabeKoy, z = 80; dünya z 60-100):
-  bir kerelik Python betiğiyle üretildi (saklanmadı), artık editörde düzenlenir. Kit'te ev parçası yok; 6 yıkık
-  "ev" yikik-duvar (4 m, 1.9 m yüksek) ve yuksek-duvar'dan (arka duvar, 6 m) U biçiminde, ağzı yola dönük;
-  meydanda sütunlar, moloz; kenarlarda ağaç ve taş. Düşmanlar ENEMY_SPAWNS'ta: köy girişinde 3 (z ~67),
-  meydanda 4 (z ~80), güney ucunda 5 (z ~94); toplam 15 düşman. Yol köyün içinden geçip z = 131'e iner
-  (road_count 16 = shader'daki MAX_POINTS; daha fazla nokta için shader'da MAX_POINTS büyütülmeli).
-  Cevre halkası güneye uzatıldı (DisZemin 120 x 200, z = 40 merkezli; 853 ağaç). Ara sahnede köy yok.
-  Deneme: tools/village_test.gd.
+  Harabe Köy (Act I 3. bölge; dünya x -20..20, z 60..104): tek parça köy modeli assets/kit/koy.glb (asıl
+  public/models/kit/koy.glb 2.6 milyon üçgen, 80 MB; gltf-transform weld → simplify --ratio 0.03 --error 0.002 →
+  resize 2048 ile 77 bin üçgen, 4.7 MB). levels/koy.tscn (main.tscn'de Koy; Gezinme'nin DIŞINDA): Zemin (düz
+  çimen) + Model (18 ölçek, 90° dönük: kilise kuzeybatıda yüksekte, giriş kuzeyden x ~3, meydan x -4..10,
+  z 72..79; batıya doğru sokak 3-4 m yükselir) + village.gd. Köyün kenarındaki ağaç ve taşlar
+  levels/harabe_koy.tscn'de (Gezinme/HarabeKoy/Parcalar; navmesh'te engel).
+  ENGEBELİ ZEMİN: oyunun mantığı düz kalır: herkesin global_position'ı y = 0'da (yol bulma, uzaklık, vuruş
+  yatay). Yalnızca görüntü kalkar: levels/terrain.gd (Terrain.height(x, z), on_ground, ray_to_ground; veri
+  yoksa 0). Oyuncu, düşman ve iskelet _process'te model.position.y'yi zemin yüksekliğine çeker (iskelette
+  + rise_offset); kamera odağı, tıklama ışını (ray_to_ground, sonuç y = 0), enemy_under_cursor, mızrak, mühür
+  efekti, ceset, iksir ve saydamlaşma da Terrain kullanır. Yeni bir şey eklerken: konumu düz tut, çizerken
+  Terrain.on_ground ile kaldır. Veri: levels/harabe_koy_terrain.res (TerrainData: 0.25 m'lik karelerde
+  yükseklik + yürünemez işareti), tools/build_village_terrain.gd modelden çıkarır (zemin = yukarı bakan en
+  alçak yüzey; bel hizasında yüzey, 0.3 m'den dik basamak ya da girişten ulaşılamayan yer yürünemez; haritayı
+  yazdırır). Navmesh: tools/bake_navmesh.gd köy bölgesine yürünebilir karelerden DÜZ zemin ekler (model
+  navmesh'e girmez); editördeki Bake düğmesi köyü yürünemez bırakır, hep betiği kullan. Modeli taşıyınca:
+  build_village_terrain, sonra bake_navmesh, sonra ENEMY_SPAWNS'ı haritaya göre gözden geçir.
+  Düşmanlar: köy girişinde 3 (z ~68), meydanda 4, batıdaki yokuşta 5; toplam 15. Yol köy girişinde biter
+  (road_count 12; köyün içinde modelin kendi taş yolu var). Köy tek mesh olduğu için saydamlaşmaz: evlerin
+  arkasında karakter görünmeyebilir. Cevre halkası z = 130'a kadar (DisZemin 120 x 200). Ara sahnede köy yok.
+  Deneme: tools/village_test.gd (düşmanlara yol, yokuş yürüyüşü, tıklama).
   Taşlar: assets/kit/tas/tas1-3.glb (dokusuz, rengi köşe renklerinde/COLOR_0; Godot bunu kendiliğinden
   kullanmıyor, bembeyaz çıkıyordu). props/tas1-3.tscn glb'yi sarıp materials/tas.tres'i takar
   (vertex_color_use_as_albedo + is_srgb); sahnelerde glb değil bu props sahneleri kullanılır. Kütüphane
@@ -175,7 +192,7 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   Deneme: tools/level_test.gd (kütüphaneden Kül Yolu'na yürüyüş).
 - Can iksiri: items/health_potion.tscn + .gd; model assets/items/health-potion.glb (asıl public/models/kit/
   health-potion.glb 1.3 milyon üçgen, 43 MB; `npx @gltf-transform/cli` weld → simplify --ratio 0.004 --error
-  0.02 → resize 512 ile 9 bin üçgen, 0.6 MB). Düşman yere düşünce main.on_enemy_fell: ceset + %30 olasılıkla
+  0.02 → resize 512 ile 9 bin üçgen, 0.6 MB). Düşman yere düşünce main.on_enemy_fell: ceset + %20 olasılıkla (bir iksirden sonraki 2 ölümde düşmez, POTION_GAP; ortalama 7 ölümde 1)
   (POTION_CHANCE) main.drop_potion: cesedin 1 m yanına (navmesh'e çekilir) yayla sıçrar, yerde dönüp süzülür,
   kırmızı ışığı var. Oyuncu 1.1 m'ye gelince kendiliğinden alınır, 25 can (HEAL; player.heal); can tamsa
   alınmaz, yerde bekler. Deneme: tools/potion_test.gd.
@@ -273,7 +290,8 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Fare basılı tutulunca sürekli yürüme
 - Sahneye biraz daha ışık; parçalar şu an çok koyu
 - planlar/yanik-kutuphane-ornek.svg'yi koda göre güncelle (yüksek duvar, duvar rafı, çatı kemeri yok)
-- Harabe Köy'e gerçek ev parçaları (çatı, kapı, kuyu); şimdi sadece yıkık duvarlardan
+- Harabe Köy'de evlerin arkasında kalan karakter görünsün (köy tek mesh; evlere ayırmak ya da karakter silüeti)
+- Köy modelinin kenarındaki basamağı (0.1-1 m) taş/çalıyla gizle
 - Harabe Köy'ün güneyine 4. bölge Sisli Orman
 - Kül Yolu'nda ölünce kütüphane yerine Kül Yolu girişinde doğma (kontrol noktası)
 - Kullanılmayan Environment.ts'yi sil

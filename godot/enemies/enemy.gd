@@ -326,3 +326,8 @@ func ground_distance(point: Vector3) -> float:
 
 func now() -> float:
 	return Time.get_ticks_msec() / 1000.0
+
+# Engebeli zeminde (Harabe Köy) yalnızca görüntü kalkar: konum (global_position) hep y = 0'da kalır,
+# model zeminin yüksekliği kadar yukarı çizilir (levels/terrain.gd)
+func _process(_delta: float) -> void:
+	model.position.y = Terrain.height_at(global_position)

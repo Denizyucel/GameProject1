@@ -13,6 +13,7 @@ const FADE_TIME := 0.4 # kırıldıktan sonra izin sönmesi
 
 var direction := Vector3.FORWARD # fırlatan ayarlar (yatay, birim uzunlukta)
 var travelled := 0.0
+var height_above_ground := 1.0 # zeminden yüksekliği (fırlatılırken ayarlanır)
 var broken := false
 var fade_left := FADE_TIME
 var already_hit: Array[Node3D] = []
@@ -25,7 +26,8 @@ var already_hit: Array[Node3D] = []
 ## Sahneye eklendikten sonra çağrılır: from noktasından, yatay toward yönüne fırlat
 func launch(from: Vector3, toward: Vector3) -> void:
 	direction = Vector3(toward.x, 0, toward.z).normalized()
-	global_position = from
+	height_above_ground = from.y
+	global_position = from + Vector3.UP * Terrain.height_at(from)
 	# Mızrak +z ekseni boyunca çizildi: uçtuğu yöne çevir (look_at -z'yi hedefe çevirir)
 	look_at(global_position - direction, Vector3.UP)
 
@@ -40,6 +42,7 @@ func _physics_process(delta: float) -> void:
 
 	var step := SPEED * delta
 	global_position += direction * step
+	global_position.y = height_above_ground + Terrain.height_at(global_position) # engebeli zemini izler
 	travelled += step
 
 	# Yolundaki düşmanlar: gövdesine yeterince yakın olan her birine bir kez vur, uçmaya devam et

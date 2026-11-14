@@ -46,11 +46,12 @@ func _process(delta: float) -> void:
 	var player := get_tree().get_first_node_in_group("oyuncu") as Node3D
 	if player == null or not player.alive or player.health >= player.max_health:
 		return
-	if player.global_position.distance_to(global_position) <= PICKUP_RADIUS:
+	var to_player := player.global_position - global_position
+	if Vector2(to_player.x, to_player.z).length() <= PICKUP_RADIUS: # yatay uzaklık (iksir zeminin yüksekliğinde durur)
 		taken = true
 		player.heal(HEAL)
 		# Alındı: oyuncuya doğru yükselip küçülerek kaybol
 		var tween := create_tween().set_parallel()
 		tween.tween_property(self, "scale", Vector3.ONE * 0.01, TAKE_TIME).set_ease(Tween.EASE_IN)
-		tween.tween_property(self, "global_position", player.global_position + Vector3.UP * 1.2, TAKE_TIME)
+		tween.tween_property(self, "global_position", Terrain.on_ground(player.global_position) + Vector3.UP * 1.2, TAKE_TIME)
 		tween.chain().tween_callback(queue_free)

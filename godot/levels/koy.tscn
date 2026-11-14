@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://levels/village.gd" id="1_script"]
+[ext_resource type="Material" path="res://materials/disarisi.tres" id="2_zemin"]
+[ext_resource type="PackedScene" path="res://assets/kit/koy.glb" id="3_model"]
+
+[sub_resource type="PlaneMesh" id="KoyZemini"]
+size = Vector2(40, 44)
+
+[node name="Koy" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="Zemin" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 82)
+material_override = ExtResource("2_zemin")
+mesh = SubResource("KoyZemini")
+
+[node name="Model" parent="." instance=ExtResource("3_model")]
+transform = Transform3D(0, 0, 18, 0, 18, 0, -18, 0, 0, -3.04, 7.5, 80.24)

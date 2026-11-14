@@ -50,6 +50,7 @@ static var attack_moves: Array[Dictionary] = []
 
 @onready var agent: NavigationAgent3D = $NavigationAgent3D
 @onready var model: Node3D = $Model
+var rise_offset := 0.0 # topraktan çıkarken modelin zemine göre yüksekliği (eksi = toprağın altında)
 @onready var animation_player: AnimationPlayer = model.find_child("AnimationPlayer")
 @onready var skeleton: Skeleton3D = model.find_child("Skeleton3D")
 
@@ -81,7 +82,7 @@ func _ready() -> void:
 	glow_material.albedo_color = Color(GLOW, 0.8)
 	for mesh in model.find_children("*", "MeshInstance3D", true, false):
 		(mesh as MeshInstance3D).material_overlay = glow_material
-	model.position.y = -RISE_DEPTH
+	rise_offset = -RISE_DEPTH
 
 
 func prepare_shared_animations() -> void:
@@ -121,7 +122,7 @@ func _physics_process(delta: float) -> void:
 	if rise_time < RISE_TIME:
 		rise_time += delta
 		var t := minf(rise_time / RISE_TIME, 1.0)
-		model.position.y = -RISE_DEPTH * (1.0 - t * t * (3.0 - 2.0 * t))
+		rise_offset = -RISE_DEPTH * (1.0 - t * t * (3.0 - 2.0 * t))
 		glow_material.albedo_color.a = 0.8 * (1.0 - t)
 		return
 	if leader == null:
@@ -235,3 +236,8 @@ func face_now(point: Vector3) -> void:
 
 func ground_distance(a: Vector3, b: Vector3) -> float:
 	return Vector2(a.x - b.x, a.z - b.z).length()
+
+# Engebeli zeminde (Harabe Köy) yalnızca görüntü kalkar: konum (global_position) hep y = 0'da kalır,
+# model zeminin yüksekliği kadar yukarı çizilir (levels/terrain.gd)
+func _process(_delta: float) -> void:
+	model.position.y = rise_offset + Terrain.height_at(global_position)

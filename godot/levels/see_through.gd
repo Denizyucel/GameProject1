@@ -74,7 +74,7 @@ func _process(delta: float) -> void:
 func check() -> void:
 	if player == null or camera == null:
 		return
-	var feet := player.global_position
+	var feet := Terrain.on_ground(player.global_position) # karakter ekranda zeminin üstünde durur
 	var here := Vector2(feet.x, feet.z)
 	var to_camera := camera.global_transform.basis.z * RAY_LENGTH # kamera -z'ye bakar; +z kameraya doğru
 	for piece in pieces:
