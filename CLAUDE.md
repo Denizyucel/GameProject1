@@ -129,11 +129,11 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   eksiye düşürüyordu), X konumu/dönüşü, mühürlerin yükselmesi, mühür ışığı, kararma, ve "Call Method" izi:
   x_play(ad, hız), seals_reverse (gümüş → altın), seals_absorb (X'e uçar), fire_wave (altın kıvılcımlar
   10 rafa yayla uçar, effects/fire.tscn tutuşur: alev + duman parçacıkları + titreyen turuncu ışık),
-  finish. Akış: 0-6 kaidede üç dik gümüş mühür ve uyuyan kardeş (oyuncu modeli, ölüm animasyonunun son
-  karesi), 6-15 X güney kapıdan kaideye yürür, 15-18 uyuyan kardeşe bakar, 18-21 büyü (spell4), mühürler
-  yükselip altına döner ve X'e çekilir, 22 yangın, 24-30 X yanan kütüphaneden çıkar, kararma. Esc ya da
-  tık: geç. Bitince MainScene.wake_at = kardeşin yeri → main.tscn; player.wake_up ölüm animasyonunu tersten
-  oynatır (3.2 sn kontrol yok). main.gd artık class_name MainScene. Deneme: tools/cutscene_test.gd.
+  finish. Akış: 0-6 kaidede üç dik gümüş mühür, 6-15 X güney kapıdan kaideye yürür, 15-18 kaidenin
+  önünde bekler, 18-21 büyü (spell4), mühürler yükselip altına döner ve X'e çekilir, 22 yangın, 24-30 X
+  yanan kütüphaneden çıkar, kararma. Ruh Kıran ara sahnede görünmez (kullanıcı istedi). Esc ya da tık:
+  geç. Bitince MainScene.wake_at = (3, 0, -8.5) → main.tscn; player.wake_up ölüm animasyonunu tersten
+  oynatır (küller arasında uyanış; 3.2 sn kontrol yok). main.gd artık class_name MainScene. Deneme: tools/cutscene_test.gd.
   Oyunu ara sahnesiz denemek: editörde main.tscn açıkken F6 (Run Current Scene).
 - Henüz taşınmadı: parça saydamlaşması.
 

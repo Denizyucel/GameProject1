@@ -6,7 +6,7 @@ extends SceneTree
 
 # [zaman çizelgesindeki an (saniye), dosya adı]
 const MOMENTS := [
-	[4.0, "01-muhurler"], [9.0, "02-x-giriyor"], [16.5, "03-kardese-bakis"], [19.7, "04-altina-donus"],
+	[4.0, "01-muhurler"], [9.0, "02-x-giriyor"], [16.5, "03-bekleyis"], [19.7, "04-altina-donus"],
 	[21.3, "05-emis"], [23.5, "06-yangin"], [27.0, "07-cikis"],
 ]
 

@@ -10,7 +10,7 @@ const MAIN_SCENE := "res://main.tscn"
 const FIRE := preload("res://effects/fire.tscn")
 const SILVER := Color(0.82, 0.86, 0.95)
 const GOLD := Color("#ffc95a")
-const SLEEPER_AT := Vector3(3.0, 0, -8.5) # uyuyan kardeşin yeri (oyun da burada başlar)
+const WAKE_AT := Vector3(3.0, 0, -8.5) # ara sahneden sonra Ruh Kıran'ın küller arasında uyandığı yer
 const SEAL_RADIUS := 0.16
 const SEAL_SPREAD := 0.28 # mühürlerin kaidenin ortasına uzaklığı (üçgen dizilim)
 const SPARK_TIME := 0.45 # kıvılcımın X'ten rafa uçuş süresi
@@ -31,7 +31,6 @@ const X_ANIMATIONS := [
 @onready var x: Node3D = $X
 @onready var x_player: AnimationPlayer = $X.find_child("AnimationPlayer")
 @onready var x_skeleton: Skeleton3D = $X.find_child("Skeleton3D")
-@onready var sleeper: Node3D = $Kardes
 @onready var seals: Node3D = $Muhurler
 @onready var lift: Node3D = $Muhurler/Kaldirma
 @onready var seal_light: OmniLight3D = $Muhurler/MuhurIsigi
@@ -45,7 +44,6 @@ var finished := false
 
 func _ready() -> void:
 	prepare_x()
-	prepare_sleeper()
 	place_seals()
 	script_player.play("acilis")
 
@@ -65,19 +63,6 @@ func prepare_x() -> void:
 func x_play(animation: String, speed: float = 0.0) -> void:
 	x_player.play("sahne/" + animation, 0.3)
 	x_player.speed_scale = speed / x_walk_speed if speed > 0 and x_walk_speed > 0 else 1.0
-
-
-# Uyuyan kardeş: oyuncunun modeli, ölüm animasyonunun son karesinde (yerde yatıyor) durdurulur
-func prepare_sleeper() -> void:
-	sleeper.global_position = SLEEPER_AT
-	var player: AnimationPlayer = sleeper.find_child("AnimationPlayer")
-	var skeleton: Skeleton3D = sleeper.find_child("Skeleton3D")
-	var library := AnimationLibrary.new()
-	library.add_animation("yat", RigAnimations.take("res://assets/animations/creature/mutant-dying.fbx", "mixamo_com", player, skeleton, false))
-	player.add_animation_library("sahne", library)
-	player.play("sahne/yat")
-	player.seek(player.current_animation_length, true)
-	player.pause()
 
 
 # Üç gümüş mühür: mühür kaidesinin üstündeki üç yuvaya, üçgen dizilimle
@@ -182,10 +167,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		finish()
 
 
-## Oyuna geç: oyuncu uyuyan kardeşin yerinde, yerden kalkarak başlar
+## Oyuna geç: Ruh Kıran küller arasında, yerden kalkarak başlar
 func finish() -> void:
 	if finished:
 		return
 	finished = true
-	MainScene.wake_at = SLEEPER_AT
+	MainScene.wake_at = WAKE_AT
 	get_tree().change_scene_to_file(MAIN_SCENE)

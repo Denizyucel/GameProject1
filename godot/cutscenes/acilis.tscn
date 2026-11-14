@@ -3,7 +3,6 @@
 [ext_resource type="Script" path="res://cutscenes/acilis.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://levels/yanik_kutuphane.tscn" id="2_level"]
 [ext_resource type="PackedScene" path="res://assets/x/x.glb" id="3_x"]
-[ext_resource type="PackedScene" path="res://assets/character/necromancer-kadin.glb" id="4_sleeper"]
 
 [sub_resource type="ProceduralSkyMaterial" id="YansimaGogu"]
 sky_top_color = Color(0.18, 0.2, 0.3, 1)
@@ -72,10 +71,10 @@ tracks/3/path = NodePath("X:rotation")
 tracks/3/interp = 1
 tracks/3/loop_wrap = true
 tracks/3/keys = {
-"times": PackedFloat32Array(0, 15, 15.6, 17.5, 18.1, 23.6, 24.2),
-"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"times": PackedFloat32Array(0, 23.6, 24.2),
+"transitions": PackedFloat32Array(1, 1, 1),
 "update": 0,
-"values": [Vector3(0, 3.1416, 0), Vector3(0, 3.1416, 0), Vector3(0, 1.107, 0), Vector3(0, 1.107, 0), Vector3(0, 3.1416, 0), Vector3(0, 3.1416, 0), Vector3(0, 0, 0)]
+"values": [Vector3(0, 3.1416, 0), Vector3(0, 3.1416, 0), Vector3(0, 0, 0)]
 }
 tracks/4/type = "value"
 tracks/4/imported = false
@@ -188,9 +187,6 @@ omni_range = 3.5
 
 [node name="X" parent="." instance=ExtResource("3_x")]
 transform = Transform3D(-1.176, 0, 0, 0, 1.176, 0, 0, 0, -1.176, 0, 0, 8)
-
-[node name="Kardes" parent="." instance=ExtResource("4_sleeper")]
-transform = Transform3D(1.176, 0, 0, 0, 1.176, 0, 0, 0, 1.176, 3, 0, -8.5)
 
 [node name="Kamera" type="Camera3D" parent="."]
 transform = Transform3D(0.70710677, -0.40824828, 0.57735026, 0, 0.81649655, 0.57735026, -0.70710677, -0.40824828, 0.57735026, 20, 20, 8.5)
