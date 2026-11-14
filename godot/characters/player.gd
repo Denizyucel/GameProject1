@@ -53,6 +53,7 @@ const SPEAR_COOLDOWN := 0.8 # iki mızrak arasında en az bu kadar saniye
 const SPEAR_HEIGHT := 1.3 # mızrağın çıktığı yükseklik (göğüs)
 const SPEAR_FORWARD := 0.6 # karakterin ne kadar önünden çıktığı
 const RESPAWN_DELAY := 4.0
+const WAKE_SPEED := 1.4 # uyanırken yerden kalkma hızı (ölüm animasyonu tersten, bu kat hızlı)
 
 # Bekleme ve yürüme animasyonlarının dosyası ve dosyadaki adı
 @export_file("*.fbx", "*.glb") var idle_file := "res://assets/character/idle.fbx"
@@ -76,6 +77,7 @@ var attack: Dictionary = {} # süren vuruş; boşsa vurmuyor
 var attack_time := 0.0 # süren vuruşun kaç saniyedir sürdüğü
 var attack_has_hit := false
 var death_time := 0.0
+var wake_left := 0.0 # yerden kalkmanın bitmesine kalan süre (saniye)
 var attack_target: Node3D # tıklanıp kovalanan düşman; null ise kimseyi kovalamıyor
 var chase_timer := 0.0
 var spell_names: Array[String] = []
@@ -156,7 +158,16 @@ func ground_distance(point: Vector3) -> float:
 
 ## Vuruş, büyü ya da ölüm sürerken yeni bir şey başlamaz
 func is_busy() -> bool:
-	return not alive or not attack.is_empty() or cast_time >= 0 or not spear.is_empty()
+	return not alive or not attack.is_empty() or cast_time >= 0 or not spear.is_empty() or wake_left > 0
+
+
+## Yerde yatarken kalk (açılış ara sahnesinden sonra): ölüm animasyonu tersten oynar, bitene kadar kontrol yok
+func wake_up() -> void:
+	if not animation_player.has_animation("hareket/olum"):
+		return
+	animation_player.play_backwards("hareket/olum")
+	animation_player.speed_scale = WAKE_SPEED
+	wake_left = animation_player.get_animation("hareket/olum").length / WAKE_SPEED
 
 
 ## Kemik mızrağı büyüsünü başlat: hedefe dön, el hareketi oynar, fırlatma anında mızrak çıkar
@@ -398,6 +409,12 @@ func _physics_process(delta: float) -> void:
 		if death_time >= RESPAWN_DELAY:
 			respawn()
 		return
+	if wake_left > 0:
+		wake_left -= delta
+		if wake_left <= 0:
+			animation_player.play("hareket/idle", ANIMATION_BLEND)
+			animation_player.speed_scale = 1.0
+		return # kalkarken yürümez
 	if not attack.is_empty():
 		update_attack(delta)
 		return # vururken yürümez

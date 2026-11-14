@@ -118,7 +118,24 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   16 m/sn, 14 m menzil, yolundaki her düşmana bir kez 15 hasar (delip geçer); altı navmesh'ten 0.6 m'den
   uzaksa duvara çarpmış sayılıp kırılır (kitap yığını gibi alçak engellerde de kırılır). Bekleme 0.8 sn,
   mana yok. Deneme: tools/spear_test.gd (gerçek sağ tık).
-- Henüz taşınmadı: mühür kırma, iskeletler, HUD, parça saydamlaşması.
+- X (açılış ara sahnesi için, Hikaye.md "Açılış: X gece mühürleri çalar, kütüphaneyi yakar"):
+  assets/x/x.glb (Meshy SmartRig; kıvırcık saçlı genç erkek, turkuaz-altın zırh, yere kadar altın
+  pelerin, pelerin gövdeyle tek parça; 1.7 m, 1.176 ölçekle 2 m). İçindeki animasyonlar: Walking,
+  Running, Clapping_Run (14 sn), Walking_Scan_with_Sudden_Look_Back (7 sn, root motion'lı: kendisi
+  ilerler, etrafı tarayıp arkasına bakar).
+- Açılış ara sahnesi: cutscenes/acilis.tscn + acilis.gd; projenin başlangıç sahnesi bu (run/main_scene).
+  Gece ortamı (koyu, glow açık), aynı yanik_kutuphane.tscn. Zaman çizelgesi Senaryo (AnimationPlayer)
+  "acilis", 30 sn: kamera konumu/boyu (kesmelerde doğrusal geçiş; kübik geçiş sıçramada taşıp boyu
+  eksiye düşürüyordu), X konumu/dönüşü, mühürlerin yükselmesi, mühür ışığı, kararma, ve "Call Method" izi:
+  x_play(ad, hız), seals_reverse (gümüş → altın), seals_absorb (X'e uçar), fire_wave (altın kıvılcımlar
+  10 rafa yayla uçar, effects/fire.tscn tutuşur: alev + duman parçacıkları + titreyen turuncu ışık),
+  finish. Akış: 0-6 kaidede üç dik gümüş mühür ve uyuyan kardeş (oyuncu modeli, ölüm animasyonunun son
+  karesi), 6-15 X güney kapıdan kaideye yürür, 15-18 uyuyan kardeşe bakar, 18-21 büyü (spell4), mühürler
+  yükselip altına döner ve X'e çekilir, 22 yangın, 24-30 X yanan kütüphaneden çıkar, kararma. Esc ya da
+  tık: geç. Bitince MainScene.wake_at = kardeşin yeri → main.tscn; player.wake_up ölüm animasyonunu tersten
+  oynatır (3.2 sn kontrol yok). main.gd artık class_name MainScene. Deneme: tools/cutscene_test.gd.
+  Oyunu ara sahnesiz denemek: editörde main.tscn açıkken F6 (Run Current Scene).
+- Henüz taşınmadı: parça saydamlaşması.
 
 ## Mimari kurallar
 - src/game/ React import etmez; src/hud/ Three.js nesnelerine dokunmaz.

@@ -1,0 +1,114 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://effects/fire.gd" id="1_script"]
+
+[sub_resource type="Gradient" id="AlevRengi"]
+offsets = PackedFloat32Array(0, 0.15, 0.5, 1)
+colors = PackedColorArray(1, 0.9, 0.5, 0, 1, 0.75, 0.3, 1, 1, 0.35, 0.08, 0.8, 0.5, 0.08, 0.02, 0)
+
+[sub_resource type="GradientTexture1D" id="AlevRengiDokusu"]
+gradient = SubResource("AlevRengi")
+
+[sub_resource type="Curve" id="AlevBoyu"]
+_data = [Vector2(0, 0.6), 0.0, 0.0, 0, 0, Vector2(0.4, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.2), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="AlevBoyuDokusu"]
+curve = SubResource("AlevBoyu")
+
+[sub_resource type="ParticleProcessMaterial" id="AlevHareketi"]
+emission_shape = 3
+emission_box_extents = Vector3(0.35, 0.1, 0.35)
+direction = Vector3(0, 1, 0)
+spread = 12.0
+initial_velocity_min = 0.6
+initial_velocity_max = 1.4
+gravity = Vector3(0, 1.2, 0)
+scale_min = 0.7
+scale_max = 1.3
+scale_curve = SubResource("AlevBoyuDokusu")
+color_ramp = SubResource("AlevRengiDokusu")
+
+[sub_resource type="Gradient" id="NoktaGorseli"]
+offsets = PackedFloat32Array(0, 0.4, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0.55, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="NoktaDokusu"]
+gradient = SubResource("NoktaGorseli")
+width = 64
+height = 64
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
+[sub_resource type="StandardMaterial3D" id="AlevMalzemesi"]
+transparency = 1
+blend_mode = 1
+shading_mode = 0
+vertex_color_use_as_albedo = true
+albedo_texture = SubResource("NoktaDokusu")
+billboard_mode = 3
+billboard_keep_scale = true
+
+[sub_resource type="QuadMesh" id="AlevSekli"]
+material = SubResource("AlevMalzemesi")
+size = Vector2(0.55, 0.55)
+
+[sub_resource type="Gradient" id="DumanRengi"]
+offsets = PackedFloat32Array(0, 0.2, 1)
+colors = PackedColorArray(0.12, 0.1, 0.1, 0, 0.15, 0.13, 0.13, 0.4, 0.2, 0.18, 0.2, 0)
+
+[sub_resource type="GradientTexture1D" id="DumanRengiDokusu"]
+gradient = SubResource("DumanRengi")
+
+[sub_resource type="ParticleProcessMaterial" id="DumanHareketi"]
+emission_shape = 3
+emission_box_extents = Vector3(0.3, 0.1, 0.3)
+direction = Vector3(0, 1, 0)
+spread = 18.0
+initial_velocity_min = 0.4
+initial_velocity_max = 0.9
+gravity = Vector3(0.15, 0.5, 0.1)
+scale_min = 1.0
+scale_max = 2.2
+color_ramp = SubResource("DumanRengiDokusu")
+
+[sub_resource type="StandardMaterial3D" id="DumanMalzemesi"]
+transparency = 1
+shading_mode = 0
+vertex_color_use_as_albedo = true
+albedo_texture = SubResource("NoktaDokusu")
+billboard_mode = 3
+billboard_keep_scale = true
+
+[sub_resource type="QuadMesh" id="DumanSekli"]
+material = SubResource("DumanMalzemesi")
+size = Vector2(1.0, 1.0)
+
+[node name="Ates" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="Alev" type="GPUParticles3D" parent="."]
+cast_shadow = 0
+emitting = false
+amount = 48
+lifetime = 0.9
+visibility_aabb = AABB(-2, -1, -2, 4, 5, 4)
+process_material = SubResource("AlevHareketi")
+draw_pass_1 = SubResource("AlevSekli")
+
+[node name="Duman" type="GPUParticles3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+cast_shadow = 0
+emitting = false
+amount = 24
+lifetime = 3.0
+visibility_aabb = AABB(-3, -1, -3, 6, 8, 6)
+process_material = SubResource("DumanHareketi")
+draw_pass_1 = SubResource("DumanSekli")
+
+[node name="Isik" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+light_color = Color(1, 0.55, 0.22, 1)
+light_energy = 0.0
+omni_range = 5.0

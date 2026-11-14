@@ -12,7 +12,7 @@ config_version=5
 
 config/name="Necro"
 config/description="Diablo tarzı izometrik hack & slash: Ruh Kıran (Hikaye.md)"
-run/main_scene="res://main.tscn"
+run/main_scene="res://cutscenes/acilis.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
 [display]

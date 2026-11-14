@@ -4,7 +4,11 @@
 #   - 1 tuşu: oyuncu 8 m içindeki en yakın cesede büyü yapar; büyünün yarısında cesetten iskelet kalkar
 #   - En fazla 5 iskelet: sınır doluyken yenisi kalkarsa rastgele biri ruhunu serbest bırakıp yok olur
 
+class_name MainScene
 extends Node3D
+
+## Açılış ara sahnesi oyuncunun nerede uyanacağını buraya yazar (yoksa null: normal doğuş noktası)
+static var wake_at: Variant = null
 
 const SEAL_BREAK := preload("res://effects/seal_break.tscn")
 const CORPSE := preload("res://minions/corpse.tscn")
@@ -32,6 +36,11 @@ func _ready() -> void:
 		enemy.seal_broken.connect(on_seal_broken)
 		enemy.buried.connect(on_buried)
 	hud.set_minions(0)
+	# Açılıştan geldiyse: Ruh Kıran küller arasında, uyuduğu yerde uyanır
+	if wake_at != null:
+		player.global_position = wake_at
+		player.wake_up()
+		wake_at = null
 
 
 func on_seal_broken(enemy: Node3D) -> void:
