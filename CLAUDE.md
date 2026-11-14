@@ -108,7 +108,7 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   anı ölçülür). Topraktan 0.9 sn'de mavi parıltıyla yükselir; oyuncuyu takip eder (altın açılı yer, 1.6 m;
   3 m'den uzaklaşınca, 3.4 m/sn); 6 m içindeki ve oyuncudan 10 m'den yakın düşmana koşup vurur (5 hasar,
   0.5 sn mola). En fazla 5 (MAX_MINIONS); fazlasında rastgele biri seal_break release efektiyle yok olur.
-  Ayaktaki iskelet sayısı HUD'da mana küresinin kafatasının üstündeki rozette (ManaKuresi/Rozet; HUD.set_minions). Deneme: tools/minion_test.gd.
+  Ayaktaki iskelet sayısı HUD'da mana küresinin kafatasının üstündeki rozette (ManaKuresi/Rozet; HUD.set_minions; yazı tipi godot/fonts/AguafinaScript-Regular.ttf, 16 px, 3.5 px aşağı kaydırılmış: el yazısının taban çizgisi rakamı yukarıda bırakıyordu; OFL lisanslı, Git'te). Deneme: tools/minion_test.gd.
 - Düşmana tıklayarak dövüş: player.enemy_under_cursor ekranda düşmanın ayağından 2 m yukarısına uzanan
   çizgiye bakar (0.6 m yarıçap, fizik/çarpışma kutusu yok). Tıklanan düşman attack_target olur: oyuncu
   kovalar (yol 0.3 sn'de bir), 1.7 m'ye yetişince vurur, ölene kadar vuruşları zincirler; zemine tık ya da
