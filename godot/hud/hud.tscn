@@ -36,6 +36,7 @@ shader_parameter/flash = 0.0
 shader_parameter/flash_color = Color(0.75, 0.85, 1, 1)
 
 [sub_resource type="LabelSettings" id="SayiYazisi"]
+font = ExtResource("9_rozet_font")
 font_size = 15
 outline_size = 4
 outline_color = Color(0, 0, 0, 0.8)
