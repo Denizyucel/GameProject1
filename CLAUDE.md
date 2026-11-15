@@ -68,7 +68,11 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
 - WASD/oklar: ekrana göre yön (fiziksel tuş, klavye düzeninden bağımsız), adım navmesh'in en yakın
   noktasına çekilir (duvar boyunca kayar), tıklanan hedefi iptal eder. Deneme: tools/keys_test.gd.
 - HUD: hud/hud.tscn (CanvasLayer; main.tscn'de, player'a bağlı). Can küresi hud/health_globe.gd +
-  globe_fill.gdshader (sıvıyı üstten keser; brightness, flash); görseller assets/hud. Oyuncunun canı
+  globe_fill.gdshader (sıvıyı üstten keser; brightness, flash); görseller assets/hud. Can küresinin
+  çerçevesi (globe-frame.png, asılları public/models/hud/health-globe) 455 x 413, solunda kanatlı figür;
+  CanKuresi 284 x 258 px, 320 x 320'lik küre katmanları (globe-liquid/globe-empty = *-without-frame.png)
+  çerçevenin sağ altına oturur (anchor 0.2967, 0.2252 → 1, 1). Boş küre %20 opak açık gri cam (mana da
+  aynısını kullanır). Oyuncunun canı
   player.gd'de (max_health 100, take_damage, health_changed sinyali). Pencere ölçeklemesi canvas_items
   (arayüz 1280x720'ye göre büyür). Deneme: tools/hud_test.gd.
 - Deneme betiklerinde ekran görüntüsünden önce `await RenderingServer.frame_post_draw` gerekir; yoksa

@@ -79,15 +79,16 @@ layout_mode = 3
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_top = -208.0
-offset_right = 200.0
+offset_top = -266.0
+offset_right = 284.0
 offset_bottom = -8.0
 grow_vertical = 0
 script = ExtResource("2_globe")
 
 [node name="BosKure" type="TextureRect" parent="CanKuresi"]
 layout_mode = 1
-anchors_preset = 15
+anchor_left = 0.2967
+anchor_top = 0.2252
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
@@ -98,7 +99,8 @@ expand_mode = 1
 modulate = Color(1, 1, 1, 0.7)
 material = SubResource("KayipCanMalzemesi")
 layout_mode = 1
-anchors_preset = 15
+anchor_left = 0.2967
+anchor_top = 0.2252
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
@@ -108,7 +110,8 @@ expand_mode = 1
 [node name="Sivi" type="TextureRect" parent="CanKuresi"]
 material = SubResource("SiviMalzemesi")
 layout_mode = 1
-anchors_preset = 15
+anchor_left = 0.2967
+anchor_top = 0.2252
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
@@ -126,10 +129,10 @@ expand_mode = 1
 
 [node name="Sayi" type="Label" parent="CanKuresi"]
 layout_mode = 1
-anchor_left = 0.275
-anchor_top = 0.253
-anchor_right = 0.765
-anchor_bottom = 0.744
+anchor_left = 0.49
+anchor_top = 0.421
+anchor_right = 0.837
+anchor_bottom = 0.804
 mouse_filter = 2
 text = "100 / 100"
 label_settings = SubResource("SayiYazisi")
