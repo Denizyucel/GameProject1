@@ -157,6 +157,13 @@ func _ready() -> void:
 			sword.free()
 
 
+## En fazla canı kalıcı olarak artır (görev ödülü); can da o kadar dolar
+func raise_max_health(amount: float) -> void:
+	max_health += amount
+	health = minf(health + amount, max_health)
+	health_changed.emit(health, max_health)
+
+
 ## Canı artır (can iksiri); en fazla max_health. Ölüyken işe yaramaz.
 func heal(amount: float) -> void:
 	take_damage(-amount)

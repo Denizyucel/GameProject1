@@ -18,6 +18,7 @@ const NO_MANA_GAP := 2.0 # bu sözü en sık bu kadar saniyede bir söyler (tık
 @onready var whisper_label: Label = $Fisilti
 @onready var minion_label: Label = $ManaKuresi/Rozet # kafatasının üstündeki rozet
 @onready var say_label: Label = $Konusma
+@onready var quest_label: Label = $Gorevler/Liste
 
 var whisper_tween: Tween
 var whisper_top := 0.0
@@ -75,3 +76,12 @@ func on_not_enough_mana() -> void:
 	if now - no_mana_said_at >= NO_MANA_GAP:
 		no_mana_said_at = now
 		say(NO_MANA_LINE)
+
+
+## Görev listesi (sağ üst): açık görevler başlık ve sayacıyla; biten görev üstü çizili gibi soluk görünür
+func show_quests(lines: Array) -> void:
+	var text := ""
+	for line in lines:
+		text += ("✓ " if line[1] else "• ") + line[0] + "\n"
+	quest_label.text = text.strip_edges()
+	$Gorevler.visible = not lines.is_empty()

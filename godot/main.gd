@@ -25,7 +25,9 @@ const ENEMY := preload("res://enemies/enemy.tscn")
 const CORPSE := preload("res://minions/corpse.tscn")
 const MINION := preload("res://minions/minion.tscn")
 const POTION := preload("res://items/health_potion.tscn")
-const CROWD := preload("res://characters/crowd.gd") # karakterler birbirinin içinden geçmesin
+const CROWD := preload("res://characters/crowd.gd")
+const NAME_PAGE := preload("res://items/name_page.gd")
+const QUEST_LOG := preload("res://quests/quest_log.gd") # karakterler birbirinin içinden geçmesin
 const POTION_CHANCE := 0.2 # ölen düşmanın can iksiri düşürme olasılığı (0..1)
 const POTION_GAP := 2 # bir iksir düştükten sonra en az bu kadar ölümde iksir düşmez (art arda gelmesin)
 const POTION_DISTANCE := 1.0 # iksir cesedin bu kadar yanına düşer (üstüne değil)
@@ -37,6 +39,18 @@ const ENEMY_SPAWNS := [
 	Vector3(0, 0, 75), Vector3(4, 0, 74.5), Vector3(2, 0, 77.5), Vector3(7, 0, 76.5),
 	Vector3(-10, 0, 75.5), Vector3(-8, 0, 77.5), Vector3(-10, 0, 85), Vector3(-8, 0, 85.5), Vector3(-6.5, 0, 84.5),
 ]
+# Unutulan İsimler (yan görev): kütüphanenin yangınından kalan 5 yanık kayıt sayfası. Hepsi bulununca en fazla can +10.
+const NAME_PAGES := [
+	{"at": Vector3(-7, 0, -10), "person": "Mira, ebe", "line": "«Kızımın doğumunu görmeden gitmem.» Gördü, sonra gitti."},
+	{"at": Vector3(7, 0, -3), "person": "Ela, yedi yaşında", "line": "«Karanlıkta yanımda kalır mısın?» Kaldım."},
+	{"at": Vector3(12, 0, 12), "person": "Değirmenci Ferhan", "line": "«Unutulmaktan korkuyorum.» Unutmadım."},
+	{"at": Vector3(-8, 0, 30), "person": "Taşçı Oruç", "line": "«Duvarımı bitiremedim.» Duvarı hâlâ yolun kenarında duruyor."},
+	{"at": Vector3(9, 0, 52), "person": "Adı yanmış", "line": "Tek satır kalmış: «Kardeşine iyi bak.»"},
+]
+const NAMES_QUEST := "isimler"
+const NAMES_TITLE := "Unutulan İsimler"
+const NAMES_REWARD := 10.0 # hepsi bulununca en fazla cana eklenir
+const NAMES_DONE_LINE := "Beş isim daha. Derimde hâlâ yer var."
 const ENTER_FROM := Vector3(0, 0, 8) # güney kapı (X'in de girdiği yer)
 const ENTER_TO := Vector3(0, 0, -5) # salonun ortası; yanmış raflara bakar
 const ENTER_LINE := "Buraya ne oldu böyle?"
@@ -55,6 +69,7 @@ const GOLDEN_ANGLE := PI * (3.0 - sqrt(5.0))
 var minions: Array[Node3D] = []
 var raised_count := 0 # şimdiye kadar kaldırılan iskelet sayısı (yerlerini seçer)
 var kills_since_potion := POTION_GAP # son iksirden beri ölen düşman sayısı (ilk ölümde düşebilir)
+var quests: QuestLog
 var cast_target: Node3D # bu büyüyle kalkacak ceset; kalkınca null
 
 
@@ -64,6 +79,11 @@ func _ready() -> void:
 	crowd.name = "Kalabalik"
 	crowd.set_script(CROWD)
 	add_child(crowd)
+	quests = QUEST_LOG.new()
+	quests.name = "Gorevler"
+	add_child(quests)
+	quests.changed.connect(func(): hud.show_quests(quests.lines()))
+	place_name_pages()
 	for point in FIRE_POINTS:
 		var fire := FIRE.instantiate()
 		add_child(fire)
@@ -80,6 +100,36 @@ func _ready() -> void:
 		after_intro = false
 		player.enter_scene(ENTER_FROM, ENTER_TO)
 		player.arrived.connect(func(): hud.say(ENTER_LINE), CONNECT_ONE_SHOT)
+
+
+func place_name_pages() -> void:
+	# Navmesh ilk karelerde henüz boş (sorgular (0, 0, 0) döndürüyor): oyuncunun yeri yanıt verene kadar bekle
+	var map := get_world_3d().navigation_map
+	while NavigationServer3D.map_get_closest_point(map, player.global_position).is_zero_approx():
+		await get_tree().physics_frame
+	var region: NavigationRegion3D = $Gezinme
+	hud.get_node("Harita").build(region.navigation_mesh, region.global_transform) # küçük harita yürünebilir alanı çizer
+	for spec in NAME_PAGES:
+		var page: NamePage = NAME_PAGE.new()
+		page.person = spec["person"]
+		page.line = spec["line"]
+		var at: Vector3 = spec["at"]
+		var walkable := NavigationServer3D.map_get_closest_point_to_segment(map, at + Vector3.UP * 3.0, at + Vector3.DOWN * 2.0)
+		page.position = Vector3(walkable.x, 0, walkable.z) # yürünebilir bir yerde dursun (alınabilsin)
+		add_child(page)
+		page.picked.connect(on_name_page)
+
+
+## Bir isim sayfası alındı: Ruh Kıran adı ve son sözü okur; ilk sayfada görev açılır, beşincide biter
+func on_name_page(page: NamePage) -> void:
+	quests.start(NAMES_QUEST, NAMES_TITLE, NAME_PAGES.size())
+	quests.advance(NAMES_QUEST)
+	if quests.is_done(NAMES_QUEST):
+		hud.say("%s. %s" % [page.person, page.line])
+		get_tree().create_timer(4.2).timeout.connect(func(): hud.say(NAMES_DONE_LINE))
+		player.raise_max_health(NAMES_REWARD)
+	else:
+		hud.say("%s. %s" % [page.person, page.line])
 
 
 # Düşman ölünce yalnızca altın mühür kırılır: mavi ruh ve "Teşekkür ederiz" fısıltısı yok (kullanıcı istedi)

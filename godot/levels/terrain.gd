@@ -5,6 +5,8 @@
 
 class_name Terrain
 
+const NAVMESH_LIFT := 0.25 # navmesh zeminden bu kadar yukarıda çıkıyor (ölçüldü)
+
 static var data: TerrainData # engebeli bölgenin verisi; levels/village.gd sahneye girince koyar
 
 
@@ -49,3 +51,13 @@ static func ray_to_ground(origin: Vector3, direction: Vector3) -> Variant:
 			break
 		hit = again
 	return Vector3(hit.x, 0, hit.z)
+
+
+## Bir noktadaki GÖRÜNEN zeminin yüksekliği: engebeli bölgede Terrain, başka yerde navmesh'ten. Oyunun mantığı y = 0'da
+## ama salonun taş zemini ~0.25 m, gotik binanın meydanı ~0.36 m yüksek; navmesh zeminden 0.25 m yukarıda çıktığı için
+## oradan okunur. Yere konan küçük şeyler (tıklama halkası, isim sayfaları) bunu kullanır; yoksa zeminin altında kalırlar.
+static func visible_floor(node: Node3D, at: Vector3) -> float:
+	var map := node.get_world_3d().navigation_map
+	var nav := NavigationServer3D.map_get_closest_point_to_segment(map, at + Vector3.UP * 3.0, at + Vector3.DOWN * 2.0)
+	var from_nav := nav.y - NAVMESH_LIFT if Vector2(nav.x - at.x, nav.z - at.z).length() < 0.5 else 0.0
+	return maxf(height_at(at), from_nav)

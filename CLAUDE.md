@@ -264,6 +264,23 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   çağrılır (static active; ara sahnede kamera yok, hiçbir şey yapmaz). Miktar "trauma"da birikir, saniyede 2
   söner; kayma ekran düzleminde, trauma'nın karesi x SHAKE_REACH (1 m) / zoom. Kılıç darbesi 0.35 (~5 piksel),
   mızrak isabeti 0.3, oyuncu hasar alınca 0.5, mühür kırılınca 0.6; iskeletlerin vuruşu sarsmaz.
+- Küçük harita: hud/minimap.gd (hud.tscn Harita, sağ üst 150 x 150; Gorevler onun altında, offset_top 172). İkinci kamera
+  yok: main.place_name_pages navmesh hazır olunca Harita.build(Gezinme.navigation_mesh) çağırır, yürünebilir çokgenler
+  bir kez resme dökülür (4 px/m). Her kare yuvarlak pencereye (draw_colored_polygon + UV) karakter ortada, kameranın
+  sağı/ilerisiyle döndürülmüş çizilir (salon ekrandaki gibi baklava görünür); 44 m çap. İşaretler: oyuncu köz kırmızısı
+  ok (baktığı yön), düşmanlar altın, iskeletler kemik beyazı, alınmamış isim sayfaları ("isim_sayfasi" grubu) nabız atan
+  köz noktası. Çerçeve can barıyla aynı bronz. Deneme: tools/names_test.gd görüntüleri (sağ üst).
+- Görevler: quests/quest_log.gd (class_name QuestLog; main.gd "Gorevler" düğümü olarak ekler, QuestLog.active):
+  start(id, başlık, hedef), advance, retitle, finish, is_open/is_done; changed → HUD.show_quests (hud.tscn Gorevler: sağ
+  üstte "Görevler" başlığı Aguafina 26 + liste; açık "•", biten "✓", sayaçlı "2 / 5"). Yan görev planı (kullanıcı
+  hepsini istedi): 1) Unutulan İsimler (tamam), 2) küçük harita (tamam), 3) Altın Şampiyon (nadir güçlü düşman, anahtar düşürür),
+  4) gotik binanın kapısı (anahtarla açılır), 5) Saklanan Anne (Harabe Köy, NPC + konuşma).
+  Unutulan İsimler: items/name_page.gd (class_name NamePage, kodla: 0.44 x 0.58 m yanık kâğıt, köz rengi ışıma,
+  nabız atan kırmızı ışık; görünen zeminin 0.35 m üstünde süzülür, 1.2 m'de kendiliğinden alınır). main.NAME_PAGES: 5
+  sayfa (kütüphane içinde 2, dışında 1, Kül Yolu'nda 2; isim + son söz, taslağı Claude yazdı); ilk sayfada görev açılır,
+  HUD.say ile okunur; beşincide "Beş isim daha. Derimde hâlâ yer var." ve player.raise_max_health(10). Sayfalar navmesh
+  dolana kadar bekleyip konur (ilk karelerde sorgular (0, 0, 0) döner). Terrain.visible_floor(node, nokta): görünen
+  zemin yüksekliği (navmesh - 0.25, köyde Terrain); tıklama halkası da bunu kullanır. Deneme: tools/names_test.gd.
 - Düşman can barı (Diablo tarzı, üst ortada tek bar): hud/enemy_bar.gd, hud.tscn'de DusmanCani (Ad: tarz adı,
   Aguafina 32 px altın; Kenar/Bos/Kayip/Dolu ColorRect, 340 x 18). Gösterilen düşman: imlecin üzerindeki
   (player.enemy_under_cursor) → kovalanan (attack_target) → son 3 sn'de vurulan (enemy.hit_time). Vurulunca açık renkli
