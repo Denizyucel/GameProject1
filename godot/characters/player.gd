@@ -40,6 +40,7 @@ const HIT_ARC := 0.3 # düşman ne kadar önde olmalı (1 = tam önde, 0 = yanda
 const HIT_STOP := 0.2 # kılıç isabet edince oyun bu kadar sürede yavaştan normal hıza döner (saniye; effects/hit_stop.gd)
 const ENGAGE_RANGE := 1.7 # kovalanan düşmana bu kadar yaklaşınca vurmaya başlar (metre)
 const CHASE_REPATH := 0.3 # kovalarken yolu kaç saniyede bir yeniler
+const HOLD_REPATH := 0.12 # fare basılı tutulurken hedef kaç saniyede bir farenin altına taşınır
 # Tıklamayla düşman seçme: düşmanın ayağından bu yüksekliğe kadar, bu yarıçapta bir alan tıklanabilir
 const PICK_HEIGHT := 2.0
 const PICK_RADIUS := 0.6
@@ -96,6 +97,8 @@ var death_time := 0.0
 var entering := false # sahneye kendiliğinden yürüyerek giriyor (açılıştan sonra); bu sırada kontrol yok
 var attack_target: Node3D # tıklanıp kovalanan düşman; null ise kimseyi kovalamıyor
 var chase_timer := 0.0
+var holding := false # zemine tıklanıp fare basılı tutuluyor: karakter farenin peşinden yürür
+var hold_timer := 0.0
 var spell_names: Array[String] = []
 var spear_moves: Array[Dictionary] = [] # her mızrak hareketi: {name, release}
 var spear: Dictionary = {} # süren mızrak büyüsü; boşsa yok
@@ -309,7 +312,11 @@ func respawn() -> void:
 # Sol tık: tıklanan zemin noktasına yürü. Shift + sol tık: olduğun yerde o yöne kılıç salla.
 func _unhandled_input(event: InputEvent) -> void:
 	var click := event as InputEventMouseButton
-	if click == null or not click.pressed:
+	if click == null:
+		return
+	if not click.pressed:
+		if click.button_index == MOUSE_BUTTON_LEFT:
+			holding = false # fare bırakıldı: son hedefe kadar yürür, durur
 		return
 	if click.button_index != MOUSE_BUTTON_LEFT and click.button_index != MOUSE_BUTTON_RIGHT:
 		return
@@ -336,6 +343,31 @@ func _unhandled_input(event: InputEvent) -> void:
 	else:
 		attack_target = null # zemine tıklamak saldırıyı bırakır
 		agent.target_position = hit # navmesh dışına tıklanırsa ajan en yakın yürünebilir noktaya gider
+		ClickRing.spawn(get_parent(), hit)
+		holding = true # basılı tutulursa farenin peşinden yürümeye devam eder (follow_held_mouse)
+		hold_timer = HOLD_REPATH
+
+
+# Fare basılı tutuluyor: hedefi belli aralıklarla farenin altındaki zemine taşı (Diablo'daki gibi sürekli yürüme).
+# Fare bırakılınca, klavyeyle yürüyünce ya da karakter başka bir işe başlayınca (vuruş, büyü) biter.
+func follow_held_mouse(delta: float, keys_used: bool) -> void:
+	if keys_used or entering or not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		holding = false
+		return
+	hold_timer -= delta
+	if hold_timer > 0:
+		return
+	hold_timer = HOLD_REPATH
+	var camera := get_viewport().get_camera_3d()
+	var mouse := get_viewport().get_mouse_position()
+	var hit = Terrain.ray_to_ground(camera.project_ray_origin(mouse), camera.project_ray_normal(mouse))
+	if hit == null:
+		return
+	if ground_distance(hit) < 0.3:
+		agent.target_position = global_position # fare karakterin üstünde: dur, titremesin
+		return
+	attack_target = null
+	agent.target_position = hit
 
 
 # Ekranda tıklanan noktanın altındaki canlı düşman (yoksa null). Her düşmanın ayağından başına uzanan bir
@@ -546,6 +578,8 @@ func _physics_process(delta: float) -> void:
 
 	var was_walking := walking
 	var key_direction := Vector3.ZERO if entering else keyboard_direction()
+	if holding:
+		follow_held_mouse(delta, key_direction != Vector3.ZERO)
 	if key_direction != Vector3.ZERO:
 		# Klavyeyle yürürken tıklanan hedef ve kovalanan düşman unutulur
 		attack_target = null

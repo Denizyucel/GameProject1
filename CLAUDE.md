@@ -65,6 +65,13 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   `godot --path godot --resolution 1280x720 -s tools/screenshot.gd -- <çıktı.png> 90`;
   `... -s tools/walk_test.gd -- <klasör> <tık x> <tık y>` (sahte tık, yol ve iki ekran görüntüsü);
   `godot --headless --path godot -s tools/inspect.gd -- res://...fbx` (model ağacı, animasyonlar).
+- Fare basılı tutunca sürekli yürüme (Diablo gibi): zemine sol tıkla player.holding açılır; follow_held_mouse
+  0.12 sn'de bir (HOLD_REPATH) hedefi farenin altındaki zemine taşır; fare 0.3 m'den yakınsa durur. Fare bırakılınca,
+  WASD'de ya da sahneye girişte biter; vuruş/büyü sırasında bekler, bitince sürer. Düşmana tıklama eskisi gibi.
+  Tıklama halkası: effects/click_ring.gd (class_name ClickRing, kodla TorusMesh, köz kırmızısı, toplamalı; 0.45 sn'de
+  1.4 → 0.55 küçülüp söner), yalnızca basışta. Görünen zemin yüksekliğine konur: navmesh zeminden 0.25 m yukarıda
+  (salonun taş zemini ~0.25, gotik meydan ~0.36), köyde Terrain; y = 0'a konunca salonda zeminin altında kalıyordu.
+  Deneme: tools/hold_walk_test.gd.
 - WASD/oklar: ekrana göre yön (fiziksel tuş, klavye düzeninden bağımsız), adım navmesh'in en yakın
   noktasına çekilir (duvar boyunca kayar), tıklanan hedefi iptal eder. Önü kapalıysa (adımın %80'inden azı
   gidilebiliyorsa) player.keys_detour ileriye bakar (1-4 m, KEYS_LOOK): orası yürünebilir ve oraya giden yol düz
@@ -364,8 +371,6 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 
 ## Sonra
 - Yol düzleştirme: ızgara yolundaki gereksiz kırılmaları kaldır (görüş hattı kontrolü)
-- Tıklanan yere kısa süreli işaret (Diablo'daki tıklama halkası)
-- Fare basılı tutulunca sürekli yürüme
 - Sahneye biraz daha ışık; parçalar şu an çok koyu
 - planlar/yanik-kutuphane-ornek.svg'yi koda göre güncelle (yüksek duvar, duvar rafı, çatı kemeri yok)
 - Köy modelinin kenarındaki basamağı (0.1-1 m) taş/çalıyla gizle
