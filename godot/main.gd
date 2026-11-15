@@ -25,10 +25,10 @@ const ENEMY := preload("res://enemies/enemy.tscn")
 const CORPSE := preload("res://minions/corpse.tscn")
 const MINION := preload("res://minions/minion.tscn")
 const POTION := preload("res://items/health_potion.tscn")
+const CROWD := preload("res://characters/crowd.gd") # karakterler birbirinin içinden geçmesin
 const POTION_CHANCE := 0.2 # ölen düşmanın can iksiri düşürme olasılığı (0..1)
 const POTION_GAP := 2 # bir iksir düştükten sonra en az bu kadar ölümde iksir düşmez (art arda gelmesin)
 const POTION_DISTANCE := 1.0 # iksir cesedin bu kadar yanına düşer (üstüne değil)
-const THANKS_WHISPER := "Teşekkür ederiz…"
 # Düşmanların yerleri (evleri; Hikaye.md): Kül Yolu'nda önce tek devriye, sonra iki;
 # Harabe Köy'de 3, 4 ve 5'lik gruplar (köy girişi, meydan, batıdaki yokuş)
 const ENEMY_SPAWNS := [
@@ -60,6 +60,10 @@ var cast_target: Node3D # bu büyüyle kalkacak ceset; kalkınca null
 
 func _ready() -> void:
 	hud.set_minions(0)
+	var crowd := Node.new()
+	crowd.name = "Kalabalik"
+	crowd.set_script(CROWD)
+	add_child(crowd)
 	for point in FIRE_POINTS:
 		var fire := FIRE.instantiate()
 		add_child(fire)
@@ -78,15 +82,16 @@ func _ready() -> void:
 		player.arrived.connect(func(): hud.say(ENTER_LINE), CONNECT_ONE_SHOT)
 
 
+# Düşman ölünce yalnızca altın mühür kırılır: mavi ruh ve "Teşekkür ederiz" fısıltısı yok (kullanıcı istedi)
 func on_seal_broken(enemy: Node3D) -> void:
-	spawn_effect(enemy.global_position, false)
-	hud.whisper(THANKS_WHISPER)
+	spawn_effect(enemy.global_position, false, false)
 	GameCamera.shake(0.6)
 
 
-func spawn_effect(at: Vector3, release: bool) -> void:
+func spawn_effect(at: Vector3, release: bool, with_soul := true) -> void:
 	var effect := SEAL_BREAK.instantiate()
 	effect.release = release
+	effect.with_soul = with_soul
 	add_child(effect)
 	effect.global_position = Terrain.on_ground(at)
 

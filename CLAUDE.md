@@ -104,7 +104,10 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   effects/seal_break.tscn (+ .gd): altın parlama küresi ve halka (kodla), Kiymiklar (GPUParticles3D, 16
   altın prizma, yerçekimli), Ruh (GPUParticles3D, 70 mavi nokta, halkadan yukarı hızlanarak ve dönerek;
   0.15 sn gecikmeli), OmniLight3D (altın → mavi, 3 sn'de söner, 3.5 m). Parçacık ayarları editörde
-  sahneden. release = true: altınsız (serbest bırakılan iskelet için). 3.2 sn sonra kendini siler.
+  sahneden. release = true: altınsız (serbest bırakılan iskelet için).
+  Düşman ölümünde with_soul = false (kullanıcı istedi): yalnızca altın kırılma (parlama, halka, kıymıklar, altın ışık)
+  ve sarsıntı; mavi ruh noktaları ve "Teşekkür ederiz" fısıltısı yok (main.on_seal_broken). İskelet serbest kalırken
+  (release) ruh duruyor. HUD.whisper başka işler için duruyor. 3.2 sn sonra kendini siler.
   HUD.whisper(metin): Fisilti etiketi (italik SystemFont, mavi parıltı), belirip yukarı süzülerek kaybolur.
   Godot Forward+'ta sahneye ışık eklemek shader derletmez; ışık havuzu gerekmedi.
   Deneme: tools/seal_test.gd (efektin kendi saatine göre görüntü alır; ekran görüntüsü oyunu dondurur ve
@@ -245,6 +248,11 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   çağrılır (static active; ara sahnede kamera yok, hiçbir şey yapmaz). Miktar "trauma"da birikir, saniyede 2
   söner; kayma ekran düzleminde, trauma'nın karesi x SHAKE_REACH (1 m) / zoom. Kılıç darbesi 0.35 (~5 piksel),
   mızrak isabeti 0.3, oyuncu hasar alınca 0.5, mühür kırılınca 0.6; iskeletlerin vuruşu sarsmaz.
+- Hareketli çarpışma: characters/crowd.gd (main.gd açılışta "Kalabalik" düğümü olarak ekler; fizik yok). Her fizik
+  karesinde herkesin hareketinden sonra (process_physics_priority 100) oyuncu (0.4 m, ağırlık 4), canlı düşmanlar
+  (0.45 m x boy, 2) ve ayaktaki iskeletler (0.35 m, 1) yerde daire sayılır; üst üste binen ikililer ağırlığa göre
+  itilir (iskelet oyuncuya yol verir), itilen navmesh'e yatayda çekilir. Ölüler ve kalkmakta olan iskeletler
+  engel değil. Deneme: tools/crowd_test.gd.
 - Vuruş hissi: düşman her vuruluşta (enemy.hit; kılıç, iskelet, mızrak) effects/hit_spark.tscn (+ .gd, class_name
   HitSpark): göğüs hizasında vurandan uzağa saçılan 18 beyaz-sarı kıvılcım (GPUParticles3D, ince kutu, hıza
   hizalı, yerçekimli) + 0.15 sn'lik küçük ışık; güç hasarla (hasar / 12, en az 0.3): iskeletinki daha az kıvılcım.
@@ -354,9 +362,7 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - İskelete yerden kalkma (Standing Up) ve kendine özgü (zombi) yürüme animasyonu
 - skeleton.fbx'i hafiflet (278 bin üçgen; çok minionda ağırlaşır)
 - Vampire kendi animasyonları (vurulma, ölüm) ve can barı
-- Hareketli çarpışma: karakter, vampir ve minionlar birbirinin içinden geçmesin
 - Mana iksiri; iksir alma sesi ve yerdeki iksirin süreyle kaybolması
 - Karakter için ölüm ve vurulma animasyonu (şimdi sadece devriliyor)
 - Walking.fbx'i Without Skin indir (15 MB → ~0.5 MB)
 - Sesler: mühür kırılması (freesound CC0 "glass shatter"), fısıltı (kendi Türkçe kaydımız), kılıç darbesi
-- Minionlar birbirinin ve karakterin içinden geçmesin

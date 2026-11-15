@@ -22,6 +22,8 @@ const LIGHT_TIME := 3.0
 const LIGHT_RISE := 1.2
 
 @export var release := false
+## false: yalnızca altın kırılma; mavi ruh yükselmez, ışık maviye dönmez (düşman ölümünde, kullanıcı istedi)
+@export var with_soul := true
 
 @onready var flash: MeshInstance3D = $Parlama
 @onready var ring: MeshInstance3D = $Halka
@@ -40,7 +42,8 @@ func _ready() -> void:
 	light.light_energy = 0.0
 	if not release:
 		shards.restart() # tek seferlik: hepsini birden fırlat
-	get_tree().create_timer(SOUL_DELAY, false).timeout.connect(soul.restart)
+	if with_soul:
+		get_tree().create_timer(SOUL_DELAY, false).timeout.connect(soul.restart)
 
 
 func _process(delta: float) -> void:
@@ -62,7 +65,7 @@ func _process(delta: float) -> void:
 	# Işık: altın → mavi, kırılma anında en parlak, sonra yavaşça söner ve ruhla biraz yükselir
 	var life := minf(t / LIGHT_TIME, 1.0)
 	var gold_time := -LIGHT_TO_BLUE if release else LIGHT_GOLD_TIME
-	var to_blue := clampf((t - gold_time) / LIGHT_TO_BLUE, 0.0, 1.0)
+	var to_blue := clampf((t - gold_time) / LIGHT_TO_BLUE, 0.0, 1.0) if with_soul else 0.0
 	light.light_color = GOLD.lerp(SOUL_BLUE, to_blue)
 	light.light_energy = LIGHT_PEAK * minf(t / 0.05, 1.0) * pow(1.0 - life, 2)
 	light.position.y = 1.2 + life * LIGHT_RISE
