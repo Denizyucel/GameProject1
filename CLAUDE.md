@@ -264,6 +264,13 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   çağrılır (static active; ara sahnede kamera yok, hiçbir şey yapmaz). Miktar "trauma"da birikir, saniyede 2
   söner; kayma ekran düzleminde, trauma'nın karesi x SHAKE_REACH (1 m) / zoom. Kılıç darbesi 0.35 (~5 piksel),
   mızrak isabeti 0.3, oyuncu hasar alınca 0.5, mühür kırılınca 0.6; iskeletlerin vuruşu sarsmaz.
+- Altın Şampiyon (yan görev zinciri): enemy.gd champion = true → CHAMPION_STYLE ("Altın Şampiyon": 160 can, 12 hasar,
+  1.3 boy, koşarak kovalar, kas gösterir); flash_material'de nabız atan altın parıltı (vurulunca kırmızıya döner) ve
+  altın OmniLight3D (AltinIsik; ölünce söner). main.CHAMPION_AT (-11, 0, 46), Kül Yolu'nda gotik patikanın güneyi;
+  hep orada (tek). Oyuncu 14 m'ye gelince görev "Altın Şampiyon'un mührünü kır" açılır (main.watch_champion, _process'te).
+  Mührü kırılınca görev biter, items/golden_key.gd (class_name GoldenKey, kodla halka + sap + diş, altın, sıçrar, döner)
+  düşer; alınınca main.has_golden_key ve "kapi" görevi ("Altın anahtarı gotik binanın kapısına götür"). Deneme:
+  tools/champion_test.gd.
 - Küçük harita: hud/minimap.gd (hud.tscn Harita, sağ üst 150 x 150; Gorevler onun altında, offset_top 172). İkinci kamera
   yok: main.place_name_pages navmesh hazır olunca Harita.build(Gezinme.navigation_mesh) çağırır, yürünebilir çokgenler
   bir kez resme dökülür (4 px/m). Her kare yuvarlak pencereye (draw_colored_polygon + UV) karakter ortada, kameranın
@@ -273,7 +280,7 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
 - Görevler: quests/quest_log.gd (class_name QuestLog; main.gd "Gorevler" düğümü olarak ekler, QuestLog.active):
   start(id, başlık, hedef), advance, retitle, finish, is_open/is_done; changed → HUD.show_quests (hud.tscn Gorevler: sağ
   üstte "Görevler" başlığı Aguafina 26 + liste; açık "•", biten "✓", sayaçlı "2 / 5"). Yan görev planı (kullanıcı
-  hepsini istedi): 1) Unutulan İsimler (tamam), 2) küçük harita (tamam), 3) Altın Şampiyon (nadir güçlü düşman, anahtar düşürür),
+  hepsini istedi): 1) Unutulan İsimler (tamam), 2) küçük harita (tamam), 3) Altın Şampiyon (tamam),
   4) gotik binanın kapısı (anahtarla açılır), 5) Saklanan Anne (Harabe Köy, NPC + konuşma).
   Unutulan İsimler: items/name_page.gd (class_name NamePage, kodla: 0.44 x 0.58 m yanık kâğıt, köz rengi ışıma,
   nabız atan kırmızı ışık; görünen zeminin 0.35 m üstünde süzülür, 1.2 m'de kendiliğinden alınır). main.NAME_PAGES: 5

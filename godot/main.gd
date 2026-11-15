@@ -47,6 +47,18 @@ const NAME_PAGES := [
 	{"at": Vector3(-8, 0, 30), "person": "Taşçı Oruç", "line": "«Duvarımı bitiremedim.» Duvarı hâlâ yolun kenarında duruyor."},
 	{"at": Vector3(9, 0, 52), "person": "Adı yanmış", "line": "Tek satır kalmış: «Kardeşine iyi bak.»"},
 ]
+# Altın Şampiyon (yan görev, zincir): Kül Yolu'nda gotik binaya giden patikanın yakınında tek, güçlü düşman. Oyuncu
+# yaklaşınca görev açılır; mührü kırılınca altın anahtar düşer, anahtar alınınca kapı görevi başlar (gotik bina).
+const CHAMPION_AT := Vector3(-11, 0, 46)
+const CHAMPION_NOTICE := 14.0 # oyuncu bu kadar yaklaşınca görev açılır
+const CHAMPION_QUEST := "sampiyon"
+const CHAMPION_TITLE := "Altın Şampiyon'un mührünü kır"
+const CHAMPION_SEEN_LINE := "Bu ötekilerden farklı. Altın onu daha sıkı sarmış."
+const CHAMPION_DOWN_LINE := "Mührünün içinde bir şey vardı… bir anahtar."
+const DOOR_QUEST := "kapi"
+const DOOR_TITLE := "Altın anahtarı gotik binanın kapısına götür"
+const KEY_LINE := "X'in altını. Batıdaki o kapalı binanın kapısına uyabilir."
+const GOLDEN_KEY := preload("res://items/golden_key.gd")
 const NAMES_QUEST := "isimler"
 const NAMES_TITLE := "Unutulan İsimler"
 const NAMES_REWARD := 10.0 # hepsi bulununca en fazla cana eklenir
@@ -70,6 +82,8 @@ var minions: Array[Node3D] = []
 var raised_count := 0 # şimdiye kadar kaldırılan iskelet sayısı (yerlerini seçer)
 var kills_since_potion := POTION_GAP # son iksirden beri ölen düşman sayısı (ilk ölümde düşebilir)
 var quests: QuestLog
+var champion: Node3D
+var has_golden_key := false
 var cast_target: Node3D # bu büyüyle kalkacak ceset; kalkınca null
 
 
@@ -95,6 +109,13 @@ func _ready() -> void:
 		enemies_root.add_child(enemy)
 		enemy.seal_broken.connect(on_seal_broken)
 		enemy.buried.connect(on_enemy_fell)
+	champion = ENEMY.instantiate()
+	champion.champion = true
+	champion.name = "AltinSampiyon"
+	champion.position = CHAMPION_AT
+	enemies_root.add_child(champion)
+	champion.seal_broken.connect(on_seal_broken)
+	champion.buried.connect(on_enemy_fell)
 	# Açılıştan geldiyse: Ruh Kıran kapıdan girer, salonun ortasında durup yangının izlerine bakar
 	if after_intro:
 		after_intro = false
@@ -136,6 +157,35 @@ func on_name_page(page: NamePage) -> void:
 func on_seal_broken(enemy: Node3D) -> void:
 	spawn_effect(enemy.global_position, false, false)
 	GameCamera.shake(0.6)
+	if enemy.champion:
+		quests.start(CHAMPION_QUEST, CHAMPION_TITLE) # yaklaşmadan uzaktan (mızrakla) kırıldıysa da açılıp bitsin
+		quests.finish(CHAMPION_QUEST)
+		hud.say(CHAMPION_DOWN_LINE)
+		drop_golden_key(enemy.global_position)
+
+
+func drop_golden_key(at: Vector3) -> void:
+	var angle := randf() * TAU
+	var landing := NavigationServer3D.map_get_closest_point(get_world_3d().navigation_map, at + Vector3(sin(angle), 0, cos(angle)) * 1.2)
+	var key: GoldenKey = GOLDEN_KEY.new()
+	add_child(key)
+	key.drop(Terrain.on_ground(at) + Vector3.UP * 0.8, Terrain.on_ground(Vector3(landing.x, 0, landing.z)))
+	key.picked.connect(on_golden_key)
+
+
+func on_golden_key() -> void:
+	has_golden_key = true
+	quests.start(DOOR_QUEST, DOOR_TITLE)
+	hud.say(KEY_LINE)
+
+
+# Şampiyon görevi: oyuncu şampiyonu ilk kez yakından görünce açılır (_process her kare çağırır)
+func watch_champion() -> void:
+	if quests and not quests.quests.has(CHAMPION_QUEST) and is_instance_valid(champion) and champion.alive:
+		var gap := Vector2(player.global_position.x - champion.global_position.x, player.global_position.z - champion.global_position.z).length()
+		if gap <= CHAMPION_NOTICE and player.alive:
+			quests.start(CHAMPION_QUEST, CHAMPION_TITLE)
+			hud.say(CHAMPION_SEEN_LINE)
 
 
 func spawn_effect(at: Vector3, release: bool, with_soul := true) -> void:
@@ -209,6 +259,7 @@ func nearest_corpse() -> Node3D:
 
 
 func _process(_delta: float) -> void:
+	watch_champion()
 	if cast_target == null:
 		return
 	var progress: float = player.cast_progress()

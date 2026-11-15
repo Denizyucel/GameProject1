@@ -45,6 +45,12 @@ const STYLES := [
 		"attack_speed": 0.95, "cooldown": 0.9, "taunts": true}, # çok dayanıklı, yavaş
 ]
 
+# Altın Şampiyon (yan görev): X'in altınının daha sıkı sardığı tek, güçlü düşman. Üstünde nabız gibi atan altın
+# parıltı ve altın ışık; mührü kırılınca altın anahtar düşürür (main.gd). champion = true ile kurulur.
+const CHAMPION_STYLE := {"name": "Altın Şampiyon", "health": 160.0, "damage": 12.0, "size": 1.3, "chase": "run",
+	"chase_speed": 2.5, "attack_speed": 1.0, "cooldown": 0.8, "taunts": true}
+const CHAMPION_GOLD := Color(1.0, 0.78, 0.3)
+
 # Animasyonlar: [kütüphanedeki ad, dosya, dosyadaki ad, döngü mü]
 const ANIMATIONS := [
 	["idle", "res://assets/character/idle.fbx", "mixamo_com", true],
@@ -69,6 +75,7 @@ static var style_bag: Array = []
 @onready var animation_player: AnimationPlayer = model.find_child("AnimationPlayer")
 @onready var skeleton: Skeleton3D = model.find_child("Skeleton3D")
 
+@export var champion := false
 var style: Dictionary
 var health := 1.0
 var alive := true
@@ -97,7 +104,7 @@ var current := ""
 func _ready() -> void:
 	add_to_group("dusman")
 	home = global_position
-	style = next_style()
+	style = CHAMPION_STYLE if champion else next_style()
 	health = style["health"]
 	model.scale *= style["size"]
 	wait_time = randf_range(0.0, WAIT_MAX)
@@ -116,6 +123,14 @@ func _ready() -> void:
 	flash_material.albedo_color = Color(1, 0.15, 0.1, 0)
 	for mesh in model.find_children("*", "MeshInstance3D", true, false):
 		(mesh as MeshInstance3D).material_overlay = flash_material
+	if champion:
+		var glow := OmniLight3D.new()
+		glow.name = "AltinIsik"
+		glow.light_color = CHAMPION_GOLD
+		glow.light_energy = 1.4
+		glow.omni_range = 4.5
+		glow.position.y = 1.6
+		add_child(glow)
 
 
 func prepare_shared_animations() -> void:
@@ -169,6 +184,8 @@ func die() -> void:
 	remove_from_group("dusman")
 	animation_player.speed_scale = DEATH_SPEED
 	play("hareket/olum")
+	if champion and has_node("AltinIsik"):
+		create_tween().tween_property($AltinIsik, "light_energy", 0.0, 0.8) # mührü kırılınca altın ışığı söner
 	seal_broken.emit(self)
 
 
@@ -316,7 +333,14 @@ func update_attack(delta: float) -> void:
 
 func update_flash() -> void:
 	var t := (now() - hit_time) / HIT_FLASH
-	flash_material.albedo_color.a = 0.0 if t >= 1.0 else (1.0 - t) * 0.6
+	var red := 0.0 if t >= 1.0 else (1.0 - t) * 0.6
+	if champion and alive:
+		# Şampiyon: vurulmadığında altın parıltı nabız gibi atar; vurulunca bir an kırmızıya döner
+		var gold := 0.18 + sin(now() * 3.0) * 0.07
+		flash_material.albedo_color = CHAMPION_GOLD.lerp(Color(1, 0.15, 0.1), clampf(red / 0.6, 0.0, 1.0))
+		flash_material.albedo_color.a = maxf(gold, red)
+	else:
+		flash_material.albedo_color = Color(1, 0.15, 0.1, red)
 
 
 # Devrilir; bedeni yere vardığı an yumuşakça kaybolurken yerinde ceset belirir (main.gd buried'i dinler)
