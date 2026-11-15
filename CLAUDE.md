@@ -183,6 +183,11 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   (road_count 12; köyün içinde modelin kendi taş yolu var). Köy tek mesh olduğu için saydamlaşmaz: evlerin
   arkasında karakter görünmeyebilir. Cevre halkası z = 130'a kadar (DisZemin 120 x 200). Ara sahnede köy yok.
   Deneme: tools/village_test.gd (düşmanlara yol, yokuş yürüyüşü, tıklama).
+  Görüş penceresi: köy tek mesh olduğu için see_through.gd onu saydamlaştıramaz; village.gd açılışta modelin
+  malzemesini aynı dokularla materials/koy.gdshader'a çevirir. Karakter köy alanındayken (AREA) karakterin
+  göğsünün çevresinde (ekranda 3.2 m yarıçap) ondan kameraya yakın ve zeminden 0.4 m yüksek pikseller
+  noktalı (dither, %80) silinir; gölge çiziminde silinmez (kamera yönüne bakılır). Deneme:
+  tools/village_window_test.gd (pencere kapalı/açık görüntüler).
   Taşlar: assets/kit/tas/tas1-3.glb (dokusuz, rengi köşe renklerinde/COLOR_0; Godot bunu kendiliğinden
   kullanmıyor, bembeyaz çıkıyordu). props/tas1-3.tscn glb'yi sarıp materials/tas.tres'i takar
   (vertex_color_use_as_albedo + is_srgb); sahnelerde glb değil bu props sahneleri kullanılır. Kütüphane
@@ -303,7 +308,6 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Fare basılı tutulunca sürekli yürüme
 - Sahneye biraz daha ışık; parçalar şu an çok koyu
 - planlar/yanik-kutuphane-ornek.svg'yi koda göre güncelle (yüksek duvar, duvar rafı, çatı kemeri yok)
-- Harabe Köy'de evlerin arkasında kalan karakter görünsün (köy tek mesh; evlere ayırmak ya da karakter silüeti)
 - Köy modelinin kenarındaki basamağı (0.1-1 m) taş/çalıyla gizle
 - Harabe Köy'ün güneyine 4. bölge Sisli Orman
 - Kül Yolu'nda ölünce kütüphane yerine Kül Yolu girişinde doğma (kontrol noktası)
