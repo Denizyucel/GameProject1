@@ -12,7 +12,6 @@
 [ext_resource type="PackedScene" path="res://props/tas2.tscn" id="tas2"]
 [ext_resource type="PackedScene" path="res://props/tas3.tscn" id="tas3"]
 [ext_resource type="PackedScene" path="res://props/agac3.tscn" id="agac3"]
-
 [sub_resource type="PlaneMesh" id="PlaneMesh_kvntj"]
 size = Vector2(40, 40)
 
@@ -41,12 +40,6 @@ transform = Transform3D(0.17364822, 0, -0.9848077, 0, 1, 0, 0.9848077, 0, 0.1736
 
 [node name="Model" type="Node3D" parent="Parcalar/yikik-duvar-4" unique_id=1555752895 instance=ExtResource("3_g0vaa")]
 transform = Transform3D(2.1079857, 0, 0, 0, 2.1079857, 0, 0, 0, 2.1079857, 0.0010286617, 0.95962673, -0.009348922)
-
-[node name="moloz-1" type="Node3D" parent="Parcalar" unique_id=2087062903]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, -1)
-
-[node name="Model" type="Node3D" parent="Parcalar/moloz-1" unique_id=674756720 instance=ExtResource("5_1emwk")]
-transform = Transform3D(1.0697997, 0, 0, 0, 1.0697997, 0, 0, 0, 1.0697997, 0.00022949034, 0.41677576, -0.0027857665)
 
 [node name="kirik-sutun-2" type="Node3D" parent="Parcalar" unique_id=783080930]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.5, 0, 8)
@@ -112,12 +105,6 @@ transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.00
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.5, 0, -7)
 
 [node name="Model" type="Node3D" parent="Parcalar/kuru-agac-2" unique_id=1728860862 instance=ExtResource("8_uucwr")]
-transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.004443877, 2.0478587, 0.00918155)
-
-[node name="kuru-agac-3" type="Node3D" parent="Parcalar" unique_id=522910846]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.5, 0, -1)
-
-[node name="Model" type="Node3D" parent="Parcalar/kuru-agac-3" unique_id=1606203975 instance=ExtResource("8_uucwr")]
 transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.004443877, 2.0478587, 0.00918155)
 
 [node name="kuru-agac-4" type="Node3D" parent="Parcalar" unique_id=1013909939]
@@ -366,18 +353,6 @@ transform = Transform3D(0.78688, 0, -0.44325, 0, 0.90314, 0, 0.44325, 0, 0.78688
 [node name="Model" parent="Parcalar/kuru-agac-44" instance=ExtResource("8_uucwr")]
 transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.004443877, 2.0478587, 0.00918155)
 
-[node name="kuru-agac-45" type="Node3D" parent="Parcalar"]
-transform = Transform3D(-0.34105, 0, -0.76125, 0, 0.83416, 0, 0.76125, 0, -0.34105, -17.52, 0, -2.41)
-
-[node name="Model" parent="Parcalar/kuru-agac-45" instance=ExtResource("8_uucwr")]
-transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.004443877, 2.0478587, 0.00918155)
-
-[node name="kuru-agac-46" type="Node3D" parent="Parcalar"]
-transform = Transform3D(1.06607, 0, 0.52805, 0, 1.18969, 0, -0.52805, 0, 1.06607, -19.26, 0, 0.56)
-
-[node name="Model" parent="Parcalar/kuru-agac-46" instance=ExtResource("8_uucwr")]
-transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.004443877, 2.0478587, 0.00918155)
-
 [node name="kuru-agac-47" type="Node3D" parent="Parcalar"]
 transform = Transform3D(1.12769, 0, -0.38187, 0, 1.19059, 0, 0.38187, 0, 1.12769, -6.67, 0, 15.88)
 
@@ -534,12 +509,6 @@ transform = Transform3D(-0.91987, 0, -0.28769, 0, 0.96380, 0, 0.28769, 0, -0.919
 [node name="Model" parent="Parcalar/kuru-agac-72" instance=ExtResource("8_uucwr")]
 transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.004443877, 2.0478587, 0.00918155)
 
-[node name="kuru-agac-73" type="Node3D" parent="Parcalar"]
-transform = Transform3D(0.76879, 0, -0.57488, 0, 0.95996, 0, 0.57488, 0, 0.76879, -8.79, 0, 0.31)
-
-[node name="Model" parent="Parcalar/kuru-agac-73" instance=ExtResource("8_uucwr")]
-transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.004443877, 2.0478587, 0.00918155)
-
 [node name="kuru-agac-74" type="Node3D" parent="Parcalar"]
 transform = Transform3D(-0.77155, 0, 0.92642, 0, 1.20564, 0, -0.92642, 0, -0.77155, -6.64, 0, -18.53)
 
@@ -562,12 +531,6 @@ transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.00
 transform = Transform3D(0.89642, 0, 0.04489, 0, 0.89754, 0, -0.04489, 0, 0.89642, 9.62, 0, -15.62)
 
 [node name="Model" parent="Parcalar/kuru-agac-77" instance=ExtResource("8_uucwr")]
-transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.004443877, 2.0478587, 0.00918155)
-
-[node name="kuru-agac-78" type="Node3D" parent="Parcalar"]
-transform = Transform3D(0.41132, 0, 0.73491, 0, 0.84219, 0, -0.73491, 0, 0.41132, -11.40, 0, 1.76)
-
-[node name="Model" parent="Parcalar/kuru-agac-78" instance=ExtResource("8_uucwr")]
 transform = Transform3D(2.1514986, 0, 0, 0, 2.1514986, 0, 0, 0, 2.1514986, -0.004443877, 2.0478587, 0.00918155)
 
 [node name="kuru-agac-79" type="Node3D" parent="Parcalar"]
@@ -815,3 +778,4 @@ transform = Transform3D(0.98836, 0, -0.21258, 0, 1.01096, 0, 0.21258, 0, 0.98836
 
 [node name="Model" parent="Parcalar/agac3-8" instance=ExtResource("agac3")]
 transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0, 0, 0)
+

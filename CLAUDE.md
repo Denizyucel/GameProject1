@@ -66,7 +66,13 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   `... -s tools/walk_test.gd -- <klasör> <tık x> <tık y>` (sahte tık, yol ve iki ekran görüntüsü);
   `godot --headless --path godot -s tools/inspect.gd -- res://...fbx` (model ağacı, animasyonlar).
 - WASD/oklar: ekrana göre yön (fiziksel tuş, klavye düzeninden bağımsız), adım navmesh'in en yakın
-  noktasına çekilir (duvar boyunca kayar), tıklanan hedefi iptal eder. Deneme: tools/keys_test.gd.
+  noktasına çekilir (duvar boyunca kayar), tıklanan hedefi iptal eder. Önü kapalıysa (adımın %80'inden azı
+  gidilebiliyorsa) player.keys_detour ileriye bakar (1-4 m, KEYS_LOOK): orası yürünebilir ve oraya giden yol düz
+  uzaklığın 2.2 katından (KEYS_DETOUR) kısaysa yolun ilk köşesine yürür; böylece kapıya çapraz basınca da
+  kapıdan süzülür. Seçilen dolanma yönü 0.3 sn korunur, neredeyse tam geriye dönen dolanma atılmaz (engele
+  yaslanınca titremesin). Navmesh yatayda sorulur (player.walkable_below / navmesh_below: dikey çizgiye en
+  yakın nokta): salonun içi dışından ~0.25 m yüksek, 3B "en yakın nokta" kapı eşiğinde hep içeriyi seçip
+  karakteri dışarı bırakmıyordu. Deneme: tools/keys_test.gd.
 - HUD: hud/hud.tscn (CanvasLayer; main.tscn'de, player'a bağlı). Can küresi hud/health_globe.gd +
   globe_fill.gdshader (sıvıyı üstten keser; brightness, flash); görseller assets/hud. Can küresinin
   çerçevesi (globe-frame.png, asılları public/models/hud/health-globe) 455 x 413, solunda kanatlı figür;
@@ -85,7 +91,8 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   ve 12 m'ye kadar kovalama, pençe (mutant-swiping, darbe anı ölçülür), 4 dövüş tarzı torbadan (STYLES:
   can, hasar, boy, kovalama animasyonu/hızı, pençe hızı, mola, kas gösterisi). Animasyonlar ilk
   düşmanda bir kez hazırlanıp hepsi arasında paylaşılır (static shared_library). Vurulunca
-  material_overlay ile kırmızı parlar, 0.4 sn şaşırır. Ölüm: mutant-dying.fbx (Godot okuyabiliyor; 1.5 kat
+  material_overlay ile kırmızı parlar, 0.4 sn şaşırır (8'den hafif vuruşta, yani iskeletinkinde, şaşırmaz:
+  STUN_MIN_DAMAGE; yoksa 5 iskelet düşmanı kilitliyordu). Ölüm: mutant-dying.fbx (Godot okuyabiliyor; 1.5 kat
   hızlı), bedeni yere vardığı an (RigAnimations.landing_moment, kalçanın en alçağa indiği an) 0.7 sn'de
   saydamlaşıp silinir, yerinde ceset aynı sürede belirir (GeometryInstance3D.transparency); seal_broken sinyali gönderir (mühür kırma efekti buna bağlanacak).
   Gruplar: "dusman" (canlı düşmanlar), "oyuncu".
@@ -112,6 +119,10 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   anı ölçülür). Topraktan 0.9 sn'de mavi parıltıyla yükselir; oyuncuyu takip eder (altın açılı yer, 1.6 m;
   3 m'den uzaklaşınca, 3.4 m/sn); 6 m içindeki ve oyuncudan 10 m'den yakın düşmana koşup vurur (5 hasar,
   0.5 sn mola). En fazla 5 (MAX_MINIONS); fazlasında rastgele biri seal_break release efektiyle yok olur.
+  İskeletlerin canı var (minion.MAX_HEALTH 40, take_damage, vurulunca kırmızı parlar; topraktan çıkana kadar
+  alive false). Düşmanlar 0.3 sn'de bir rakip seçer (enemy.pick_foe): oyuncu ve "iskelet" grubundan 5 m içindeki
+  en yakını (şu anki 1 m avantajlı; kızgınken 12 m); pençe rakibe vurur. Canı biten iskelet fell sinyali →
+  main.release_minion (mavi release efekti, HUD sayısı düşer). Deneme: tools/minion_test.gd (5. adım).
   Ayaktaki iskelet sayısı HUD'da mana küresinin kafatasının üstündeki rozette (ManaKuresi/Rozet; HUD.set_minions; yazı tipi godot/fonts/AguafinaScript-Regular.ttf, 16 px, 3.5 px aşağı kaydırılmış: el yazısının taban çizgisi rakamı yukarıda bırakıyordu; kürelerin üzerine gelince çıkan "100 / 100" sayısı da aynı yazı tipiyle, 15 px; OFL lisanslı, Git'te). Deneme: tools/minion_test.gd.
 - Düşmana tıklayarak dövüş: player.enemy_under_cursor ekranda düşmanın ayağından 2 m yukarısına uzanan
   çizgiye bakar (0.6 m yarıçap, fizik/çarpışma kutusu yok). Tıklanan düşman attack_target olur: oyuncu
@@ -156,11 +167,25 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   Yol dışına sonradan kuru ağaçlar eklendi (kütüphane bölgesinde 69, Kül Yolu'nda 83; harita kenarlarında
   sık orman; build betiklerinde yok). Kit'in agaclar/ klasöründen büyük dallı ağaç agac2.glb (18 bin
   üçgen, ~6.5 m; 0.6 ölçek, gövde modelin kökünde) de serpiştirildi: kütüphanede 13, Kül Yolu'nda 10 ("agac2-N";
-  yoldan 5 m uzak). agac3.glb: yapraklı, az üçgenli ağaç (1.8 bin üçgen, 9.3 m; 0.6 ölçek; dokusuz, yaprak
-  rengi köşe renklerinde). props/agac3.tscn glb'yi sarıp yapraklara materials/yaprak.tres takar (taşlardaki
-  gibi; ama vertex_color_is_srgb YOK, açılırsa yapraklar simsiyah olur); sahnelerde bu props sahnesi
-  kullanılır ("agac3-N": kütüphanede 8, Kül Yolu'nda 8, Harabe Köy kenarında 5, Cevre'de 45).
+  yoldan 5 m uzak). agac3.glb: yapraksız kahverengi ağaç (2.2 bin üçgen, 10.8 m; dokusuz, tek malzeme "kabuk";
+  0.6 ölçek; kullanıcı eski yapraklı agac3'ü bununla değiştirdi, agac4'ü sildi). props/agac3.tscn glb'yi sarar;
+  sahnelerde bu props sahnesi kullanılır ("agac3-N": kütüphanede 8, Kül Yolu'nda 8, Harabe Köy kenarında 5, Cevre'de 45).
   agac1.glb kuru-agac.glb ile aynı dosya. ~3 milyon üçgen.
+  Gotik bina: assets/kit/bina/bina1.glb (25.5 x 22.5 m taş meydanlı kapalı yapı, 13.6 m, 22 bin üçgen; turuncu
+  pencereler, çatıda ateş kaseleri; içine girilmez). levels/gotik_bina.tscn (main.tscn'de Gezinme/GotikBina;
+  navmesh'e girer: meydan yürünür, bina engel): Parcalar/bina1 Kül Yolu'nun batısında (-32.5, 0, 40), +90°
+  dönük, kapısı (dünyada -26.5, 40) yola bakar; Kopru: Kül Yolu'nun kenarıyla (x = -20) meydan (x = -21.5)
+  arasına zemin; yalnızca navmesh için, görünmez (visible = false; görünürken meydanla üst üste binip z-fighting ile
+  titriyordu, kullanıcı "titreyen gölge" sandı; navmesh betiği gizli mesh'i yine okur). Altındaki 68 Cevre ağacı/taşı kaldırıldı. Saydamlaşmaya eklenmedi: kutusu meydanı da
+  kapsadığı için meydandaki oyuncu bütün binayı saydamlaştırıyordu. Ara sahnede bina yok.
+  Görüş penceresi (köydeki gibi): levels/building_window.gd (GotikBina'nın betiği) açılışta binanın 10 malzemesini
+  aynı renk/doku/ışımayla materials/pencere.gdshader'a çevirir; oyuncu binanın merkezine 20 m'den yakınken
+  binanın önünde kalan kısmı karakterin çevresinde noktalı silinir. Deneme: tools/building_window_test.gd.
+  (Not: .tscn'de Transform3D satır satır yazılır: +90° y dönüşü = (0, 0, 1, 0, 1, 0, -1, 0, 0).)
+  Binaya patika: zemin.gdshader'da ikinci çizgi (path_points, path_count, path_width 2.2; kenarı yolun yarısı
+  kadar oynar). disarisi.tres: yoldan (0.5, 40) meydanın kenarına (-23, 40) kıvrılır. Üstündeki 5 kuru ağaç ve moloz-1
+  (Kül Yolu) kaldırıldı. road_count 12'den 11'e düzeltildi (11 nokta var). Deneme: oyuncu yoldan kapıya
+  (-24.8, 40) yürür.
   Harita kenarında siyah boşluk yok: levels/cevre.tscn (main.tscn'de Cevre; Gezinme'nin DIŞINDA, navmesh'e
   girmez, oyuncu oraya yürüyemez): 120 x 160 m DisZemin (aynı disarisi.tres, y = -0.02) ve oynanan alanın
   çevresinde 30 m'lik orman (711 ağaç; ilk 12 m sık). 30 m = en uzak zoom'da (0.6) ekranın gördüğü kadar;
@@ -198,6 +223,8 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   bölgesinde 14, Kül Yolu'nda 18 (Parcalar altında "tasN-M", navmesh'te engel), Cevre'de 110 (Taslar altında).
   Dokular dünya konumuna göre döşenir, iki zemin dikişsiz birleşir. Düşmanlar main.gd ENEMY_SPAWNS'tan kodla Dusmanlar
   altına konur (main.tscn'de düşman yok): Kül Yolu'nda 1 tek, sonra 2. Doğuş hâlâ kütüphanede.
+  Kütüphanenin güney kemer kapısı (kemer-kapi-1) yatayda 1.5, dikeyde 1.15 kat büyütüldü: açıklığı ~1.3 m'ydi,
+  ajan yarıçapı (0.4) yüzünden navmesh'te geçit 0.5 m kalıyor, WASD ile geçilemiyordu; şimdi ~1.1 m.
   Deneme: tools/level_test.gd (kütüphaneden Kül Yolu'na yürüyüş).
 - Can iksiri: items/health_potion.tscn + .gd; model assets/items/health-potion.glb (asıl public/models/kit/
   health-potion.glb 1.3 milyon üçgen, 43 MB; `npx @gltf-transform/cli` weld → simplify --ratio 0.004 --error
@@ -218,6 +245,13 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   çağrılır (static active; ara sahnede kamera yok, hiçbir şey yapmaz). Miktar "trauma"da birikir, saniyede 2
   söner; kayma ekran düzleminde, trauma'nın karesi x SHAKE_REACH (1 m) / zoom. Kılıç darbesi 0.35 (~5 piksel),
   mızrak isabeti 0.3, oyuncu hasar alınca 0.5, mühür kırılınca 0.6; iskeletlerin vuruşu sarsmaz.
+- Vuruş hissi: düşman her vuruluşta (enemy.hit; kılıç, iskelet, mızrak) effects/hit_spark.tscn (+ .gd, class_name
+  HitSpark): göğüs hizasında vurandan uzağa saçılan 18 beyaz-sarı kıvılcım (GPUParticles3D, ince kutu, hıza
+  hizalı, yerçekimli) + 0.15 sn'lik küçük ışık; güç hasarla (hasar / 12, en az 0.3): iskeletinki daha az kıvılcım.
+  Hit stop: effects/hit_stop.gd (class_name HitStop; HitStop.freeze(sn)): Engine.time_scale 0.1'e iner, kökte
+  oluşturduğu yardımcı düğüm (PROCESS_MODE_ALWAYS) her kare gerçek saate bakıp hızı 0.2 sn'de yumuşakça 1'e
+  çıkarır ve sonunda kesin 1 yapar (ilk sürümde geri dönüş zamanlayıcıya bağlıydı, kullanıcının oyununda yavaş
+  kalıyordu). Yalnızca oyuncunun kılıcı (player.HIT_STOP 0.2). Deneme: tools/combat_test.gd (darbe anında oyun hızını yazar, 1b-kivilcim.png).
 - Parça saydamlaşması: levels/see_through.gd (main.tscn'de Saydamlik; piece_roots: iki bölgenin Parcalar'ı ve
   Cevre/Agaclar). Açılışta her parçanın sınır kutusu (kendi uzayında) ölçülür; 0.1 sn'de bir karakterin ayak,
   göğüs ve başından kameraya uzanan çizgi kutuyu kesiyorsa parça %70 saydamlaşır (GeometryInstance3D.transparency,
@@ -317,12 +351,10 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Kül Yolu'nda ölünce kütüphane yerine Kül Yolu girişinde doğma (kontrol noktası)
 - Kullanılmayan Environment.ts'yi sil
 - A* açık listesini öncelik kuyruğuna çevir (harita büyüyünce)
-- Vuruşta kan/parça efekti, kısa duraklama (hit stop) gibi vuruş hissi efektleri
 - İskelete yerden kalkma (Standing Up) ve kendine özgü (zombi) yürüme animasyonu
 - skeleton.fbx'i hafiflet (278 bin üçgen; çok minionda ağırlaşır)
 - Vampire kendi animasyonları (vurulma, ölüm) ve can barı
 - Hareketli çarpışma: karakter, vampir ve minionlar birbirinin içinden geçmesin
-- Minionların canı olsun, vampirler minionlara da saldırsın
 - Mana iksiri; iksir alma sesi ve yerdeki iksirin süreyle kaybolması
 - Karakter için ölüm ve vurulma animasyonu (şimdi sadece devriliyor)
 - Walking.fbx'i Without Skin indir (15 MB → ~0.5 MB)

@@ -1,9 +1,12 @@
 # İskelet minion (Hikaye.md: mührü kırılan düşmanın kemikleri gönüllü olarak kalkar). Model: Mixamo'da
 # riglenmiş skeleton.fbx; sağ elinde kılıç (sword2.glb), sol ön kolunda kalkan (kalkan.glb).
 # Topraktan mavi ışıkla yükselir, efendisini (oyuncuyu) takip eder; yakındaki düşmana koşup kılıçla vurur.
-# Düşmanlar minionlara saldırmaz, minionların canı yok.
+# Canı var: düşmanlar iskeletlere de saldırır (enemy.gd, en yakın rakip). Vurulunca kırmızı parlar; canı bitince
+# fell sinyali gider, main.gd onu serbest bırakır (mavi ruh efekti, MAX_MINIONS dolunca olanla aynı).
 
 extends Node3D
+
+signal fell(minion: Node3D)
 
 const MOVE_SPEED := 3.4 # metre / saniye (oyuncudan biraz hızlı ki yetişsin)
 const FOLLOW_START := 3.0 # efendisinden bu kadar uzaklaşınca peşinden gider
@@ -15,6 +18,9 @@ const SCAN_INTERVAL := 0.5
 const ATTACK_RANGE := 1.5
 const HIT_REACH := 2.1
 const DAMAGE := 5.0
+const MAX_HEALTH := 40.0 # düşmanın vuruşu 4-10: Vahşi'nin 4, Çevik'in 10 vuruşu
+const HURT_FLASH := 0.3 # vurulunca kırmızı parlama süresi
+const HURT_COLOR := Color(1, 0.15, 0.1)
 const ATTACK_TIME_SCALE := 1.5
 const ATTACK_COOLDOWN := 0.5
 const RISE_TIME := 0.9 # topraktan çıkış süresi
@@ -66,9 +72,13 @@ var attack_time := 0.0
 var attack_has_hit := false
 var cooldown := 0.0
 var current := ""
+var health := MAX_HEALTH
+var alive := false # topraktan çıkınca true; düşmanlar yalnızca ayaktaki canlı iskelete saldırır (enemy.is_foe_valid)
+var hurt := 0.0 # kırmızı parlamanın kalan gücü (0..1)
 
 
 func _ready() -> void:
+	add_to_group("iskelet")
 	if shared_library == null:
 		prepare_shared_animations()
 	animation_player.add_animation_library("hareket", shared_library)
@@ -124,7 +134,13 @@ func _physics_process(delta: float) -> void:
 		var t := minf(rise_time / RISE_TIME, 1.0)
 		rise_offset = -RISE_DEPTH * (1.0 - t * t * (3.0 - 2.0 * t))
 		glow_material.albedo_color.a = 0.8 * (1.0 - t)
+		if t >= 1.0:
+			alive = true
+			glow_material.albedo_color = Color(HURT_COLOR, 0.0) # bundan sonra katman vurulma parlaması için
 		return
+	if hurt > 0:
+		hurt = maxf(0.0, hurt - delta / HURT_FLASH)
+		glow_material.albedo_color.a = 0.6 * hurt
 	if leader == null:
 		return
 
@@ -219,6 +235,18 @@ func update_attack(delta: float) -> void:
 	if progress >= 1.0:
 		attack = {}
 		cooldown = ATTACK_COOLDOWN
+
+
+## Düşman vurdu: canı azalt, kırmızı parla. Can biterse fell gönderir (main.gd serbest bırakır).
+func take_damage(amount: float) -> void:
+	if not alive:
+		return
+	health -= amount
+	hurt = 1.0
+	if health <= 0:
+		alive = false
+		remove_from_group("iskelet")
+		fell.emit(self)
 
 
 func play(animation: String) -> void:

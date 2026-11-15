@@ -19,7 +19,6 @@
 [ext_resource type="PackedScene" path="res://props/tas2.tscn" id="tas2"]
 [ext_resource type="PackedScene" path="res://props/tas3.tscn" id="tas3"]
 [ext_resource type="PackedScene" path="res://props/agac3.tscn" id="agac3"]
-
 [sub_resource type="PlaneMesh" id="PlaneMesh_c3aq7"]
 size = Vector2(40, 40)
 
@@ -190,7 +189,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, 6.9)
 transform = Transform3D(2.1079857, 0, 0, 0, 2.1079857, 0, 0, 0, 2.1079857, 0.0010286617, 0.95962673, -0.009348922)
 
 [node name="kemer-kapi-1" type="Node3D" parent="Parcalar" unique_id=1918749250]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6.9)
+transform = Transform3D(1.5, 0, 0, 0, 1.15, 0, 0, 0, 1, 0, 0, 6.9)
 
 [node name="Model" type="Node3D" parent="Parcalar/kemer-kapi-1" unique_id=1119282200 instance=ExtResource("7_7q8wq")]
 transform = Transform3D(2.1060758, 0, 0, 0, 2.1060758, 0, 0, 0, 2.1060758, 0.00024754892, 1.921059, 0.00029167335)
@@ -986,3 +985,4 @@ transform = Transform3D(-0.03130, 0, 1.09137, 0, 1.09182, 0, -1.09137, 0, -0.031
 
 [node name="Model" parent="Parcalar/agac3-8" instance=ExtResource("agac3")]
 transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0, 0, 0)
+

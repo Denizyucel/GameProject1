@@ -183,6 +183,7 @@ func raise_skeleton(corpse: Node3D) -> void:
 	minion.global_position = Vector3(at.x, 0, at.z)
 	var to_player: Vector3 = player.global_position - minion.global_position
 	minion.rotation.y = atan2(to_player.x, to_player.z) # efendisine dönük kalksın
+	minion.fell.connect(release_minion) # canı biterse ruhu serbest kalır
 	minions.append(minion)
 	hud.set_minions(minions.size())
 

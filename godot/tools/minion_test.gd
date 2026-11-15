@@ -1,5 +1,6 @@
 # Ceset ve iskelet kaldırmayı deneyen yardımcı betik: düşman öldürür, cesedi bekler, 1 tuşuna basar,
-# iskeletin kalkıp düşmana saldırmasını izler, sonra 5 iskelet sınırını dener.
+# iskeletin kalkıp düşmana saldırmasını izler, sonra 5 iskelet sınırını dener; en sonda dayanıklı bir düşman
+# iskeletlere saldırır: canları azalmalı, canı biten iskelet serbest kalmalı.
 # Çalıştırma:  godot --path godot --resolution 1280x720 -s tools/minion_test.gd -- <klasör>
 
 extends SceneTree
@@ -62,6 +63,28 @@ func _initialize() -> void:
 			await physics_frame
 		print("Kaldırma %d: iskelet sayısı %d, HUD '%s'" % [i + 2, main.minions.size(), main.get_node("HUD/ManaKuresi/Rozet").text])
 	await save(out_dir + "/5-bes.png")
+
+	# 5. Düşmanlar iskeletlere de saldırır: canı çok yüksek bir düşmanı iskeletlerin yanına getir
+	var brute = enemies[2]
+	brute.health = 9999.0
+	var nearest = main.minions[0]
+	brute.global_position = nearest.global_position + Vector3(1.2, 0, 1.2)
+	brute.home = brute.global_position
+	var released := 0
+	for i in 30:
+		var before: int = main.minions.size()
+		await create_timer(1.0).timeout
+		released += maxi(0, before - main.minions.size())
+		var healths := []
+		for m in main.minions:
+			healths.append(int(m.health))
+		var foe_name := "yok"
+		if is_instance_valid(brute.foe):
+			foe_name = "oyuncu" if brute.foe == player else "iskelet"
+		print("%2d sn: düşmanın rakibi %s, iskelet canları %s, oyuncu canı %d" % [i + 1, foe_name, healths, player.health])
+		if i == 1:
+			await save(out_dir + "/6-iskelete-saldiri.png")
+	print("Canı bitip serbest kalan iskelet: %d, HUD '%s'" % [released, main.get_node("HUD/ManaKuresi/Rozet").text])
 	quit()
 
 

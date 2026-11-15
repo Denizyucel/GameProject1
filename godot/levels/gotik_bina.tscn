@@ -1,0 +1,25 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/kit/bina/bina1.glb" id="1_bina"]
+[ext_resource type="Material" path="res://materials/disarisi.tres" id="2_zemin"]
+[ext_resource type="Script" path="res://levels/building_window.gd" id="3_pencere"]
+
+[sub_resource type="PlaneMesh" id="KopruZemini"]
+size = Vector2(2.5, 6)
+
+[node name="GotikBina" type="Node3D" node_paths=PackedStringArray("building")]
+script = ExtResource("3_pencere")
+building = NodePath("Parcalar/bina1")
+
+[node name="Kopru" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 0, 40)
+visible = false
+material_override = ExtResource("2_zemin")
+mesh = SubResource("KopruZemini")
+
+[node name="Parcalar" type="Node3D" parent="."]
+
+[node name="bina1" type="Node3D" parent="Parcalar"]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -32.5, 0, 40)
+
+[node name="Model" parent="Parcalar/bina1" instance=ExtResource("1_bina")]

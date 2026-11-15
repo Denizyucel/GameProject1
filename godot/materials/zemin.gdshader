@@ -1,5 +1,6 @@
 // Dış zemin: her yer çimen (Grass001), üstünde toprak (Ground110) bir yol.
 // Yol road_points'teki noktaları sırayla birleştiren bir çizgi (dünya x, z; metre); genişliği road_width.
+// İkinci, daha dar bir patika (path_points, path_width) aynı toprakla çizilir: yoldan ayrılan yan yollar için.
 // Kenarlar road_softness kadar yumuşak, ve gürültüyle (edge_noise) düzensiz: düz bir şerit değil, çiğnenmiş
 // bir patika gibi. Dokular dünya konumuna göre döşendiği için yan yana duran zeminler dikişsiz birleşir.
 shader_type spatial;
@@ -27,6 +28,10 @@ uniform float road_softness = 0.6; // kenar geçişinin genişliği (metre)
 uniform sampler2D edge_noise : repeat_enable; // kenar düzensizliği için gürültü (0..1, dikişsiz)
 uniform float edge_wobble = 1.2; // kenarın içe/dışa en fazla ne kadar oynadığı (metre)
 
+uniform vec2 path_points[MAX_POINTS]; // patikanın noktaları (yoldan başlar)
+uniform int path_count = 0;
+uniform float path_width = 2.2;
+
 varying vec2 world_xz;
 
 void vertex() {
@@ -40,17 +45,26 @@ float segment_distance(vec2 p, vec2 a, vec2 b) {
 	return length(p - (a + ab * t));
 }
 
-void fragment() {
-	float distance_to_road = 1e6;
+// Noktaları sırayla birleştiren çizgiye uzaklık; count 2'den azsa çok uzak
+float line_distance(vec2 p, vec2 points[MAX_POINTS], int count) {
+	float best = 1e6;
 	for (int i = 0; i < MAX_POINTS - 1; i++) {
-		if (i + 1 >= road_count) {
+		if (i + 1 >= count) {
 			break;
 		}
-		distance_to_road = min(distance_to_road, segment_distance(world_xz, road_points[i], road_points[i + 1]));
+		best = min(best, segment_distance(p, points[i], points[i + 1]));
 	}
+	return best;
+}
+
+void fragment() {
 	float wobble = (texture(edge_noise, world_xz / 9.0).r - 0.5) * 2.0 * edge_wobble;
 	float edge = road_width * 0.5 + wobble;
-	float road = 1.0 - smoothstep(edge - road_softness, edge + road_softness, distance_to_road);
+	float road = 1.0 - smoothstep(edge - road_softness, edge + road_softness, line_distance(world_xz, road_points, road_count));
+	// Patika: daha dar, kenarı da daha az oynar
+	float path_edge = path_width * 0.5 + wobble * 0.5;
+	float path = 1.0 - smoothstep(path_edge - road_softness, path_edge + road_softness, line_distance(world_xz, path_points, path_count));
+	road = max(road, path);
 
 	vec2 g_uv = world_xz / ground_tile;
 	vec2 c_uv = world_xz / grass_tile;

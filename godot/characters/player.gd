@@ -37,6 +37,7 @@ const ATTACK_BLEND := 0.1
 const ATTACK_DAMAGE := 10.0
 const HIT_REACH := 2.2 # darbe anında düşman en fazla bu kadar uzakta olabilir (metre)
 const HIT_ARC := 0.3 # düşman ne kadar önde olmalı (1 = tam önde, 0 = yanda; kosinüs)
+const HIT_STOP := 0.2 # kılıç isabet edince oyun bu kadar sürede yavaştan normal hıza döner (saniye; effects/hit_stop.gd)
 const ENGAGE_RANGE := 1.7 # kovalanan düşmana bu kadar yaklaşınca vurmaya başlar (metre)
 const CHASE_REPATH := 0.3 # kovalarken yolu kaç saniyede bir yeniler
 # Tıklamayla düşman seçme: düşmanın ayağından bu yüksekliğe kadar, bu yarıçapta bir alan tıklanabilir
@@ -389,6 +390,7 @@ func update_attack(delta: float) -> void:
 		if target:
 			target.hit(global_position, ATTACK_DAMAGE)
 			GameCamera.shake(0.35) # darbe hissi
+			HitStop.freeze(HIT_STOP)
 	if progress >= 1.0:
 		attack = {}
 		animation_player.play("hareket/idle", ANIMATION_BLEND)
@@ -438,13 +440,81 @@ func keyboard_direction() -> Vector3:
 
 # Klavyeyle bir adım: istenen noktaya en yakın yürünebilir noktaya git. Duvara doğru yürürken navmesh'in
 # kenarına yapışıp boyunca kayar (tarayıcıdaki "çarpışmalı yürüme"nin karşılığı).
+# Önü kapalıysa (ileriye adımın %80inden azı gidilebildiyse; duvarda çapraz kayarken de böyle) ileriye bakar: o yönde birkaç metre ötede yürünebilir bir yer
+# varsa ve oraya kısa bir yol çıkıyorsa (kapı, aralık), duvarda kaymak yerine o yolun ilk adımını atar.
+# Böylece kapıya çapraz yürürken de karakter kapıdan süzülür.
 func walk_with_keys(direction: Vector3, delta: float) -> void:
-	var wanted := global_position + direction * MOVE_SPEED * delta
+	var step := MOVE_SPEED * delta
 	var map := agent.get_navigation_map()
-	# Navmesh zeminden path_height_offset kadar yukarıda; aynı yükseklikte sor
-	var allowed := NavigationServer3D.map_get_closest_point(map, wanted + Vector3.UP * agent.path_height_offset)
-	global_position = Vector3(allowed.x, global_position.y, allowed.z)
-	face(direction, delta)
+	var allowed := walkable_below(map, global_position + direction * step)
+	var moving := direction
+	keys_detour_left -= delta
+	if (allowed - global_position).dot(direction) < step * 0.8:
+		# Az önce seçilen dolanma yönüne bir süre sadık kal (aynı tuşla ve hâlâ ilerletiyorsa): engelin iki
+		# yanından da yol varken her kare yön değiştirip titremesin
+		var detour := Vector3.ZERO
+		if keys_detour_left > 0 and keys_detour_key.dot(direction) > 0.99:
+			var kept := walkable_below(map, global_position + keys_detour_dir * step)
+			if (kept - global_position).length() > step * 0.5:
+				detour = keys_detour_dir
+		if detour == Vector3.ZERO:
+			detour = keys_detour(map, direction)
+			if detour != Vector3.ZERO:
+				keys_detour_dir = detour
+				keys_detour_key = direction
+				keys_detour_left = KEYS_DETOUR_HOLD
+		if detour != Vector3.ZERO:
+			moving = detour
+			allowed = walkable_below(map, global_position + detour * step)
+	global_position = allowed
+	face(moving, delta)
+
+
+## Verilen noktanın (yatayda) en yakın yürünebilir noktası, y = bizim y'miz. Yükseklik hesaba katılmaz:
+## navmesh'te katlar arası küçük farklar var (salonun içi dışından ~0.25 m yüksek); 3B'de "en yakın" sorulunca
+## kapının eşiğinde hep içerideki yüksek zemin seçiliyor, karakter dışarı çıkamıyordu. Bu yüzden noktanın
+## üstünden altına uzanan dikey bir çizgiye en yakın navmesh noktası sorulur.
+func walkable_below(map: RID, point: Vector3) -> Vector3:
+	var found := navmesh_below(map, point)
+	return Vector3(found.x, global_position.y, found.z)
+
+
+## Noktanın altındaki (ya da yatayda en yakın) navmesh noktası, navmesh'in kendi yüksekliğiyle
+func navmesh_below(map: RID, point: Vector3) -> Vector3:
+	var top := Vector3(point.x, global_position.y + 2.0, point.z)
+	var bottom := Vector3(point.x, global_position.y - 1.0, point.z)
+	return NavigationServer3D.map_get_closest_point_to_segment(map, top, bottom)
+
+
+const KEYS_LOOK := [1.0, 2.0, 3.0, 4.0] # klavyede önü kapalıyken ileriye bakılan uzaklıklar (metre)
+const KEYS_DETOUR := 2.2 # o noktaya giden yol düz uzaklığın en fazla bu katı olabilir
+const KEYS_DETOUR_HOLD := 0.3 # seçilen dolanma yönü en az bu kadar saniye korunur
+var keys_detour_dir := Vector3.ZERO
+var keys_detour_key := Vector3.ZERO # dolanma hangi tuş yönü için seçildi
+var keys_detour_left := 0.0
+
+
+## Önü kapalıyken: ileride yürünebilir bir nokta ve oraya kısa bir yol varsa yolun ilk adımının yönü; yoksa sıfır
+func keys_detour(map: RID, direction: Vector3) -> Vector3:
+	var start := navmesh_below(map, global_position) # yolu navmesh'in tam üstünden başlat (kat farkına takılmasın)
+	for reach in KEYS_LOOK:
+		var ahead: Vector3 = global_position + direction * reach
+		var walkable := navmesh_below(map, ahead)
+		if Vector2(walkable.x - ahead.x, walkable.z - ahead.z).length() > 0.15:
+			continue # orası duvar ya da engel
+		var path := NavigationServer3D.map_get_path(map, start, walkable, true)
+		var length := 0.0
+		for i in range(1, path.size()):
+			length += path[i - 1].distance_to(path[i])
+		if path.size() < 2 or length > reach * KEYS_DETOUR:
+			continue
+		for corner in path: # ilk köşe (bulunduğumuz yerden ileride olan)
+			var flat := Vector3(corner.x - global_position.x, 0, corner.z - global_position.z)
+			if flat.length() > 0.05:
+				# Neredeyse tam geriye dönen adım atılmaz (engele yaslanınca bir ileri bir geri titriyordu);
+				# kapıya girerken gereken yan adımlar (~135°) serbest
+				return flat.normalized() if flat.normalized().dot(direction) > -0.85 else Vector3.ZERO
+	return Vector3.ZERO
 
 
 # Model +z yönüne bakıyor: verilen yöne yumuşakça dön

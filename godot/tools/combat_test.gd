@@ -33,6 +33,14 @@ func _initialize() -> void:
 	while is_instance_valid(enemy) and enemy.alive and swings < 12 and player.alive:
 		player.start_attack(enemy.global_position)
 		swings += 1
+		if swings == 1:
+			# Darbe anı: kıvılcım ve donma (hit stop) görünmeli
+			while not player.attack_has_hit:
+				await process_frame
+			print("Darbe anında oyun hızı (Engine.time_scale): %.2f" % Engine.time_scale)
+			await save(out_dir + "/1b-kivilcim.png")
+			await create_timer(0.3, true, false, true).timeout
+			print("0.3 sn (gerçek) sonra oyun hızı: %.2f" % Engine.time_scale)
 		while not player.attack.is_empty():
 			await physics_frame
 		print("Vuruş %d: düşman canı %d" % [swings, enemy.health if is_instance_valid(enemy) else -1])

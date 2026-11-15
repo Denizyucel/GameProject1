@@ -1,5 +1,5 @@
 # Düşman (şimdilik assets/enemies/enemy1.glb: gümüş zırhlı, pençeli şövalye). Vampirlerin yerini aldı.
-# Evinin çevresinde dolaşır, oyuncuyu fark edince kovalayıp pençesiyle vurur. Vurulunca kırmızı parlar,
+# Evinin çevresinde dolaşır, oyuncuyu ya da bir iskeleti (en yakınını) fark edince kovalayıp pençesiyle vurur. Vurulunca kırmızı parlar,
 # kızar ve daha uzaktan kovalar. Canı bitince ölüm animasyonuyla yıkılır, toprağa gömülür ve silinir.
 # Dövüş tarzı (STYLES) karıştırılmış bir torbadan dağıtılır: 4 düşmanda 4 tarzın hepsi çıkar.
 
@@ -20,12 +20,15 @@ const AGGRO_RANGE := 5.0 # oyuncuyu bu kadar yakından fark eder
 const ANGER_TIME := 6.0 # vurulunca bu kadar saniye kızgın kalır
 const GIVE_UP_RANGE := 12.0 # kızgınken bu kadar uzağa kadar kovalar
 const CHASE_REPATH := 0.4 # kovalarken yolu kaç saniyede bir yeniler
+const FOE_SCAN := 0.3 # kime saldıracağına (oyuncu ya da iskelet) kaç saniyede bir yeniden bakar
+const FOE_STICK := 1.0 # şu anki rakibi, bundan fazla yakın biri çıkmadıkça bırakmaz (metre)
 # Saldırı
 const ATTACK_RANGE := 1.6 # bu kadar yakına gelince vurmaya başlar
 const HIT_REACH := 2.2 # darbe anında oyuncu bu kadar yakındaysa hasar alır
 # Vurulma ve ölüm
 const HIT_FLASH := 0.3 # kırmızı parlamanın süresi
 const STUN_TIME := 0.4 # vurulunca şaşırıp durduğu süre
+const STUN_MIN_DAMAGE := 8.0 # bundan hafif vuruşlar (iskeletinki, 5) şaşırtmaz: 5 iskelet düşmanı kilitlemesin
 const DEATH_SPEED := 1.5 # devrilme animasyonu kaç kat hızlı oynasın
 const FADE_OUT := 0.7 # yere düşünce bedenin yumuşakça kaybolma süresi (ceset aynı anda belirir)
 const TURN_SPEED := 10.0
@@ -71,6 +74,8 @@ var health := 1.0
 var alive := true
 var home := Vector3.ZERO
 var player: Node3D
+var foe: Node3D # saldırdığı: oyuncu ya da bir iskelet (en yakındaki)
+var foe_timer := 0.0
 var flash_material := StandardMaterial3D.new()
 
 var wait_time := 0.0
@@ -136,19 +141,20 @@ func next_style() -> Dictionary:
 	return style_bag.pop_back()
 
 
-## Vurul: canı azalt, kırmızı parla, saldırana dön, şaşır ve kız. Öldüyse true döner.
+## Vurul: canı azalt, kıvılcım saç, kırmızı parla, saldırana dön, şaşır ve kız. Öldüyse true döner.
 func hit(from: Vector3, damage: float) -> bool:
 	if not alive:
 		return false
 	health -= damage
 	hit_time = now()
+	HitSpark.burst(get_parent(), from, global_position, clampf(damage / 12.0, 0.3, 1.0))
 	angry_until = now() + ANGER_TIME
 	face_now(from)
 	if health <= 0:
 		die()
 		return true
 	taunt_time = 0.0 # kas gösterisi kesilir; vuruş kesilmez
-	if attack_time < 0:
+	if attack_time < 0 and damage >= STUN_MIN_DAMAGE:
 		stun_time = STUN_TIME
 	return false
 
@@ -178,30 +184,34 @@ func _physics_process(delta: float) -> void:
 		update_attack(delta)
 		return
 	cooldown -= delta
+	foe_timer -= delta
+	if foe_timer <= 0 or not is_foe_valid(foe):
+		foe_timer = FOE_SCAN
+		foe = pick_foe()
 	if taunt_time > 0:
 		taunt_time -= delta
-		face_now(player.global_position)
+		if is_foe_valid(foe):
+			face_now(foe.global_position)
 		return
 	if stun_time > 0:
 		stun_time -= delta
 		play(idle_animation)
 		return
 
-	var distance := ground_distance(player.global_position)
-	var engaged: bool = player.alive and (distance <= AGGRO_RANGE or (now() < angry_until and distance <= GIVE_UP_RANGE))
-	if not engaged:
+	if foe == null:
 		if chasing:
 			chasing = false # kaçtı ya da öldü: evine dön, sonra yine dolaşsın
 			agent.target_position = home
 		wander(delta)
 		return
+	var distance := ground_distance(foe.global_position)
 
 	if not chasing:
 		chasing = true
 		# Yeni fark etti. Gösteri yapan tarzsa (ve vurulup kızmadıysa) önce kaslarını göstersin.
 		if style["taunts"] and now() >= angry_until and shared_library.has_animation("gosteri"):
 			agent.target_position = global_position
-			face_now(player.global_position)
+			face_now(foe.global_position)
 			animation_player.speed_scale = 1.0
 			play("hareket/gosteri")
 			taunt_time = animation_player.current_animation_length
@@ -209,7 +219,7 @@ func _physics_process(delta: float) -> void:
 
 	if distance <= ATTACK_RANGE:
 		agent.target_position = global_position
-		face_now(player.global_position)
+		face_now(foe.global_position)
 		if cooldown <= 0:
 			start_attack()
 		else:
@@ -217,14 +227,38 @@ func _physics_process(delta: float) -> void:
 			animation_player.speed_scale = 1.0
 		return
 
-	# Kovala: oyuncunun bana bakan tarafına, ondan 1 m öteye yürü; yolu belli aralıklarla yenile
+	# Kovala: rakibin bana bakan tarafına, ondan 1 m öteye yürü; yolu belli aralıklarla yenile
 	repath_timer -= delta
 	if repath_timer <= 0:
 		repath_timer = CHASE_REPATH
-		var away := (global_position - player.global_position)
+		var away := (global_position - foe.global_position)
 		away.y = 0
-		agent.target_position = player.global_position + away.normalized()
+		agent.target_position = foe.global_position + away.normalized()
 	move(style["chase"], style["chase_speed"], delta)
+
+
+## Rakip seç: oyuncu ve ayaktaki iskeletlerden 5 m içindeki en yakını (şu anki rakip 1 m avantajlı).
+## Kızgınsa (yakın zamanda vurulduysa) 12 m'ye kadar bakar. Kimse yoksa null.
+func pick_foe() -> Node3D:
+	var reach := GIVE_UP_RANGE if now() < angry_until else AGGRO_RANGE
+	var candidates: Array = get_tree().get_nodes_in_group("iskelet")
+	candidates.append(player)
+	var best: Node3D = null
+	var best_distance := INF
+	for candidate in candidates:
+		if not is_foe_valid(candidate):
+			continue
+		var distance := ground_distance(candidate.global_position)
+		if candidate == foe:
+			distance -= FOE_STICK
+		if distance <= reach and distance < best_distance:
+			best = candidate
+			best_distance = distance
+	return best
+
+
+func is_foe_valid(candidate) -> bool: # tipsiz: silinmiş bir iskelet de gelebilir
+	return is_instance_valid(candidate) and candidate.alive and candidate.global_position.distance_to(global_position) <= GIVE_UP_RANGE + 2.0
 
 
 # Bekle, sonra evinin çevresinde rastgele bir yere yürü
@@ -264,15 +298,15 @@ func start_attack() -> void:
 	animation_player.speed_scale = style["attack_speed"]
 
 
-# Vuruşu ilerlet; darbe anında oyuncu hâlâ yakındaysa hasar ver
+# Vuruşu ilerlet; darbe anında rakip (oyuncu ya da iskelet) hâlâ yakındaysa hasar ver
 func update_attack(delta: float) -> void:
 	attack_time += delta
 	var duration := animation_player.get_animation("hareket/pence").length / float(style["attack_speed"])
 	var progress := attack_time / duration
 	if not attack_has_hit and progress >= claw_hit_moment:
 		attack_has_hit = true
-		if player.alive and ground_distance(player.global_position) <= HIT_REACH:
-			player.take_damage(style["damage"])
+		if is_foe_valid(foe) and ground_distance(foe.global_position) <= HIT_REACH:
+			foe.take_damage(style["damage"])
 	if progress >= 1.0:
 		attack_time = -1.0
 		cooldown = style["cooldown"]
