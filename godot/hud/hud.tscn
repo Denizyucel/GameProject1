@@ -9,6 +9,7 @@
 [ext_resource type="Texture2D" path="res://assets/hud/mana-liquid.png" id="7_mana_liquid"]
 [ext_resource type="Texture2D" path="res://assets/hud/mana-frame.png" id="8_mana_frame"]
 [ext_resource type="FontFile" path="res://fonts/AguafinaScript-Regular.ttf" id="9_rozet_font"]
+[ext_resource type="Script" path="res://hud/enemy_bar.gd" id="10_enemy_bar"]
 
 [sub_resource type="ShaderMaterial" id="KayipCanMalzemesi"]
 shader = ExtResource("6_fill")
@@ -68,6 +69,13 @@ shadow_offset = Vector2(0, 0)
 [sub_resource type="LabelSettings" id="KonusmaAyari"]
 font_size = 22
 font_color = Color(0.93, 0.88, 0.82, 1)
+outline_size = 6
+outline_color = Color(0, 0, 0, 0.85)
+
+[sub_resource type="LabelSettings" id="DusmanAdiAyari"]
+font = ExtResource("9_rozet_font")
+font_size = 32
+font_color = Color(1, 0.86, 0.55, 1)
 outline_size = 6
 outline_color = Color(0, 0, 0, 0.85)
 
@@ -262,3 +270,60 @@ mouse_filter = 2
 label_settings = SubResource("KonusmaAyari")
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="DusmanCani" type="Control" parent="."]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -170.0
+offset_top = 8.0
+offset_right = 170.0
+offset_bottom = 66.0
+grow_horizontal = 2
+mouse_filter = 2
+script = ExtResource("10_enemy_bar")
+
+[node name="Ad" type="Label" parent="DusmanCani"]
+layout_mode = 0
+offset_right = 340.0
+offset_bottom = 38.0
+mouse_filter = 2
+text = "Vahşi"
+label_settings = SubResource("DusmanAdiAyari")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Kenar" type="ColorRect" parent="DusmanCani"]
+layout_mode = 0
+offset_top = 39.0
+offset_right = 340.0
+offset_bottom = 57.0
+mouse_filter = 2
+color = Color(0.42, 0.33, 0.2, 1)
+
+[node name="Bos" type="ColorRect" parent="DusmanCani"]
+layout_mode = 0
+offset_left = 2.0
+offset_top = 41.0
+offset_right = 338.0
+offset_bottom = 55.0
+mouse_filter = 2
+color = Color(0.07, 0.05, 0.06, 0.92)
+
+[node name="Kayip" type="ColorRect" parent="DusmanCani"]
+layout_mode = 0
+offset_left = 2.0
+offset_top = 41.0
+offset_right = 338.0
+offset_bottom = 55.0
+mouse_filter = 2
+color = Color(0.86, 0.62, 0.45, 1)
+
+[node name="Dolu" type="ColorRect" parent="DusmanCani"]
+layout_mode = 0
+offset_left = 2.0
+offset_top = 41.0
+offset_right = 338.0
+offset_bottom = 55.0
+mouse_filter = 2
+color = Color(0.6, 0.07, 0.07, 1)

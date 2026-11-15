@@ -47,10 +47,89 @@ func prepare_x() -> void:
 	for spec in X_ANIMATIONS:
 		var animation := RigAnimations.take(spec[1], spec[2], x_player, x_skeleton, spec[0] != "buyu")
 		RigAnimations.remove_root_motion(animation)
+		if spec[1].get_extension() == "fbx":
+			match_rest(animation, spec[1])
+			freeze_legs(animation)
 		library.add_animation(spec[0], animation)
 	x_player.add_animation_library("sahne", library)
 	x_walk_speed = RigAnimations.stride_speed(x_player, x_skeleton, "sahne/walk")
 	x_player.play("sahne/idle")
+
+
+## Mixamo animasyonunu X'in iskeletine uyarla. X'in (Meshy) iskeletinde omuz ve kol kemiklerinin dinlenme hali Mixamo'dan
+## ~140° farklı: dönüşleri olduğu gibi kopyalamak duruşu doğru gösterse de omuz ve kol birbirini telafi eden açılarda
+## kalıyordu; X'in kendi animasyonuyla (yürüme) arasında geçerken (karışım) kollar bir an yana savruluyordu.
+## Burada her kemiğin dünyada dinlenme halinden ne kadar döndüğü bulunur ve aynı dönüş X'in kemiğine verilir.
+func match_rest(animation: Animation, source_path: String) -> void:
+	var source: Node = (load(source_path) as PackedScene).instantiate()
+	var source_skeleton: Skeleton3D = source.find_child("Skeleton3D")
+	var rotation_tracks := {} # kemik adı → iz
+	for track in animation.get_track_count():
+		if animation.track_get_type(track) == Animation.TYPE_ROTATION_3D:
+			rotation_tracks[String(animation.track_get_path(track)).get_slice(":", 1)] = track
+	var bones := range(x_skeleton.get_bone_count()) # ebeveynler önce gelir (Skeleton3D sırası)
+	var source_rest := {} # kemik adı → kaynakta dünyadaki dinlenme dönüşü
+	var target_rest := {}
+	for bone in bones:
+		var bone_name := x_skeleton.get_bone_name(bone)
+		target_rest[bone_name] = x_skeleton.get_bone_global_rest(bone).basis.get_rotation_quaternion()
+		var source_bone := source_skeleton.find_bone(bone_name)
+		source_rest[bone_name] = source_skeleton.get_bone_global_rest(source_bone).basis.get_rotation_quaternion() if source_bone != -1 else target_rest[bone_name]
+	# Her karede: kaynakta kemiklerin dünyadaki dönüşü → dinlenmeden farkı → X'te dünya dönüşü → yerel dönüş
+	var step := 1.0 / 30.0
+	var frames := int(ceil(animation.length / step)) + 1
+	var new_keys := {} # kemik adı → [zaman, dönüş] listesi
+	for frame in frames:
+		var time := minf(frame * step, animation.length)
+		var source_global := {}
+		var target_global := {}
+		for bone in bones:
+			var bone_name := x_skeleton.get_bone_name(bone)
+			var source_bone := source_skeleton.find_bone(bone_name)
+			var local: Quaternion
+			if rotation_tracks.has(bone_name):
+				local = animation.rotation_track_interpolate(rotation_tracks[bone_name], time)
+			elif source_bone != -1:
+				local = source_skeleton.get_bone_rest(source_bone).basis.get_rotation_quaternion()
+			else:
+				local = x_skeleton.get_bone_rest(bone).basis.get_rotation_quaternion()
+			var parent := x_skeleton.get_bone_parent(bone)
+			var parent_name := x_skeleton.get_bone_name(parent) if parent != -1 else ""
+			source_global[bone_name] = (source_global[parent_name] * local) if parent != -1 else local
+			var turned: Quaternion = source_global[bone_name] * source_rest[bone_name].inverse()
+			target_global[bone_name] = turned * target_rest[bone_name]
+			if rotation_tracks.has(bone_name):
+				var target_local: Quaternion = (target_global[parent_name].inverse() * target_global[bone_name]) if parent != -1 else target_global[bone_name]
+				if not new_keys.has(bone_name):
+					new_keys[bone_name] = []
+				new_keys[bone_name].append([time, target_local.normalized()])
+	for bone_name in new_keys:
+		var track: int = rotation_tracks[bone_name]
+		for key in range(animation.track_get_key_count(track) - 1, -1, -1):
+			animation.track_remove_key(track, key)
+		for pair in new_keys[bone_name]:
+			animation.rotation_track_insert_key(track, pair[0], pair[1])
+	source.free()
+
+
+## X'in pelerini gövdeyle tek parça ve bacaklara bağlı: başka karakterler için yapılmış Mixamo animasyonları
+## (bekleme, büyü) bacakları açıp bükünce pelerin bacakların arasında sıkışıp bozuluyordu. Bu animasyonlarda kalça ve
+## bacaklar dik duruşta (kemiğin dinlenme hali) sabit tutulur; yalnızca bel, kollar ve baş oynar.
+func freeze_legs(animation: Animation) -> void:
+	for track in animation.get_track_count():
+		var bone_name := String(animation.track_get_path(track)).get_slice(":", 1)
+		if not (bone_name == RigAnimations.HIPS_BONE or bone_name.contains("UpLeg") or bone_name.contains("Leg") or bone_name.contains("Foot") or bone_name.contains("Toe")):
+			continue
+		var bone := x_skeleton.find_bone(bone_name)
+		if bone == -1:
+			continue
+		var rest := x_skeleton.get_bone_rest(bone)
+		var type := animation.track_get_type(track)
+		for key in animation.track_get_key_count(track):
+			if type == Animation.TYPE_ROTATION_3D:
+				animation.track_set_key_value(track, key, rest.basis.get_rotation_quaternion())
+			elif type == Animation.TYPE_POSITION_3D:
+				animation.track_set_key_value(track, key, rest.origin)
 
 
 ## X'e bir animasyon oynat. speed > 0 ise yürüyüştür: animasyon o hıza (metre / saniye) uydurulur.

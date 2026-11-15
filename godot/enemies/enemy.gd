@@ -88,6 +88,7 @@ var taunt_time := 0.0
 var attack_time := -1.0 # vuruş başladıysa kaç saniyedir sürdüğü; -1 ise vurmuyor
 var attack_has_hit := false
 var hit_time := -10.0
+var last_damage := 0.0 # son vuruşun hasarı (can barı ilk açıldığında kayıp kısmı göstermek için)
 var death_time := -1.0
 var idle_animation := "hareket/idle"
 var current := ""
@@ -147,6 +148,7 @@ func hit(from: Vector3, damage: float) -> bool:
 		return false
 	health -= damage
 	hit_time = now()
+	last_damage = damage
 	HitSpark.burst(get_parent(), from, global_position, clampf(damage / 12.0, 0.3, 1.0))
 	angry_until = now() + ANGER_TIME
 	face_now(from)

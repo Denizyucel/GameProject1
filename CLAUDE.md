@@ -142,6 +142,15 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   pelerin, pelerin gövdeyle tek parça; 1.7 m, 1.176 ölçekle 2 m). İçindeki animasyonlar: Walking,
   Running, Clapping_Run (14 sn), Walking_Scan_with_Sudden_Look_Back (7 sn, root motion'lı: kendisi
   ilerler, etrafı tarayıp arkasına bakar).
+  Pelerin bacak kemiklerine bağlı: başka karakterlerin Mixamo animasyonlarında (bekleme idle.fbx, büyü spell4.fbx)
+  bacaklar açılınca pelerin bacak arasında sıkışıp bozuluyordu; acilis.gd freeze_legs bu fbx'lerde kalça ve bacak
+  izlerini kemiğin dinlenme haline sabitler (yalnızca bel, kollar, baş oynar). X'in kendi animasyonları (Walking)
+  olduğu gibi.
+  Ayrıca acilis.gd match_rest bu fbx'leri X'in iskeletine uyarlar (retarget): X'te omuz/kol kemiklerinin dinlenme hali
+  Mixamo'dan ~140° farklı; dönüşler olduğu gibi kopyalanınca duruş doğru ama omuz ve kol birbirini telafi eden
+  açılardaydı, X'in kendi yürüyüşüyle geçişte (0.3 sn karışım) kollar bir an yatay savruluyordu. Şimdi her karede
+  (30 fps) kemiğin dünyada dinlenmeden farkı hesaplanıp X'in kemiğine verilir. (Oyuncu da aynı Meshy iskeleti ve
+  Mixamo idle kullanıyor; geçişte benzer savrulma görülürse aynı uyarlama RigAnimations'a taşınabilir.)
 - Açılış ara sahnesi: cutscenes/acilis.tscn + acilis.gd; projenin başlangıç sahnesi bu (run/main_scene).
   Gece ortamı (koyu, glow açık), aynı yanik_kutuphane.tscn. Zaman çizelgesi Senaryo (AnimationPlayer)
   "acilis", 30 sn: kamera konumu/boyu (kesmelerde doğrusal geçiş; kübik geçiş sıçramada taşıp boyu
@@ -248,6 +257,11 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   çağrılır (static active; ara sahnede kamera yok, hiçbir şey yapmaz). Miktar "trauma"da birikir, saniyede 2
   söner; kayma ekran düzleminde, trauma'nın karesi x SHAKE_REACH (1 m) / zoom. Kılıç darbesi 0.35 (~5 piksel),
   mızrak isabeti 0.3, oyuncu hasar alınca 0.5, mühür kırılınca 0.6; iskeletlerin vuruşu sarsmaz.
+- Düşman can barı (Diablo tarzı, üst ortada tek bar): hud/enemy_bar.gd, hud.tscn'de DusmanCani (Ad: tarz adı,
+  Aguafina 32 px altın; Kenar/Bos/Kayip/Dolu ColorRect, 340 x 18). Gösterilen düşman: imlecin üzerindeki
+  (player.enemy_under_cursor) → kovalanan (attack_target) → son 3 sn'de vurulan (enemy.hit_time). Vurulunca açık renkli
+  kayıp kısım 0.4 sn kalıp iner (ilk açılışta enemy.last_damage ile); ölünce boşalır, 0.8 sn sonra söner.
+  Deneme: tools/enemy_bar_test.gd.
 - Hareketli çarpışma: characters/crowd.gd (main.gd açılışta "Kalabalik" düğümü olarak ekler; fizik yok). Her fizik
   karesinde herkesin hareketinden sonra (process_physics_priority 100) oyuncu (0.4 m, ağırlık 4), canlı düşmanlar
   (0.45 m x boy, 2) ve ayaktaki iskeletler (0.35 m, 1) yerde daire sayılır; üst üste binen ikililer ağırlığa göre
@@ -361,7 +375,7 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - A* açık listesini öncelik kuyruğuna çevir (harita büyüyünce)
 - İskelete yerden kalkma (Standing Up) ve kendine özgü (zombi) yürüme animasyonu
 - skeleton.fbx'i hafiflet (278 bin üçgen; çok minionda ağırlaşır)
-- Vampire kendi animasyonları (vurulma, ölüm) ve can barı
+- Düşmana kendi vurulma animasyonu
 - Mana iksiri; iksir alma sesi ve yerdeki iksirin süreyle kaybolması
 - Karakter için ölüm ve vurulma animasyonu (şimdi sadece devriliyor)
 - Walking.fbx'i Without Skin indir (15 MB → ~0.5 MB)
