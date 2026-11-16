@@ -6,7 +6,8 @@
 extends Node3D
 
 const REACH := 1.8 # kapının önündeki bu yarıçapa girince
-const AWAY := 4.0 # "kilitli" sözü ve içeri giriş, bu kadar uzaklaşıp yeniden gelince tekrar
+const AWAY := 4.0 # "kilitli" sözü bu kadar uzaklaşıp yeniden gelince tekrar söylenir
+const REARM := 2.1 # içeriden çıkınca kapı, oyuncu bu kadar uzaklaşınca yeniden içeri alır (çıkış noktası 2.4 m önde)
 const GOLD := Color(1.0, 0.78, 0.3)
 const LOCKED_LINE := "Kilitli. Kilidi altından… X'in işi."
 const INSIDE_TITLE := "Binada X'in izini ara"
@@ -36,6 +37,7 @@ func _process(_delta: float) -> void:
 	var gap := Vector2(player.global_position.x - global_position.x, player.global_position.z - global_position.z).length()
 	if gap > AWAY:
 		said_locked = false
+	if gap > REARM:
 		armed = true
 	if gap > REACH or not armed:
 		return

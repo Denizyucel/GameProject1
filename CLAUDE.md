@@ -128,7 +128,8 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   Animasyonlar paylaşılır: idle.fbx, koşu = yeni Necromancer'ın "Running"i, 4 kılıç vuruşu (1.5 kat, darbe
   anı ölçülür). Topraktan 0.9 sn'de mavi parıltıyla yükselir; oyuncuyu takip eder (altın açılı yer, 1.6 m;
   3 m'den uzaklaşınca, 3.4 m/sn); 6 m içindeki ve oyuncudan 10 m'den yakın düşmana koşup vurur (5 hasar,
-  0.5 sn mola). En fazla 5 (MAX_MINIONS); fazlasında rastgele biri seal_break release efektiyle yok olur.
+  0.5 sn mola). Efendisinden 30 m'den uzaksa (CATCH_UP; binanın içi/dışı ya da içeride ölüp dışarıda doğunca) yürümez,
+  yanındaki yerinde belirir (minion.catch_up; deneme tools/reenter_test.gd). En fazla 5 (MAX_MINIONS); fazlasında rastgele biri seal_break release efektiyle yok olur.
   İskeletlerin canı var (minion.MAX_HEALTH 40, take_damage, vurulunca kırmızı parlar; topraktan çıkana kadar
   alive false). Düşmanlar 0.3 sn'de bir rakip seçer (enemy.pick_foe): oyuncu ve "iskelet" grubundan 5 m içindeki
   en yakını (şu anki 1 m avantajlı; kızgınken 12 m); pençe rakibe vurur. Canı biten iskelet fell sinyali →
@@ -273,8 +274,9 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   tools/champion_test.gd.
 - Gotik binanın kapısı ve iç mekânı (zincirin sonu): levels/gothic_door.gd (gotik_bina.tscn'de Kapi, (-25.3, 0, 40)).
   Anahtarsız 1.8 m'ye gelince "Kilitli. Kilidi altından… X'in işi." Anahtarla: altın ışık, kapı (ayrı mesh gothic_wood)
-  saydamlaşıp gizlenir, görev "Binada X'in izini ara" olur ve içeri girilir; kapı açıkken her gelişte içeri (4 m
-  uzaklaşınca yeniden hazırlanır; içeriden çıkınca disarm). Dış bina (bina1.glb) tek parça; içi kapalı şeritler.
+  saydamlaşıp gizlenir, görev "Binada X'in izini ara" olur ve içeri girilir; kapı açıkken her gelişte içeri (içeriden
+  çıkınca disarm; oyuncu kapıdan 2.1 m (REARM) uzaklaşınca yeniden hazır; çıkış noktası kapının 2.4 m önü: eskiden 4 m
+  uzaklaşmak gerekiyordu, kullanıcı yeniden giremiyordu). Dış bina (bina1.glb) tek parça; içi kapalı şeritler.
   İç mekân: kullanıcının kat planları assets/kit/bina/katlar/bina1-kat-1, kat0, kat1, kat2.glb (asılları
   public/models/kit/bina/bina1-katplanlari; hepsi 15 x 12 m, dış binayla aynı ölçü; kullanıcı pentagramları kaldırdı,
   büyü çemberleri sade rün halkası). levels/bina_ici.tscn + .gd
@@ -283,7 +285,7 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   gibi ayrı iç mekân). bina_ici.floor_point(kat, yerel x/z): +z kapı yönü. Geçitler (PORTALS) üstüne gelince
   HUD.fade → oyuncu ve iskeletleri taşınır, kamera odağı anında → fade; varılan yerden 1.6 m uzaklaşmadan geçit
   tetiklenmez (armed: oyuncu bütün geçitlerin TRIGGER + 0.3 m dışına bir kez çıkınca yeniden çalışır). Kat 0'ın kapısı
-  (0.1, 4.9) dışarıya (-24.6, 40); girişte kat 0'da (0.1, 3.3). Merdivenler: kat 0 sağ ön (3, 2.4) ↔ kat 1 sol alt oda
+  (0.1, 4.9) dışarıya (-22.9, 40); girişte kat 0'da (0.1, 3.3). Merdivenler: kat 0 sağ ön (3, 2.4) ↔ kat 1 sol alt oda
   (iniş noktası (2, 4.5): kat 1'in merdiven "odası" çoğunlukla boşluk), kat 0 arka orta (0, -2.3) ↔ mahzen koridoru,
   kat 1 sol üst odada merdivenin sol dibi (-1.1, -3.9) ↔ kat 2 üst orta (0, -3.4).
   Geçitler: kat -1, 1, 2'de odaları ayıran ~1.2 m'lik alçak duvarlarda geçit yoktu (kullanıcı kodla açılmasını istedi:

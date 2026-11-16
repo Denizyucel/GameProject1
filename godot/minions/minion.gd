@@ -9,6 +9,7 @@ extends Node3D
 signal fell(minion: Node3D)
 
 const MOVE_SPEED := 3.4 # metre / saniye (oyuncudan biraz hızlı ki yetişsin)
+const CATCH_UP := 30.0 # efendisinden bu kadar uzaktaysa yürümez, yanında belirir
 const FOLLOW_START := 3.0 # efendisinden bu kadar uzaklaşınca peşinden gider
 const SLOT_DISTANCE := 1.6 # efendisinin çevresindeki yerinin uzaklığı
 const REPATH := 0.4 # yolu kaç saniyede bir yeniler
@@ -143,6 +144,11 @@ func _physics_process(delta: float) -> void:
 		glow_material.albedo_color.a = 0.6 * hurt
 	if leader == null:
 		return
+	# Efendisi çok uzaktaysa (binanın içi ile dışı ayrı yerlerde ve birbirine yürüyerek bağlı değil; içeride ölüp dışarıda
+	# doğunca da olur) yürüyemez: yanında belirir
+	if ground_distance(global_position, leader.global_position) > CATCH_UP:
+		catch_up()
+		return
 
 	if not attack.is_empty():
 		update_attack(delta)
@@ -178,6 +184,19 @@ func _physics_process(delta: float) -> void:
 	else:
 		play("hareket/idle")
 		animation_player.speed_scale = 1.0
+
+
+## Efendisinin yanındaki yerine (navmesh'te) anında geç
+func catch_up() -> void:
+	var slot := leader.global_position + Vector3(sin(slot_angle), 0, cos(slot_angle)) * SLOT_DISTANCE
+	var map := get_world_3d().navigation_map
+	var found := NavigationServer3D.map_get_closest_point_to_segment(map, slot + Vector3.UP * 2.0, slot + Vector3.DOWN * 2.0)
+	global_position = Vector3(found.x, 0, found.z)
+	agent.target_position = global_position
+	attack = {}
+	target = null
+	play("hareket/idle")
+	animation_player.speed_scale = 1.0
 
 
 # Bir noktaya koş; yolu belli aralıklarla yenile. stop_short: hedefin ne kadar önünde durulacağı

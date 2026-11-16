@@ -9,7 +9,7 @@ extends Node3D
 
 const BUILDING_WINDOW := preload("res://levels/building_window.gd")
 
-const OUTSIDE := Vector3(-24.6, 0, 40) # dışarıda kapının önü (çıkınca buraya)
+const OUTSIDE := Vector3(-22.9, 0, 40) # dışarıda kapının 2.4 m önü (çıkınca buraya; kapının yeniden hazır olduğu yer)
 const TRIGGER := 0.9 # geçidin üstüne bu kadar yaklaşınca
 const REARM_MARGIN := 0.3 # bir geçitten gelince geçitler, oyuncu hepsinden TRIGGER + bu kadar uzaklaşınca yeniden çalışır
 const FADE := 0.45
