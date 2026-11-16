@@ -282,11 +282,20 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   +90° dönük, zeminleri y = 0'a indirilmiş (Kat0 -0.5, Kat1 -4.1, Kat2 -7.7). Karanlık boşlukta durur (Diablo'daki
   gibi ayrı iç mekân). bina_ici.floor_point(kat, yerel x/z): +z kapı yönü. Geçitler (PORTALS) üstüne gelince
   HUD.fade → oyuncu ve iskeletleri taşınır, kamera odağı anında → fade; varılan yerden 1.6 m uzaklaşmadan geçit
-  tetiklenmez. Kat 0'ın kapısı (0.1, 4.9) dışarıya (-24.6, 40); girişte kat 0'da (0.1, 3.3). Kat 0: geniş salon, büyü
-  çemberi, kitaplık, merdivenler (yukarı sağ önde, aşağı arka ortada). SORUN: kat -1, 1 ve 2'de odaları ayıran duvarlar
-  ~1.2 m alçak ama aralarında geçit yok (aralık gibi görünen yerlerde de 1.2 m'lik duvar; kesit ve ışınla ölçüldü),
-  navmesh parça parça (kat -1 ~27 m², kat 1-2 ~20-35 m², kat 0 ~92 m²). Bu yüzden merdivenler (STAIRS) kapalı; kat
-  planlarına kapı aralığı eklenince PORTALS'a taşınacak. X'in mektubu şimdilik kat 0'da kitaplığın yanında
+  tetiklenmez (armed: oyuncu bütün geçitlerin TRIGGER + 0.3 m dışına bir kez çıkınca yeniden çalışır). Kat 0'ın kapısı
+  (0.1, 4.9) dışarıya (-24.6, 40); girişte kat 0'da (0.1, 3.3). Merdivenler: kat 0 sağ ön (3, 2.4) ↔ kat 1 sol alt oda
+  (iniş noktası (2, 4.5): kat 1'in merdiven "odası" çoğunlukla boşluk), kat 0 arka orta (0, -2.3) ↔ mahzen koridoru,
+  kat 1 sol üst odada merdivenin sol dibi (-1.1, -3.9) ↔ kat 2 üst orta (0, -3.4).
+  Geçitler: kat -1, 1, 2'de odaları ayıran ~1.2 m'lik alçak duvarlarda geçit yoktu (kullanıcı kodla açılmasını istedi:
+  1.5 m, önü boş, yerden boş, her oda bağlı). levels/wall_cutter.gd (class_name WallCutter): cut(model, kutular) üçgenleri
+  kutu sınırından kırpar (Sutherland-Hodgman; UV/normal/renk ara değerlenir, mesh bellekte yeniden kurulur, dosya
+  değişmez); clear(model, kutular, keep) birbirine bağlı üçgen gruplarını (eşyaları) bütün olarak siler (2.2 m'den büyükler
+  ve keep adları hariç). bina_ici.GAPS (her geçit [x, z, duvar yönü], kesim derinliği duvarın iki yanına 0.75 m) +
+  CLEAR_REACH 1.6 m önü temizlenir + CLEARS (yolu kesen tek tek eşyalar: mahzende ortadaki kaide ve iki şerit, kat 2'de
+  sandık, bir kazan, yuvarlak bir eşya, bir dolap). Ulaşılabilirlik (varış noktasından yol): kat 0 %100, mahzen %95,
+  kat 1 %85, kat 2 %81 (kalanlar eşya arkası köşeler). Kat planı güncellenirse GAPS/CLEARS gözden geçirilmeli.
+  Her kata görüş penceresi (building_window.gd, geçitler kesildikten sonra kurulur; tam boy ön duvarlar odaları
+  kapatıyordu). Denemeler: tools/stairs_test.gd (katları merdivenle dolaşır), tools/door_test.gd. X'in mektubu şimdilik kat 0'da kitaplığın yanında
   (NamePage, "Mektup"): alınınca fade → paused → HUD.show_note → görev biter, player.raise_max_mana(20). HUD.show_note
   (hud.tscn Not: koyu kâğıt panel; tık/Esc/Enter/Boşluk kapatır, HUD o sırada PROCESS_MODE_ALWAYS). Aguafina'da "ş"
   yok (başlıklarda kaçın; düşman barındaki "Vahşi" de). Deneme: tools/door_test.gd (kilitli, giriş, mektup, çıkış).
