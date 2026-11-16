@@ -1,9 +1,11 @@
 # Kemik golemini dener: hak kazanılmadan 2 tuşu çalışmaz; görev açıkken mahzendeki rün halkasına yürüyünce golem kalkar
 # (görev biter, hak kazanılır); oyuncuyu takip eder; binadan çıkınca birlikte taşınır; düşmanla dövüşür (vurur, vurulur);
 # canı bitince serbest kalır ve 20 sn bekleme başlar (o sırada çağrılmaz); süre dolunca 2 tuşuyla (50 mana) yeniden
-# çağrılır; ayaktayken ya da mana yetmezken çağrılmaz. HUD'daki golem yuvası (hud/golem_slot.gd) durumu gösterir.
+# çağrılır; ayaktayken ya da mana yetmezken çağrılmaz. HUD'daki beceri çubuğu (hud/skill_bar.gd) durumu gösterir:
+# iskelet simgesi yakında ceset varken parlak; golem simgesi hak kazanılınca çıkar, can barı ve geri sayım gösterir.
 # Görüntüler: golem-kalkis.png (halkada yükselirken), golem-halka.png, golem-disarida.png, golem-dovus.png,
-# yuva-yarali.png (canı azalmış), yuva-bekleme.png (geri sayım), golem-cagri.png (yeniden çağrılırken).
+# beceri-tek.png / beceri-ceset.png (iskelet simgesi soluk / parlak), yuva-yarali.png (canı azalmış), yuva-bekleme.png
+# (geri sayım), golem-cagri.png (yeniden çağrılırken), yuva-mana-yok.png.
 # Çalıştırma:  godot --path godot --resolution 1280x720 -s tools/golem_test.gd -- <klasör>
 
 extends SceneTree
@@ -26,8 +28,18 @@ func _initialize() -> void:
 		e.queue_free()
 
 	# 1. Hak yokken 2 tuşu
-	var slot = main.hud.get_node("GolemYuvasi")
-	print("1. Hak yokken çağırma: %s (false olmalı), golem %s, HUD yuvası görünür mü %s (false olmalı)" % [main.summon_golem(), main.golem, slot.visible])
+	var slot = main.hud.get_node("Beceriler/Golem")
+	var raise_slot = main.hud.get_node("Beceriler/Iskelet")
+	print("1. Hak yokken çağırma: %s (false olmalı), golem %s, HUD'da golem simgesi görünür mü %s (false olmalı)" % [main.summon_golem(), main.golem, slot.visible])
+	# İskelet simgesi: yakında ceset yokken soluk, ceset belirince parlak
+	await shot("beceri-tek.png")
+	var before: bool = raise_slot.usable
+	main.on_buried(player.global_position + Vector3(1.5, 0, 0.5))
+	await create_timer(0.2).timeout
+	print("   İskelet simgesi kullanılabilir mi: ceset yokken %s (false olmalı), ceset varken %s (true olmalı)" % [before, raise_slot.usable])
+	await shot("beceri-ceset.png")
+	for corpse in get_nodes_in_group("ceset"):
+		corpse.queue_free()
 
 	# 2. Görev açık (mektup okunmuş gibi); mahzene in, halkaya yürü
 	main.quests.start(main.GOLEM_QUEST, main.GOLEM_TITLE)
@@ -49,7 +61,7 @@ func _initialize() -> void:
 	await shot("golem-kalkis.png")
 	await create_timer(2.5).timeout
 	var center: Vector3 = ici.floor_point("KatEksi1", ici.CIRCLE_AT)
-	print("   Ayakta mı %s, can %d, halkanın ortasına %.2f m, oyuncuya %.2f m; HUD yuvası görünür mü %s, yuvadaki can %.2f" % [golem.alive, golem.health, flat(golem.global_position, center), flat(golem.global_position, player.global_position), slot.visible, slot.health])
+	print("   Ayakta mı %s, can %d, halkanın ortasına %.2f m, oyuncuya %.2f m; HUD'da golem simgesi görünür mü %s, can barı %.2f" % [golem.alive, golem.health, flat(golem.global_position, center), flat(golem.global_position, player.global_position), slot.visible, slot.bar])
 	await shot("golem-halka.png")
 
 	# 3. Takip: merdiven koridoruna yürü
@@ -102,14 +114,14 @@ func _initialize() -> void:
 	# 7. Golemin canı azalır (yuvada halka kısalır), sonra biter → serbest kalır, bekleme başlar
 	golem.take_damage(golem.health - 40.0)
 	await create_timer(0.3).timeout
-	print("7. Yaralı: golemin canı %d, yuvadaki can %.2f" % [golem.health, slot.health])
+	print("7. Yaralı: golemin canı %d, simgedeki can barı %.2f" % [golem.health, slot.bar])
 	await shot("yuva-yarali.png")
 	golem.take_damage(9999)
 	await create_timer(0.3).timeout
 	print("   Canı bitince: golem %s, bekleme %.1f sn" % ["yok" if not is_instance_valid(main.golem) else "HÂLÂ VAR", main.golem_cooldown])
 	print("   Beklerken çağırma: %s (false olmalı), mana %d, alt yazı '%s'" % [main.summon_golem(), player.mana, main.hud.say_label.text])
 	await create_timer(4.0).timeout
-	print("   4 sn sonra bekleme %.1f sn, yuvadaki %.1f" % [main.golem_cooldown, slot.cooldown])
+	print("   4 sn sonra bekleme %.1f sn, simgedeki %.1f" % [main.golem_cooldown, slot.cooldown])
 	await shot("yuva-bekleme.png")
 	main.golem_cooldown = 0.5 # denemede 20 sn beklememek için
 	await create_timer(0.8).timeout
@@ -137,6 +149,9 @@ func _initialize() -> void:
 	await create_timer(0.3).timeout
 	main.golem_cooldown = 0.0
 	player.mana = 20.0
+	await create_timer(0.2).timeout
+	print("   Mana 20 iken golem simgesi kullanılabilir mi: %s (false olmalı)" % slot.usable)
+	await shot("yuva-mana-yok.png")
 	print("8. Mana 20 iken çağırma: %s (false olmalı), golem %s" % [main.summon_golem(), "yok" if not is_instance_valid(main.golem) else "VAR"])
 	quit()
 

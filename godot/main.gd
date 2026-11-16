@@ -66,7 +66,7 @@ const MOTHER_AT := Vector3(-8, 0, 61) # köyün kuzeybatısında, orman kenarın
 # Kemik golemi (yan görev zincirinin sonu): X'in mektubu okununca görev açılır; gotik binanın mahzenindeki rün
 # halkasına inilince golem ilk kez kalkar (levels/bina_ici.gd → awaken_golem) ve 2 tuşuyla çağırma hakkı kazanılır.
 # Aynı anda tek golem; iskeletlerin 5'lik sınırından ayrı. Canı bitince ruhu serbest kalır; hak kaybolmaz, 20 sn
-# bekledikten sonra yeniden çağrılabilir. Durumu HUD'da mana küresinin solundaki yuvada (hud/golem_slot.gd).
+# bekledikten sonra yeniden çağrılabilir. Durumu HUD'da alt ortadaki beceri çubuğunda (hud/skill_bar.gd).
 const GOLEM := preload("res://minions/golem.tscn")
 const GOLEM_KEYS := [KEY_2, KEY_KP_2] # üst sıradaki 2 ve sayı tuş takımındaki 2
 const GOLEM_MANA := 50.0
@@ -108,7 +108,7 @@ var has_golem := false # golem çağırma hakkı kazanıldı mı (mahzendeki rü
 var golem: Node3D # ayaktaki golem; yoksa null
 var golem_pending := false # golem büyüsü sürüyor: yarısında golem_at'te kalkar
 var golem_at := Vector3.ZERO
-var golem_cooldown := 0.0 # golem öldüyse yeniden çağırmaya kalan süre (saniye); HUD'daki yuva bunu gösterir
+var golem_cooldown := 0.0 # golem öldüyse yeniden çağırmaya kalan süre (saniye); HUD'daki beceri simgesi gösterir
 
 
 func _ready() -> void:

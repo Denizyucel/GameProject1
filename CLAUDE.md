@@ -317,10 +317,18 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   (GOLEM_MANA), oyuncunun 2 m önünde büyünün yarısında kalkar; ayaktayken "Golem zaten ayakta."; canı bitince
   main.on_golem_fell (mavi release efekti); hak kaybolmaz, 20 sn bekleme (main.golem_cooldown, GOLEM_COOLDOWN; oyun saatiyle
   azalır) dolunca yeniden çağrılır, beklerken "Kemikler henüz toplanmadı." Kendi isteğiyle çağırmada bekleme yok.
-  HUD yuvası: hud/golem_slot.gd (hud.tscn GolemYuvasi, mana küresinin solunda 56 px daire, kodla çizilir; hak kazanılınca
-  görünür): golemin yüzü (assets/hud/golem-icon.png; tools/make_golem_icon.gd modelden üretir, model değişince yeniden
-  çalıştır), sağ altta "2" tuşu; ayaktayken mavi can halkası (son üçte birde kızarır), ölünce yüz kararır + geri sayım
-  + saat yönünde açılan örtü, süre bitince mavi parlama. Durumu main'den okur. Deneme: tools/golem_test.gd.
+  Deneme: tools/golem_test.gd.
+- Beceri çubuğu (HUD, alt ortada, can ve mana küresinin arası): hud.tscn Beceriler (HBoxContainer, alt ortaya çapalı,
+  iki yana büyür) + hud/skill_bar.gd; içinde Iskelet ve Golem yuvaları (hud/skill_slot.gd, 156 x 156). Görselleri
+  kullanıcı çizdi: assets/hud/skills/create-skeleton.png ve create-golem.png (asılları public/models/hud/Skills;
+  golemin asıl adı Create-gollem.png; 300 x 300, gotik çerçeve x 62..238, y 54..232, iç resim x 90..210, y 82..206,
+  altta tuşun yazdığı kutu). Görselin kenarı saydam olduğu için yuvalar -52 aralıkla üst üste biner. skill_bar her kare
+  main'den okur: iskelet simgesi 8 m içinde ceset varsa ve mana yetiyorsa parlak, yoksa soluk; golem simgesi hak
+  kazanılana kadar gizli (çubuk tek simgeyle ortalanır), golem ayaktayken çerçevenin üstünde can barı (mavi, son üçte
+  birde kızarır), ölünce soluk + iç resimde saat yönünde açılan koyu örtü + geri sayım, süre bitince mavi parlama,
+  mana yetmezken soluk. Yeni beceri: yuvayı kopyala, icon'u ver, skill_bar'a durumunu yaz. Alt yazı (Konusma)
+  simgelerle çakışmasın diye yukarı alındı (anchor 0.74). Eski, kodla çizilen golem yuvası (golem_slot.gd,
+  make_golem_icon.gd) kaldırıldı.
 - Köylü (NPC): npcs/villager.tscn + villager.gd (class_name Villager, "koylu" grubu): model assets/npc/woman1.glb (asıl
   public/models/Characters/Woman/woman1.glb; Meshy SmartRig, 1.7 m, 1.08 ölçek; içinde yalnızca Walking/Running), bekleme
   oyuncunun idle.fbx'i (RigAnimations.take), zemin yüksekliğine çekilir, oyuncu 5 m'ye gelince ona döner; crowd.gd'de
@@ -458,7 +466,7 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Yol düzleştirme: ızgara yolundaki gereksiz kırılmaları kaldır (görüş hattı kontrolü)
 - Sahneye biraz daha ışık; parçalar şu an çok koyu
 - planlar/yanik-kutuphane-ornek.svg'yi koda göre güncelle (yüksek duvar, duvar rafı, çatı kemeri yok)
-- Golem yuvasına kullanıcının kendi çizdiği simge/çerçeve (şimdiki, modelden üretilen yüz ve kodla çizilen daire)
+- Yeni beceriler için simge: kemik mızrağı (sağ tık) ve kılıç vuruşu beceri çubuğunda yok
 - Mahzendeki rün halkasında golem kalkmadan önce görünen bir kemik yığını; uyanışa özel efekt ve ses
 - Saklanan anneye çömelmiş/korkmuş bekleme animasyonu (Mixamo)
 - Köy modelinin kenarındaki basamağı (0.1-1 m) taş/çalıyla gizle

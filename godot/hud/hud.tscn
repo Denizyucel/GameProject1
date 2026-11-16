@@ -11,7 +11,10 @@
 [ext_resource type="FontFile" path="res://fonts/AguafinaScript-Regular.ttf" id="9_rozet_font"]
 [ext_resource type="Script" path="res://hud/enemy_bar.gd" id="10_enemy_bar"]
 [ext_resource type="Script" path="res://hud/minimap.gd" id="11_minimap"]
-[ext_resource type="Script" path="res://hud/golem_slot.gd" id="12_golem_slot"]
+[ext_resource type="Script" path="res://hud/skill_bar.gd" id="12_skill_bar"]
+[ext_resource type="Script" path="res://hud/skill_slot.gd" id="13_skill_slot"]
+[ext_resource type="Texture2D" path="res://assets/hud/skills/create-skeleton.png" id="14_skill_skeleton"]
+[ext_resource type="Texture2D" path="res://assets/hud/skills/create-golem.png" id="15_skill_golem"]
 
 [sub_resource type="ShaderMaterial" id="KayipCanMalzemesi"]
 shader = ExtResource("6_fill")
@@ -273,22 +276,37 @@ label_settings = SubResource("RozetAyari")
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="GolemYuvasi" type="Control" parent="."]
-visible = false
-layout_mode = 3
-anchors_preset = 3
-anchor_left = 1.0
+[node name="Beceriler" type="HBoxContainer" parent="."]
+anchors_preset = 7
+anchor_left = 0.5
 anchor_top = 1.0
-anchor_right = 1.0
+anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -238.0
-offset_top = -88.0
-offset_right = -182.0
-offset_bottom = -32.0
-grow_horizontal = 0
+offset_left = -78.0
+offset_top = -142.0
+offset_right = 78.0
+offset_bottom = 14.0
+grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2
-script = ExtResource("12_golem_slot")
+theme_override_constants/separation = -52
+alignment = 1
+script = ExtResource("12_skill_bar")
+
+[node name="Iskelet" type="Control" parent="Beceriler"]
+custom_minimum_size = Vector2(156, 156)
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("13_skill_slot")
+icon = ExtResource("14_skill_skeleton")
+
+[node name="Golem" type="Control" parent="Beceriler"]
+visible = false
+custom_minimum_size = Vector2(156, 156)
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("13_skill_slot")
+icon = ExtResource("15_skill_golem")
 
 [node name="OlumYazisi" type="Label" parent="."]
 visible = false
@@ -325,9 +343,9 @@ vertical_alignment = 1
 [node name="Konusma" type="Label" parent="."]
 modulate = Color(1, 1, 1, 0)
 anchors_preset = 12
-anchor_top = 0.78
+anchor_top = 0.74
 anchor_right = 1.0
-anchor_bottom = 0.78
+anchor_bottom = 0.74
 offset_bottom = 36.0
 grow_horizontal = 2
 mouse_filter = 2
