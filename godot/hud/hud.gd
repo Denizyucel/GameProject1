@@ -19,11 +19,16 @@ const NO_MANA_GAP := 2.0 # bu sözü en sık bu kadar saniyede bir söyler (tık
 @onready var minion_label: Label = $ManaKuresi/Rozet # kafatasının üstündeki rozet
 @onready var say_label: Label = $Konusma
 @onready var quest_label: Label = $Gorevler/Liste
+@onready var blackout: ColorRect = $Kararma
+@onready var note_panel: PanelContainer = $Not
 
 var whisper_tween: Tween
 var whisper_top := 0.0
 var say_tween: Tween
 var no_mana_said_at := -100.0
+var note_open := false
+
+signal note_closed
 
 
 func _ready() -> void:
@@ -85,3 +90,38 @@ func show_quests(lines: Array) -> void:
 		text += ("✓ " if line[1] else "• ") + line[0] + "\n"
 	quest_label.text = text.strip_edges()
 	$Gorevler.visible = not lines.is_empty()
+
+
+## Ekranı karart (alpha 1) ya da aç (alpha 0). Oyun durmuşken de işler. Bitince sinyal: await hud.fade(1.0, 0.6)
+func fade(alpha: float, time: float) -> Signal:
+	var tween := create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tween.tween_property(blackout, "color:a", alpha, time)
+	return tween.finished
+
+
+## Okunacak bir not (eski kâğıt gibi panel). Oyun bu sırada durur (çağıran durdurur); tık, Esc ya da Enter kapatır.
+## Kapanınca note_closed sinyali.
+func show_note(title: String, text: String) -> void:
+	note_panel.get_node("Duzen/Baslik").text = title
+	note_panel.get_node("Duzen/Metin").text = text
+	note_panel.modulate.a = 0.0
+	note_panel.visible = true
+	note_open = true
+	process_mode = Node.PROCESS_MODE_ALWAYS # oyun durmuşken tıklamayı duyabilsin
+	create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS).tween_property(note_panel, "modulate:a", 1.0, 0.4)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not note_open:
+		return
+	var click := event as InputEventMouseButton
+	var key := event as InputEventKey
+	if (click and click.pressed) or (key and key.pressed and not key.echo and key.keycode in [KEY_ESCAPE, KEY_ENTER, KEY_SPACE]):
+		get_viewport().set_input_as_handled()
+		note_open = false
+		var tween := create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		tween.tween_property(note_panel, "modulate:a", 0.0, 0.3)
+		await tween.finished
+		note_panel.visible = false
+		process_mode = Node.PROCESS_MODE_INHERIT
+		note_closed.emit()

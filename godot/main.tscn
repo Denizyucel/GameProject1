@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://main.gd" id="7_main"]
 [ext_resource type="Script" path="res://levels/see_through.gd" id="10_saydam"]
 [ext_resource type="PackedScene" path="res://levels/gotik_bina.tscn" id="13_gotik_bina"]
+[ext_resource type="PackedScene" path="res://levels/bina_ici.tscn" id="14_bina_ici"]
 
 [sub_resource type="ProceduralSkyMaterial" id="YansimaGogu"]
 sky_top_color = Color(0.3, 0.3, 0.38, 1)
@@ -60,6 +61,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 40)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 80)
 
 [node name="GotikBina" parent="Gezinme" instance=ExtResource("13_gotik_bina")]
+
+[node name="BinaIci" parent="Gezinme" instance=ExtResource("14_bina_ici")]
 
 [node name="Player" parent="." instance=ExtResource("3_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -9.25)

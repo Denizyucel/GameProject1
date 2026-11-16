@@ -1,0 +1,30 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://levels/bina_ici.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://assets/kit/bina/katlar/bina1-kat-1.glb" id="2_kat_eksi1"]
+[ext_resource type="PackedScene" path="res://assets/kit/bina/katlar/bina1-kat0.glb" id="3_kat0"]
+[ext_resource type="PackedScene" path="res://assets/kit/bina/katlar/bina1-kat1.glb" id="4_kat1"]
+[ext_resource type="PackedScene" path="res://assets/kit/bina/katlar/bina1-kat2.glb" id="5_kat2"]
+
+[node name="BinaIci" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="Kat0" type="Node3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 200, -0.5, 0)
+
+[node name="Model" parent="Kat0" instance=ExtResource("3_kat0")]
+
+[node name="KatEksi1" type="Node3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 200, 0, -60)
+
+[node name="Model" parent="KatEksi1" instance=ExtResource("2_kat_eksi1")]
+
+[node name="Kat1" type="Node3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 200, -4.1, 60)
+
+[node name="Model" parent="Kat1" instance=ExtResource("4_kat1")]
+
+[node name="Kat2" type="Node3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 200, -7.7, 120)
+
+[node name="Model" parent="Kat2" instance=ExtResource("5_kat2")]

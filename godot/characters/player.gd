@@ -157,6 +157,13 @@ func _ready() -> void:
 			sword.free()
 
 
+## En fazla manayı kalıcı olarak artır (görev ödülü); mana da o kadar dolar
+func raise_max_mana(amount: float) -> void:
+	max_mana += amount
+	mana = minf(mana + amount, max_mana)
+	mana_changed.emit(mana, max_mana)
+
+
 ## En fazla canı kalıcı olarak artır (görev ödülü); can da o kadar dolar
 func raise_max_health(amount: float) -> void:
 	max_health += amount

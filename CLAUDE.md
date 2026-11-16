@@ -271,6 +271,25 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   Mührü kırılınca görev biter, items/golden_key.gd (class_name GoldenKey, kodla halka + sap + diş, altın, sıçrar, döner)
   düşer; alınınca main.has_golden_key ve "kapi" görevi ("Altın anahtarı gotik binanın kapısına götür"). Deneme:
   tools/champion_test.gd.
+- Gotik binanın kapısı ve iç mekânı (zincirin sonu): levels/gothic_door.gd (gotik_bina.tscn'de Kapi, (-25.3, 0, 40)).
+  Anahtarsız 1.8 m'ye gelince "Kilitli. Kilidi altından… X'in işi." Anahtarla: altın ışık, kapı (ayrı mesh gothic_wood)
+  saydamlaşıp gizlenir, görev "Binada X'in izini ara" olur ve içeri girilir; kapı açıkken her gelişte içeri (4 m
+  uzaklaşınca yeniden hazırlanır; içeriden çıkınca disarm). Dış bina (bina1.glb) tek parça; içi kapalı şeritler.
+  İç mekân: kullanıcının kat planları assets/kit/bina/katlar/bina1-kat-1, kat0, kat1, kat2.glb (asılları
+  public/models/kit/bina/bina1-katplanlari; hepsi 15 x 12 m, dış binayla aynı ölçü; kullanıcı pentagramları kaldırdı,
+  büyü çemberleri sade rün halkası). levels/bina_ici.tscn + .gd
+  (main.tscn'de Gezinme/BinaIci, navmesh'e girer): katlar x = 200'de (KatEksi1 z -60, Kat0 z 0, Kat1 z 60, Kat2 z 120),
+  +90° dönük, zeminleri y = 0'a indirilmiş (Kat0 -0.5, Kat1 -4.1, Kat2 -7.7). Karanlık boşlukta durur (Diablo'daki
+  gibi ayrı iç mekân). bina_ici.floor_point(kat, yerel x/z): +z kapı yönü. Geçitler (PORTALS) üstüne gelince
+  HUD.fade → oyuncu ve iskeletleri taşınır, kamera odağı anında → fade; varılan yerden 1.6 m uzaklaşmadan geçit
+  tetiklenmez. Kat 0'ın kapısı (0.1, 4.9) dışarıya (-24.6, 40); girişte kat 0'da (0.1, 3.3). Kat 0: geniş salon, büyü
+  çemberi, kitaplık, merdivenler (yukarı sağ önde, aşağı arka ortada). SORUN: kat -1, 1 ve 2'de odaları ayıran duvarlar
+  ~1.2 m alçak ama aralarında geçit yok (aralık gibi görünen yerlerde de 1.2 m'lik duvar; kesit ve ışınla ölçüldü),
+  navmesh parça parça (kat -1 ~27 m², kat 1-2 ~20-35 m², kat 0 ~92 m²). Bu yüzden merdivenler (STAIRS) kapalı; kat
+  planlarına kapı aralığı eklenince PORTALS'a taşınacak. X'in mektubu şimdilik kat 0'da kitaplığın yanında
+  (NamePage, "Mektup"): alınınca fade → paused → HUD.show_note → görev biter, player.raise_max_mana(20). HUD.show_note
+  (hud.tscn Not: koyu kâğıt panel; tık/Esc/Enter/Boşluk kapatır, HUD o sırada PROCESS_MODE_ALWAYS). Aguafina'da "ş"
+  yok (başlıklarda kaçın; düşman barındaki "Vahşi" de). Deneme: tools/door_test.gd (kilitli, giriş, mektup, çıkış).
 - Küçük harita: hud/minimap.gd (hud.tscn Harita, sağ üst 150 x 150; Gorevler onun altında, offset_top 172). İkinci kamera
   yok: main.place_name_pages navmesh hazır olunca Harita.build(Gezinme.navigation_mesh) çağırır, yürünebilir çokgenler
   bir kez resme dökülür (4 px/m). Her kare yuvarlak pencereye (draw_colored_polygon + UV) karakter ortada, kameranın
@@ -281,7 +300,7 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   start(id, başlık, hedef), advance, retitle, finish, is_open/is_done; changed → HUD.show_quests (hud.tscn Gorevler: sağ
   üstte "Görevler" başlığı Aguafina 26 + liste; açık "•", biten "✓", sayaçlı "2 / 5"). Yan görev planı (kullanıcı
   hepsini istedi): 1) Unutulan İsimler (tamam), 2) küçük harita (tamam), 3) Altın Şampiyon (tamam),
-  4) gotik binanın kapısı (anahtarla açılır), 5) Saklanan Anne (Harabe Köy, NPC + konuşma).
+  4) gotik binanın kapısı (tamam), 5) Saklanan Anne (Harabe Köy, NPC + konuşma).
   Unutulan İsimler: items/name_page.gd (class_name NamePage, kodla: 0.44 x 0.58 m yanık kâğıt, köz rengi ışıma,
   nabız atan kırmızı ışık; görünen zeminin 0.35 m üstünde süzülür, 1.2 m'de kendiliğinden alınır). main.NAME_PAGES: 5
   sayfa (kütüphane içinde 2, dışında 1, Kül Yolu'nda 2; isim + son söz, taslağı Claude yazdı); ilk sayfada görev açılır,

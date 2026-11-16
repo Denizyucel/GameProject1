@@ -93,6 +93,38 @@ font_color = Color(0.93, 0.88, 0.82, 1)
 outline_size = 5
 outline_color = Color(0, 0, 0, 0.85)
 
+[sub_resource type="StyleBoxFlat" id="NotKutusu"]
+content_margin_left = 34.0
+content_margin_top = 26.0
+content_margin_right = 34.0
+content_margin_bottom = 22.0
+bg_color = Color(0.11, 0.085, 0.07, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.42, 0.33, 0.2, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+shadow_color = Color(0, 0, 0, 0.6)
+shadow_size = 18
+
+[sub_resource type="LabelSettings" id="NotBasligiAyari"]
+font = ExtResource("9_rozet_font")
+font_size = 34
+font_color = Color(1, 0.86, 0.55, 1)
+
+[sub_resource type="LabelSettings" id="NotMetniAyari"]
+font_size = 18
+line_spacing = 6.0
+font_color = Color(0.9, 0.85, 0.78, 1)
+
+[sub_resource type="LabelSettings" id="NotIpucuAyari"]
+font_size = 13
+font_color = Color(0.6, 0.55, 0.5, 1)
+
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
 
@@ -378,3 +410,49 @@ layout_mode = 2
 mouse_filter = 2
 label_settings = SubResource("GorevAyari")
 horizontal_alignment = 2
+
+[node name="Kararma" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="Not" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -290.0
+offset_top = -190.0
+offset_right = 290.0
+offset_bottom = 190.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("NotKutusu")
+
+[node name="Duzen" type="VBoxContainer" parent="Not"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Baslik" type="Label" parent="Not/Duzen"]
+layout_mode = 2
+label_settings = SubResource("NotBasligiAyari")
+horizontal_alignment = 1
+
+[node name="Metin" type="Label" parent="Not/Duzen"]
+layout_mode = 2
+size_flags_vertical = 3
+label_settings = SubResource("NotMetniAyari")
+autowrap_mode = 3
+
+[node name="Ipucu" type="Label" parent="Not/Duzen"]
+layout_mode = 2
+text = "Devam etmek için tıkla"
+label_settings = SubResource("NotIpucuAyari")
+horizontal_alignment = 1
