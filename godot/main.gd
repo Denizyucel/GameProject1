@@ -65,7 +65,8 @@ const VILLAGER := preload("res://npcs/villager.tscn")
 const MOTHER_AT := Vector3(-8, 0, 61) # köyün kuzeybatısında, orman kenarında büyük kayanın yanı; köye girmeden görülür
 # Kemik golemi (yan görev zincirinin sonu): X'in mektubu okununca görev açılır; gotik binanın mahzenindeki rün
 # halkasına inilince golem ilk kez kalkar (levels/bina_ici.gd → awaken_golem) ve 2 tuşuyla çağırma hakkı kazanılır.
-# Aynı anda tek golem; iskeletlerin 5'lik sınırından ayrı. Canı bitince ruhu serbest kalır, yeniden çağrılabilir.
+# Aynı anda tek golem; iskeletlerin 5'lik sınırından ayrı. Canı bitince ruhu serbest kalır; hak kaybolmaz, 20 sn
+# bekledikten sonra yeniden çağrılabilir. Durumu HUD'da mana küresinin solundaki yuvada (hud/golem_slot.gd).
 const GOLEM := preload("res://minions/golem.tscn")
 const GOLEM_KEYS := [KEY_2, KEY_KP_2] # üst sıradaki 2 ve sayı tuş takımındaki 2
 const GOLEM_MANA := 50.0
@@ -75,6 +76,8 @@ const GOLEM_TITLE := "Mahzendeki rün halkasına in"
 const GOLEM_LINE := "Yüzlerce kemik, tek beden. Kimse onları zorlamadı; kendileri kalktı."
 const GOLEM_HINT := "Yeni büyü: Kemik Golemi (2 tuşu)"
 const GOLEM_HERE_LINE := "Golem zaten ayakta."
+const GOLEM_COOLDOWN := 20.0 # golemin canı bitince yeniden çağırmak için beklenen süre (saniye)
+const GOLEM_WAIT_LINE := "Kemikler henüz toplanmadı."
 const NAMES_QUEST := "isimler"
 const NAMES_TITLE := "Unutulan İsimler"
 const NAMES_REWARD := 10.0 # hepsi bulununca en fazla cana eklenir
@@ -105,6 +108,7 @@ var has_golem := false # golem çağırma hakkı kazanıldı mı (mahzendeki rü
 var golem: Node3D # ayaktaki golem; yoksa null
 var golem_pending := false # golem büyüsü sürüyor: yarısında golem_at'te kalkar
 var golem_at := Vector3.ZERO
+var golem_cooldown := 0.0 # golem öldüyse yeniden çağırmaya kalan süre (saniye); HUD'daki yuva bunu gösterir
 
 
 func _ready() -> void:
@@ -292,6 +296,9 @@ func summon_golem() -> bool:
 	if is_instance_valid(golem):
 		hud.say(GOLEM_HERE_LINE)
 		return false
+	if golem_cooldown > 0:
+		hud.say(GOLEM_WAIT_LINE)
+		return false
 	if player.mana < GOLEM_MANA:
 		player.not_enough_mana.emit()
 		return false
@@ -331,11 +338,12 @@ func spawn_golem(at: Vector3) -> void:
 	GameCamera.shake(0.45)
 
 
-## Golemin canı bitti: iskeletler gibi ruhu serbest kalır; 2 tuşuyla yeniden çağrılabilir
+## Golemin canı bitti: iskeletler gibi ruhu serbest kalır; bekleme süresi dolunca 2 tuşuyla yeniden çağrılabilir
 func on_golem_fell(fallen: Node3D) -> void:
 	spawn_effect(fallen.global_position, true)
 	fallen.queue_free()
 	golem = null
+	golem_cooldown = GOLEM_COOLDOWN
 
 
 ## Mahzendeki rün halkası (levels/bina_ici.gd çağırır): golem ilk kez kalkar, çağırma hakkı kazanılır
@@ -348,8 +356,9 @@ func awaken_golem(at: Vector3) -> void:
 	hud.whisper(GOLEM_HINT)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	watch_champion()
+	golem_cooldown = maxf(0.0, golem_cooldown - delta)
 	update_golem_cast()
 	if cast_target == null:
 		return

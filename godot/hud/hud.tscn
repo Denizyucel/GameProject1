@@ -11,6 +11,7 @@
 [ext_resource type="FontFile" path="res://fonts/AguafinaScript-Regular.ttf" id="9_rozet_font"]
 [ext_resource type="Script" path="res://hud/enemy_bar.gd" id="10_enemy_bar"]
 [ext_resource type="Script" path="res://hud/minimap.gd" id="11_minimap"]
+[ext_resource type="Script" path="res://hud/golem_slot.gd" id="12_golem_slot"]
 
 [sub_resource type="ShaderMaterial" id="KayipCanMalzemesi"]
 shader = ExtResource("6_fill")
@@ -271,6 +272,23 @@ text = "0"
 label_settings = SubResource("RozetAyari")
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="GolemYuvasi" type="Control" parent="."]
+visible = false
+layout_mode = 3
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -238.0
+offset_top = -88.0
+offset_right = -182.0
+offset_bottom = -32.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+script = ExtResource("12_golem_slot")
 
 [node name="OlumYazisi" type="Label" parent="."]
 visible = false

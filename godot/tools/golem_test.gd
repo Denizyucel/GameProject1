@@ -1,7 +1,9 @@
 # Kemik golemini dener: hak kazanılmadan 2 tuşu çalışmaz; görev açıkken mahzendeki rün halkasına yürüyünce golem kalkar
 # (görev biter, hak kazanılır); oyuncuyu takip eder; binadan çıkınca birlikte taşınır; düşmanla dövüşür (vurur, vurulur);
-# canı bitince serbest kalır; 2 tuşuyla (50 mana) yeniden çağrılır; ayaktayken ya da mana yetmezken çağrılmaz.
-# Görüntüler: golem-kalkis.png (halkada yükselirken), golem-halka.png, golem-disarida.png, golem-dovus.png, golem-cagri.png.
+# canı bitince serbest kalır ve 20 sn bekleme başlar (o sırada çağrılmaz); süre dolunca 2 tuşuyla (50 mana) yeniden
+# çağrılır; ayaktayken ya da mana yetmezken çağrılmaz. HUD'daki golem yuvası (hud/golem_slot.gd) durumu gösterir.
+# Görüntüler: golem-kalkis.png (halkada yükselirken), golem-halka.png, golem-disarida.png, golem-dovus.png,
+# yuva-yarali.png (canı azalmış), yuva-bekleme.png (geri sayım), golem-cagri.png (yeniden çağrılırken).
 # Çalıştırma:  godot --path godot --resolution 1280x720 -s tools/golem_test.gd -- <klasör>
 
 extends SceneTree
@@ -24,7 +26,8 @@ func _initialize() -> void:
 		e.queue_free()
 
 	# 1. Hak yokken 2 tuşu
-	print("1. Hak yokken çağırma: %s (false olmalı), golem %s" % [main.summon_golem(), main.golem])
+	var slot = main.hud.get_node("GolemYuvasi")
+	print("1. Hak yokken çağırma: %s (false olmalı), golem %s, HUD yuvası görünür mü %s (false olmalı)" % [main.summon_golem(), main.golem, slot.visible])
 
 	# 2. Görev açık (mektup okunmuş gibi); mahzene in, halkaya yürü
 	main.quests.start(main.GOLEM_QUEST, main.GOLEM_TITLE)
@@ -46,7 +49,7 @@ func _initialize() -> void:
 	await shot("golem-kalkis.png")
 	await create_timer(2.5).timeout
 	var center: Vector3 = ici.floor_point("KatEksi1", ici.CIRCLE_AT)
-	print("   Ayakta mı %s, can %d, halkanın ortasına %.2f m, oyuncuya %.2f m" % [golem.alive, golem.health, flat(golem.global_position, center), flat(golem.global_position, player.global_position)])
+	print("   Ayakta mı %s, can %d, halkanın ortasına %.2f m, oyuncuya %.2f m; HUD yuvası görünür mü %s, yuvadaki can %.2f" % [golem.alive, golem.health, flat(golem.global_position, center), flat(golem.global_position, player.global_position), slot.visible, slot.health])
 	await shot("golem-halka.png")
 
 	# 3. Takip: merdiven koridoruna yürü
@@ -96,10 +99,21 @@ func _initialize() -> void:
 	player.mana = player.max_mana
 	print("6. Ayaktayken çağırma: %s (false olmalı), mana %d, alt yazı '%s'" % [main.summon_golem(), player.mana, main.hud.say_label.text])
 
-	# 7. Golemin canı biter → serbest kalır; 2 tuşuyla yeniden çağır
+	# 7. Golemin canı azalır (yuvada halka kısalır), sonra biter → serbest kalır, bekleme başlar
+	golem.take_damage(golem.health - 40.0)
+	await create_timer(0.3).timeout
+	print("7. Yaralı: golemin canı %d, yuvadaki can %.2f" % [golem.health, slot.health])
+	await shot("yuva-yarali.png")
 	golem.take_damage(9999)
 	await create_timer(0.3).timeout
-	print("7. Canı bitince: golem %s" % ["yok" if not is_instance_valid(main.golem) else "HÂLÂ VAR"])
+	print("   Canı bitince: golem %s, bekleme %.1f sn" % ["yok" if not is_instance_valid(main.golem) else "HÂLÂ VAR", main.golem_cooldown])
+	print("   Beklerken çağırma: %s (false olmalı), mana %d, alt yazı '%s'" % [main.summon_golem(), player.mana, main.hud.say_label.text])
+	await create_timer(4.0).timeout
+	print("   4 sn sonra bekleme %.1f sn, yuvadaki %.1f" % [main.golem_cooldown, slot.cooldown])
+	await shot("yuva-bekleme.png")
+	main.golem_cooldown = 0.5 # denemede 20 sn beklememek için
+	await create_timer(0.8).timeout
+	print("   Süre doldu: bekleme %.1f" % main.golem_cooldown)
 	var key := InputEventKey.new()
 	key.physical_keycode = KEY_2
 	key.pressed = true
@@ -118,9 +132,10 @@ func _initialize() -> void:
 	await shot("golem-cagri.png")
 	await create_timer(2.0).timeout
 
-	# 8. Mana yetmezken
+	# 8. Mana yetmezken (bekleme yokken)
 	main.golem.take_damage(9999)
 	await create_timer(0.3).timeout
+	main.golem_cooldown = 0.0
 	player.mana = 20.0
 	print("8. Mana 20 iken çağırma: %s (false olmalı), golem %s" % [main.summon_golem(), "yok" if not is_instance_valid(main.golem) else "VAR"])
 	quit()

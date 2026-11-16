@@ -315,7 +315,12 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   gelince bina_ici.watch_circle: Ruh Kıran büyü yapar, yarısında main.awaken_golem → golem halkanın içinde kalkar,
   main.has_golem = true, HUD.whisper "Yeni büyü: Kemik Golemi (2 tuşu)". 2 tuşu (main.summon_golem; numpad 2 de): 50 mana
   (GOLEM_MANA), oyuncunun 2 m önünde büyünün yarısında kalkar; ayaktayken "Golem zaten ayakta."; canı bitince
-  main.on_golem_fell (mavi release efekti), yeniden çağrılabilir. HUD'da golem göstergesi yok. Deneme: tools/golem_test.gd.
+  main.on_golem_fell (mavi release efekti); hak kaybolmaz, 20 sn bekleme (main.golem_cooldown, GOLEM_COOLDOWN; oyun saatiyle
+  azalır) dolunca yeniden çağrılır, beklerken "Kemikler henüz toplanmadı." Kendi isteğiyle çağırmada bekleme yok.
+  HUD yuvası: hud/golem_slot.gd (hud.tscn GolemYuvasi, mana küresinin solunda 56 px daire, kodla çizilir; hak kazanılınca
+  görünür): golemin yüzü (assets/hud/golem-icon.png; tools/make_golem_icon.gd modelden üretir, model değişince yeniden
+  çalıştır), sağ altta "2" tuşu; ayaktayken mavi can halkası (son üçte birde kızarır), ölünce yüz kararır + geri sayım
+  + saat yönünde açılan örtü, süre bitince mavi parlama. Durumu main'den okur. Deneme: tools/golem_test.gd.
 - Köylü (NPC): npcs/villager.tscn + villager.gd (class_name Villager, "koylu" grubu): model assets/npc/woman1.glb (asıl
   public/models/Characters/Woman/woman1.glb; Meshy SmartRig, 1.7 m, 1.08 ölçek; içinde yalnızca Walking/Running), bekleme
   oyuncunun idle.fbx'i (RigAnimations.take), zemin yüksekliğine çekilir, oyuncu 5 m'ye gelince ona döner; crowd.gd'de
@@ -453,7 +458,7 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Yol düzleştirme: ızgara yolundaki gereksiz kırılmaları kaldır (görüş hattı kontrolü)
 - Sahneye biraz daha ışık; parçalar şu an çok koyu
 - planlar/yanik-kutuphane-ornek.svg'yi koda göre güncelle (yüksek duvar, duvar rafı, çatı kemeri yok)
-- Golem için HUD göstergesi (ayakta mı, canı) ve çağırma bekleme süresi
+- Golem yuvasına kullanıcının kendi çizdiği simge/çerçeve (şimdiki, modelden üretilen yüz ve kodla çizilen daire)
 - Mahzendeki rün halkasında golem kalkmadan önce görünen bir kemik yığını; uyanışa özel efekt ve ses
 - Saklanan anneye çömelmiş/korkmuş bekleme animasyonu (Mixamo)
 - Köy modelinin kenarındaki basamağı (0.1-1 m) taş/çalıyla gizle
