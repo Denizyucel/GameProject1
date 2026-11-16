@@ -1,5 +1,5 @@
 # Gotik binanın kapısını ve iç mekânı dener: anahtarsız "kilitli"; anahtarla kapı açılıp içeri (kat 0) girilir;
-# mektup alınınca not açılır (oyun durur), tıklayınca kapanır, görev biter, en fazla mana +20; kapıdan çıkınca dışarı.
+# merdivenlerle kat 2'ye çıkılır, mektup alınınca not açılır (oyun durur), tıklayınca kapanır, görev biter, en fazla mana +20; kapıdan çıkınca dışarı.
 # Görüntüler: ic-giris.png (içeri girince), kapi-not.png (mektup), ic-cikis.png (dışarı çıkınca).
 # Çalıştırma:  godot --path godot --resolution 1280x720 -s tools/door_test.gd -- <klasör>
 
@@ -35,7 +35,16 @@ func _initialize() -> void:
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png(out_dir + "/ic-giris.png")
 
-	# 3. Mektuba yürü (gerçek yol bulmayla)
+	# 3. Merdivenlerle kat 2'ye çık (kat 0 → kat 1 → kat 2), mektuba yürü (gerçek yol bulmayla)
+	for index in [1, 4]:
+		var portal: Array = inside.PORTALS[index]
+		player.agent.target_position = inside.floor_point(portal[0], portal[1])
+		var waited_stairs := 0.0
+		while inside.floor_point(portal[2], Vector2.ZERO).distance_to(Vector3(player.global_position.x, 0, player.global_position.z)) > 9.0 and waited_stairs < 15.0:
+			await create_timer(0.25).timeout
+			waited_stairs += 0.25
+		await create_timer(1.2).timeout
+		print("Merdiven %s → %s: %.1f sn" % [portal[0], portal[2], waited_stairs])
 	var letter = inside.get_node_or_null("Mektup")
 	print("Mektup: %s" % [letter.global_position if letter else "yok"])
 	if letter:
@@ -56,7 +65,9 @@ func _initialize() -> void:
 		await create_timer(1.6, true).timeout
 		print("Sonra: not açık mı %s, durdu mu %s, görev %s, en fazla mana %d → %d" % [main.hud.note_open, paused, main.quests.lines(), mana_before, player.max_mana])
 
-	# 4. Kapıya yürü: dışarı çıkmalı
+	# 4. Kat 0'a dön (kısayol: doğrudan girişe), kapıya yürü: dışarı çıkmalı
+	await inside.travel(inside.floor_point("Kat0", inside.ENTRY))
+	await create_timer(0.3).timeout
 	var exit_at: Vector3 = inside.floor_point("Kat0", inside.PORTALS[0][1])
 	player.agent.target_position = exit_at
 	var t := 0.0

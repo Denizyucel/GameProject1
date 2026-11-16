@@ -295,8 +295,8 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   sandık, bir kazan, yuvarlak bir eşya, bir dolap). Ulaşılabilirlik (varış noktasından yol): kat 0 %100, mahzen %95,
   kat 1 %85, kat 2 %81 (kalanlar eşya arkası köşeler). Kat planı güncellenirse GAPS/CLEARS gözden geçirilmeli.
   Her kata görüş penceresi (building_window.gd, geçitler kesildikten sonra kurulur; tam boy ön duvarlar odaları
-  kapatıyordu). Denemeler: tools/stairs_test.gd (katları merdivenle dolaşır), tools/door_test.gd. X'in mektubu şimdilik kat 0'da kitaplığın yanında
-  (NamePage, "Mektup"): alınınca fade → paused → HUD.show_note → görev biter, player.raise_max_mana(20). HUD.show_note
+  kapatıyordu). Denemeler: tools/stairs_test.gd (katları merdivenle dolaşır), tools/door_test.gd. X'in mektubu kat 2'de, sol üst odada rün halkasının yanında
+  (NamePage, "Mektup"; merdivenlerle çıkılır): alınınca fade → paused → HUD.show_note → görev biter, player.raise_max_mana(20). HUD.show_note
   (hud.tscn Not: koyu kâğıt panel; tık/Esc/Enter/Boşluk kapatır, HUD o sırada PROCESS_MODE_ALWAYS). Aguafina'da "ş"
   yok (başlıklarda kaçın; düşman barındaki "Vahşi" de). Deneme: tools/door_test.gd (kilitli, giriş, mektup, çıkış).
 - Küçük harita: hud/minimap.gd (hud.tscn Harita, sağ üst 150 x 150; Gorevler onun altında, offset_top 172). İkinci kamera

@@ -72,11 +72,11 @@ const CLEARS := {
 }
 const ENTRY := Vector2(0.1, 3.3) # dışarıdan girince kat 0'da varılan nokta (kapı geçidinin dışında)
 
-# X'in mektubu (gotik kapı görevinin sonu): şimdilik kat 0'da, kitaplığın yanında (öbür katlara henüz geçilemiyor).
+# X'in mektubu (gotik kapı görevinin sonu): kat 2'de, sol üst odada büyü (rün) halkasının yanında; oraya merdivenlerle çıkılır.
 # Alınınca ekran kararır, oyun durur, mektup okunur; kapanınca görev biter, ödül: kırık gümüş mühür (en fazla mana +20).
 # Mektubu Claude yazdı; değiştirilebilir.
-const LETTER_FLOOR := "Kat0"
-const LETTER_AT := Vector2(3.8, -4.4)
+const LETTER_FLOOR := "Kat2"
+const LETTER_AT := Vector2(-3.5, -1.8)
 const NOTE_TITLE := "Yarım kalan bir mektup" # (Aguafina'da "ş" yok: başlıkta "ş" kullanma)
 const NOTE_TEXT := """Abim,
 
