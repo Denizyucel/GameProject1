@@ -302,6 +302,31 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   (NamePage, "Mektup"; merdivenlerle çıkılır): alınınca fade → paused → HUD.show_note → görev biter, player.raise_max_mana(20). HUD.show_note
   (hud.tscn Not: koyu kâğıt panel; tık/Esc/Enter/Boşluk kapatır, HUD o sırada PROCESS_MODE_ALWAYS). Aguafina'da "ş"
   yok (başlıklarda kaçın; düşman barındaki "Vahşi" de). Deneme: tools/door_test.gd (kilitli, giriş, mektup, çıkış).
+- Kemik golemi (zincirin sonu; kullanıcı "kazanılmış hak" istedi): minions/golem.tscn + golem.gd, model
+  assets/minion/bone-golem.glb (asıl public/models/Characters/bone-golem.glb; Meshy SmartRig, 10 bin üçgen, mavi gözlü;
+  1.5 ölçekle 2.55 m; içinde Walking/Running). golem.gd minion.gd'yi genişletir (extends): minion.gd'de türe göre değişen
+  ayarlar artık değişken (kind, animations, move_speed, damage, max_health, rise_duration, body_radius...; sabitler
+  iskeletin varsayılanı), paylaşılan animasyonlar tür başına (static shared[kind]). Golem: 160 can, 14 hasar (düşmanı
+  şaşırtır), silahsız (mutant-swiping + attack3), bekleme mutant-breathing-idle, koşu kendi Running'i, vuruşu ekranı
+  sarsar (0.25), 1.5 sn'de yerden kalkar; "iskelet" ve "golem" gruplarında (düşmanlar saldırır, binaya birlikte taşınır,
+  küçük haritada görünür); crowd.gd body_radius/body_weight okur (0.65, 3). main.minions'ta DEĞİL (5'lik sınırdan ayrı).
+  Kazanılması: mektup okununca 4.5 sn sonra "Mahzendeki rün halkasına in" görevi (main.GOLEM_QUEST); mahzenin sağ büyük
+  odasındaki büyük rün halkası (bina_ici.CIRCLE_AT (4.5, 0), yarıçap 1.65; ortasında küreli kaide, yürünemez) 2.3 m'ye
+  gelince bina_ici.watch_circle: Ruh Kıran büyü yapar, yarısında main.awaken_golem → golem halkanın içinde kalkar,
+  main.has_golem = true, HUD.whisper "Yeni büyü: Kemik Golemi (2 tuşu)". 2 tuşu (main.summon_golem; numpad 2 de): 50 mana
+  (GOLEM_MANA), oyuncunun 2 m önünde büyünün yarısında kalkar; ayaktayken "Golem zaten ayakta."; canı bitince
+  main.on_golem_fell (mavi release efekti), yeniden çağrılabilir. HUD'da golem göstergesi yok. Deneme: tools/golem_test.gd.
+- Köylü (NPC): npcs/villager.tscn + villager.gd (class_name Villager, "koylu" grubu): model assets/npc/woman1.glb (asıl
+  public/models/Characters/Woman/woman1.glb; Meshy SmartRig, 1.7 m, 1.08 ölçek; içinde yalnızca Walking/Running), bekleme
+  oyuncunun idle.fbx'i (RigAnimations.take), zemin yüksekliğine çekilir, oyuncu 5 m'ye gelince ona döner; crowd.gd'de
+  ağırlığı 1000 (içinden geçilmez, itilmez). Düşmanlar ona saldırmaz. İlki saklanan anne: main.MOTHER_AT (-8, 0, 61),
+  köyün kuzeybatısında orman kenarında büyük kayanın yanı, köye bakar; yoldan görünür, köye girmeden bulunur. (Önce
+  meydanın güneyindeki çıkmaz sokaktaydı (4, 87): çatılar örttüğü için kullanıcı göremedi; köyde yer seçerken
+  görüntüyle bak.) Konuşma ve görev henüz yok.
+  Deneme: tools/villager_test.gd.
+- public/models kullanıcı tarafından klasörlendi (Characters/, Weapons/, kit/, floor/, hud/); Godot yalnızca godot/assets
+  kopyalarını kullanır, etkilenmedi. Tarayıcı sürümünün (src/) bazı yolları (nightshade, skeleton, kılıç/kalkan, Lite Sword
+  and Shield Pack, vampir) artık tutmuyor; orada yedek görünümler çıkar.
 - Küçük harita: hud/minimap.gd (hud.tscn Harita, sağ üst 150 x 150; Gorevler onun altında, offset_top 172). İkinci kamera
   yok: main.place_name_pages navmesh hazır olunca Harita.build(Gezinme.navigation_mesh) çağırır, yürünebilir çokgenler
   bir kez resme dökülür (4 px/m). Her kare yuvarlak pencereye (draw_colored_polygon + UV) karakter ortada, kameranın
@@ -428,6 +453,9 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Yol düzleştirme: ızgara yolundaki gereksiz kırılmaları kaldır (görüş hattı kontrolü)
 - Sahneye biraz daha ışık; parçalar şu an çok koyu
 - planlar/yanik-kutuphane-ornek.svg'yi koda göre güncelle (yüksek duvar, duvar rafı, çatı kemeri yok)
+- Golem için HUD göstergesi (ayakta mı, canı) ve çağırma bekleme süresi
+- Mahzendeki rün halkasında golem kalkmadan önce görünen bir kemik yığını; uyanışa özel efekt ve ses
+- Saklanan anneye çömelmiş/korkmuş bekleme animasyonu (Mixamo)
 - Köy modelinin kenarındaki basamağı (0.1-1 m) taş/çalıyla gizle
 - Harabe Köy'ün güneyine 4. bölge Sisli Orman
 - Kül Yolu'nda ölünce kütüphane yerine Kül Yolu girişinde doğma (kontrol noktası)

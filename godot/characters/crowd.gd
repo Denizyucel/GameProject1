@@ -1,4 +1,4 @@
-# Hareketli çarpışma: oyuncu, düşmanlar ve iskeletler birbirinin içinden geçmesin. Fizik motoru kullanmaz: her
+# Hareketli çarpışma: oyuncu, düşmanlar, iskeletler ve köylüler birbirinin içinden geçmesin. Fizik motoru kullanmaz: her
 # karakter yerde bir daire sayılır; her fizik karesinde, herkes kendi hareketini yaptıktan sonra (bu düğüm en son
 # çalışır, process_physics_priority) üst üste binen her ikili birbirinden itilir. İtme ağırlığa göre paylaşılır:
 # ağır olan az kayar (oyuncu ağır: iskeletler ona yol verir, düşmanlar onu kolay kolay itemez). İtilen karakter
@@ -12,6 +12,7 @@ const BODIES := {
 	"oyuncu": [0.4, 4.0],
 	"dusman": [0.45, 2.0], # düşmanın boyu (style.size) ile büyür
 	"iskelet": [0.35, 1.0],
+	"koylu": [0.35, 1000.0], # köylüler (npcs/villager.gd) yerinden oynamaz
 }
 const ROUNDS := 2 # kalabalıkta bir itme başka bir çakışma yaratabilir; iki tur çoğu zaman yeter
 
@@ -27,9 +28,13 @@ func _physics_process(_delta: float) -> void:
 			if not node.alive:
 				continue # ölüler ve topraktan henüz çıkmamış iskeletler engel değil
 			var radius: float = BODIES[group][0]
+			var weight: float = BODIES[group][1]
 			if group == "dusman":
 				radius *= float(node.style["size"])
-			bodies.append({"node": node, "radius": radius, "weight": BODIES[group][1], "moved": false})
+			if "body_radius" in node: # iskelet ve golem kendi ölçüsünü söyler (golem daha geniş ve ağır)
+				radius = node.body_radius
+				weight = node.body_weight
+			bodies.append({"node": node, "radius": radius, "weight": weight, "moved": false})
 	if bodies.size() < 2:
 		return
 	for round in ROUNDS:

@@ -59,6 +59,22 @@ const DOOR_QUEST := "kapi"
 const DOOR_TITLE := "Altın anahtarı gotik binanın kapısına götür"
 const KEY_LINE := "X'in altını. Batıdaki o kapalı binanın kapısına uyabilir."
 const GOLDEN_KEY := preload("res://items/golden_key.gd")
+# Saklanan Anne (yan görev): Harabe Köy'de evlerin arkasına saklanmış, dönüştürülmemiş bir kadın. Kızı köydeki Altın
+# Ölümsüzlerden biri. Şimdilik yalnızca durur (konuşma ve görev sonra).
+const VILLAGER := preload("res://npcs/villager.tscn")
+const MOTHER_AT := Vector3(-8, 0, 61) # köyün kuzeybatısında, orman kenarında büyük kayanın yanı; köye girmeden görülür
+# Kemik golemi (yan görev zincirinin sonu): X'in mektubu okununca görev açılır; gotik binanın mahzenindeki rün
+# halkasına inilince golem ilk kez kalkar (levels/bina_ici.gd → awaken_golem) ve 2 tuşuyla çağırma hakkı kazanılır.
+# Aynı anda tek golem; iskeletlerin 5'lik sınırından ayrı. Canı bitince ruhu serbest kalır, yeniden çağrılabilir.
+const GOLEM := preload("res://minions/golem.tscn")
+const GOLEM_KEYS := [KEY_2, KEY_KP_2] # üst sıradaki 2 ve sayı tuş takımındaki 2
+const GOLEM_MANA := 50.0
+const GOLEM_DISTANCE := 2.0 # oyuncunun bu kadar önünde kalkar
+const GOLEM_QUEST := "golem"
+const GOLEM_TITLE := "Mahzendeki rün halkasına in"
+const GOLEM_LINE := "Yüzlerce kemik, tek beden. Kimse onları zorlamadı; kendileri kalktı."
+const GOLEM_HINT := "Yeni büyü: Kemik Golemi (2 tuşu)"
+const GOLEM_HERE_LINE := "Golem zaten ayakta."
 const NAMES_QUEST := "isimler"
 const NAMES_TITLE := "Unutulan İsimler"
 const NAMES_REWARD := 10.0 # hepsi bulununca en fazla cana eklenir
@@ -85,6 +101,10 @@ var quests: QuestLog
 var champion: Node3D
 var has_golden_key := false
 var cast_target: Node3D # bu büyüyle kalkacak ceset; kalkınca null
+var has_golem := false # golem çağırma hakkı kazanıldı mı (mahzendeki rün halkası)
+var golem: Node3D # ayaktaki golem; yoksa null
+var golem_pending := false # golem büyüsü sürüyor: yarısında golem_at'te kalkar
+var golem_at := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -116,6 +136,11 @@ func _ready() -> void:
 	enemies_root.add_child(champion)
 	champion.seal_broken.connect(on_seal_broken)
 	champion.buried.connect(on_enemy_fell)
+	var mother := VILLAGER.instantiate()
+	mother.name = "Anne"
+	mother.position = MOTHER_AT
+	mother.rotation.y = atan2(12.0, 15.0) # köye (meydana) bakar: kızı orada
+	add_child(mother)
 	# Açılıştan geldiyse: Ruh Kıran kapıdan girer, salonun ortasında durup yangının izlerine bakar
 	if after_intro:
 		after_intro = false
@@ -227,6 +252,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key and key.pressed and not key.echo and key.physical_keycode in RAISE_KEYS:
 		raise_dead()
+	if key and key.pressed and not key.echo and key.physical_keycode in GOLEM_KEYS:
+		summon_golem()
 
 
 ## 1 tuşu: en yakın cesede büyü yapmaya başla
@@ -258,8 +285,72 @@ func nearest_corpse() -> Node3D:
 	return best
 
 
+## 2 tuşu: kemik golemini çağır (hak kazanıldıysa ve ayakta golem yoksa). Oyuncunun önünde, büyünün yarısında kalkar.
+func summon_golem() -> bool:
+	if not has_golem or player.is_busy():
+		return false
+	if is_instance_valid(golem):
+		hud.say(GOLEM_HERE_LINE)
+		return false
+	if player.mana < GOLEM_MANA:
+		player.not_enough_mana.emit()
+		return false
+	var ahead: Vector3 = player.global_position + Vector3(sin(player.rotation.y), 0, cos(player.rotation.y)) * GOLEM_DISTANCE
+	var found := NavigationServer3D.map_get_closest_point_to_segment(get_world_3d().navigation_map, ahead + Vector3.UP * 2.0, ahead + Vector3.DOWN * 2.0)
+	if player.start_cast(found) < 0:
+		return false
+	player.spend_mana(GOLEM_MANA)
+	golem_at = Vector3(found.x, 0, found.z)
+	golem_pending = true
+	return true
+
+
+func update_golem_cast() -> void:
+	if not golem_pending:
+		return
+	var progress: float = player.cast_progress()
+	if progress < 0:
+		golem_pending = false # büyü yarıda kaldı (oyuncu öldü)
+	elif progress >= RAISE_MOMENT:
+		golem_pending = false
+		spawn_golem(golem_at)
+
+
+## Golem at noktasında yerden yükselir (iskelet gibi mavi parıltıyla, ama daha yavaş ve ekranı sarsarak)
+func spawn_golem(at: Vector3) -> void:
+	if is_instance_valid(golem):
+		return
+	golem = GOLEM.instantiate()
+	golem.leader = player
+	golem.slot_angle = raised_count * GOLDEN_ANGLE + PI # iskeletlerin arasına denk gelmesin
+	add_child(golem)
+	golem.global_position = Vector3(at.x, 0, at.z)
+	var to_player: Vector3 = player.global_position - golem.global_position
+	golem.rotation.y = atan2(to_player.x, to_player.z)
+	golem.fell.connect(on_golem_fell)
+	GameCamera.shake(0.45)
+
+
+## Golemin canı bitti: iskeletler gibi ruhu serbest kalır; 2 tuşuyla yeniden çağrılabilir
+func on_golem_fell(fallen: Node3D) -> void:
+	spawn_effect(fallen.global_position, true)
+	fallen.queue_free()
+	golem = null
+
+
+## Mahzendeki rün halkası (levels/bina_ici.gd çağırır): golem ilk kez kalkar, çağırma hakkı kazanılır
+func awaken_golem(at: Vector3) -> void:
+	has_golem = true
+	quests.start(GOLEM_QUEST, GOLEM_TITLE) # mektubu okumadan (denemede) gelinirse de görev bitsin
+	quests.finish(GOLEM_QUEST)
+	spawn_golem(at)
+	hud.say(GOLEM_LINE)
+	hud.whisper(GOLEM_HINT)
+
+
 func _process(_delta: float) -> void:
 	watch_champion()
+	update_golem_cast()
 	if cast_target == null:
 		return
 	var progress: float = player.cast_progress()

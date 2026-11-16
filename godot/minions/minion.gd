@@ -3,6 +3,7 @@
 # Topraktan mavi ışıkla yükselir, efendisini (oyuncuyu) takip eder; yakındaki düşmana koşup kılıçla vurur.
 # Canı var: düşmanlar iskeletlere de saldırır (enemy.gd, en yakın rakip). Vurulunca kırmızı parlar; canı bitince
 # fell sinyali gider, main.gd onu serbest bırakır (mavi ruh efekti, MAX_MINIONS dolunca olanla aynı).
+# Kemik golemi (minions/golem.gd) bu betiği genişletir: aynı takip ve dövüş, kendi modeli, sayıları ve vuruşları.
 
 extends Node3D
 
@@ -50,10 +51,27 @@ const ANIMATIONS := [
 	["vurus4", "res://assets/animations/sword/attack4.fbx", "mixamo_com", false],
 ]
 
-# Bütün iskeletlerin paylaştığı animasyonlar ve ölçümler (ilk iskelet hazırlar)
-static var shared_library: AnimationLibrary
-static var run_clip_speed := 0.0
-static var attack_moves: Array[Dictionary] = []
+# Bir türün (iskelet, golem) hepsinin paylaştığı animasyonlar ve ölçümler; türün ilk örneği hazırlar.
+# tür → {"library": AnimationLibrary, "run_speed": koşu animasyonunun hızı, "moves": vuruşlar}
+static var shared := {}
+
+# Türe göre değişen ayarlar: iskeletin değerleri yukarıdaki sabitler; golem.gd _init'te kendi değerlerini yazar
+var kind := "iskelet"
+var animations: Array = ANIMATIONS
+var move_speed := MOVE_SPEED
+var slot_distance := SLOT_DISTANCE
+var attack_range := ATTACK_RANGE
+var hit_reach := HIT_REACH
+var damage := DAMAGE
+var max_health := MAX_HEALTH
+var attack_time_scale := ATTACK_TIME_SCALE
+var attack_cooldown := ATTACK_COOLDOWN
+var rise_duration := RISE_TIME
+var rise_depth := RISE_DEPTH
+var body_radius := 0.35 # hareketli çarpışmadaki dairesi ve ağırlığı (characters/crowd.gd)
+var body_weight := 1.0
+var run_clip_speed := 0.0
+var attack_moves: Array[Dictionary] = []
 
 @onready var agent: NavigationAgent3D = $NavigationAgent3D
 @onready var model: Node3D = $Model
@@ -73,16 +91,20 @@ var attack_time := 0.0
 var attack_has_hit := false
 var cooldown := 0.0
 var current := ""
-var health := MAX_HEALTH
+var health := 0.0 # _ready'de max_health olur
 var alive := false # topraktan çıkınca true; düşmanlar yalnızca ayaktaki canlı iskelete saldırır (enemy.is_foe_valid)
 var hurt := 0.0 # kırmızı parlamanın kalan gücü (0..1)
 
 
 func _ready() -> void:
 	add_to_group("iskelet")
-	if shared_library == null:
+	health = max_health
+	if not shared.has(kind):
 		prepare_shared_animations()
-	animation_player.add_animation_library("hareket", shared_library)
+	var mine: Dictionary = shared[kind]
+	animation_player.add_animation_library("hareket", mine["library"])
+	run_clip_speed = mine["run_speed"]
+	attack_moves = mine["moves"]
 	play("hareket/idle")
 	attach_gear()
 
@@ -93,24 +115,26 @@ func _ready() -> void:
 	glow_material.albedo_color = Color(GLOW, 0.8)
 	for mesh in model.find_children("*", "MeshInstance3D", true, false):
 		(mesh as MeshInstance3D).material_overlay = glow_material
-	rise_offset = -RISE_DEPTH
+	rise_offset = -rise_depth
 
 
 func prepare_shared_animations() -> void:
-	shared_library = AnimationLibrary.new()
-	for spec in ANIMATIONS:
+	var library := AnimationLibrary.new()
+	for spec in animations:
 		if ResourceLoader.exists(spec[1]):
 			var animation := RigAnimations.take(spec[1], spec[2], animation_player, skeleton, spec[3])
 			RigAnimations.remove_root_motion(animation)
-			shared_library.add_animation(spec[0], animation)
-	animation_player.add_animation_library("hareket", shared_library)
-	run_clip_speed = RigAnimations.stride_speed(animation_player, skeleton, "hareket/run")
+			library.add_animation(spec[0], animation)
+	animation_player.add_animation_library("hareket", library)
+	var run_speed := RigAnimations.stride_speed(animation_player, skeleton, "hareket/run")
+	var moves: Array[Dictionary] = []
 	for i in 4:
 		var animation_name := "hareket/vurus%d" % (i + 1)
 		if animation_player.has_animation(animation_name):
 			var moment := RigAnimations.fastest_hand_moment(animation_player, skeleton, animation_name)
-			attack_moves.append({"name": animation_name, "hit_moment": moment})
+			moves.append({"name": animation_name, "hit_moment": moment})
 	animation_player.remove_animation_library("hareket")
+	shared[kind] = {"library": library, "run_speed": run_speed, "moves": moves}
 
 
 func attach_gear() -> void:
@@ -130,10 +154,10 @@ func attach_gear() -> void:
 
 func _physics_process(delta: float) -> void:
 	# Topraktan çıkış: yavaş başlayıp hızlanır, mavi parıltı söner
-	if rise_time < RISE_TIME:
+	if rise_time < rise_duration:
 		rise_time += delta
-		var t := minf(rise_time / RISE_TIME, 1.0)
-		rise_offset = -RISE_DEPTH * (1.0 - t * t * (3.0 - 2.0 * t))
+		var t := minf(rise_time / rise_duration, 1.0)
+		rise_offset = -rise_depth * (1.0 - t * t * (3.0 - 2.0 * t))
 		glow_material.albedo_color.a = 0.8 * (1.0 - t)
 		if t >= 1.0:
 			alive = true
@@ -165,7 +189,7 @@ func _physics_process(delta: float) -> void:
 
 	if target:
 		var distance := ground_distance(global_position, target.global_position)
-		if distance <= ATTACK_RANGE:
+		if distance <= attack_range:
 			agent.target_position = global_position
 			face_now(target.global_position)
 			if cooldown <= 0:
@@ -179,7 +203,7 @@ func _physics_process(delta: float) -> void:
 
 	# Efendisini takip et: uzaklaşınca kendi yerine (efendisinin çevresinde) koş
 	if ground_distance(global_position, leader.global_position) > FOLLOW_START or not agent.is_navigation_finished():
-		var slot := leader.global_position + Vector3(sin(slot_angle), 0, cos(slot_angle)) * SLOT_DISTANCE
+		var slot := leader.global_position + Vector3(sin(slot_angle), 0, cos(slot_angle)) * slot_distance
 		chase(slot, delta, 0.0)
 	else:
 		play("hareket/idle")
@@ -188,7 +212,7 @@ func _physics_process(delta: float) -> void:
 
 ## Efendisinin yanındaki yerine (navmesh'te) anında geç
 func catch_up() -> void:
-	var slot := leader.global_position + Vector3(sin(slot_angle), 0, cos(slot_angle)) * SLOT_DISTANCE
+	var slot := leader.global_position + Vector3(sin(slot_angle), 0, cos(slot_angle)) * slot_distance
 	var map := get_world_3d().navigation_map
 	var found := NavigationServer3D.map_get_closest_point_to_segment(map, slot + Vector3.UP * 2.0, slot + Vector3.DOWN * 2.0)
 	global_position = Vector3(found.x, 0, found.z)
@@ -207,7 +231,7 @@ func chase(point: Vector3, delta: float, stop_short: float) -> void:
 		var away := global_position - point
 		away.y = 0
 		agent.target_position = point + (away.normalized() * stop_short if away.length() > 0.01 else Vector3.ZERO)
-	var direction := RigAnimations.step_along_path(agent, self, MOVE_SPEED, delta)
+	var direction := RigAnimations.step_along_path(agent, self, move_speed, delta)
 	if direction == Vector3.ZERO:
 		play("hareket/idle")
 		animation_player.speed_scale = 1.0
@@ -215,7 +239,7 @@ func chase(point: Vector3, delta: float, stop_short: float) -> void:
 	if Vector2(direction.x, direction.z).length() > 0.01:
 		rotation.y = lerp_angle(rotation.y, atan2(direction.x, direction.z), 1.0 - exp(-TURN_SPEED * delta))
 	play("hareket/run")
-	animation_player.speed_scale = MOVE_SPEED / run_clip_speed if run_clip_speed > 0 else 1.0
+	animation_player.speed_scale = move_speed / run_clip_speed if run_clip_speed > 0 else 1.0
 
 
 func find_target() -> Node3D:
@@ -240,20 +264,26 @@ func start_attack() -> void:
 	current = "" # aynı vuruş art arda gelirse baştan başlasın
 	play(attack["name"])
 	animation_player.seek(0.0, true)
-	animation_player.speed_scale = ATTACK_TIME_SCALE
+	animation_player.speed_scale = attack_time_scale
 
 
 func update_attack(delta: float) -> void:
 	attack_time += delta
-	var duration: float = animation_player.get_animation(attack["name"]).length / ATTACK_TIME_SCALE
+	var duration: float = animation_player.get_animation(attack["name"]).length / attack_time_scale
 	var progress := attack_time / duration
 	if not attack_has_hit and progress >= attack["hit_moment"]:
 		attack_has_hit = true
-		if target and is_instance_valid(target) and target.alive and ground_distance(global_position, target.global_position) <= HIT_REACH:
-			target.hit(global_position, DAMAGE)
+		if target and is_instance_valid(target) and target.alive and ground_distance(global_position, target.global_position) <= hit_reach:
+			target.hit(global_position, damage)
+			on_hit_landed()
 	if progress >= 1.0:
 		attack = {}
-		cooldown = ATTACK_COOLDOWN
+		cooldown = attack_cooldown
+
+
+## Vuruş düşmana değdi (golem burada ekranı sarsar)
+func on_hit_landed() -> void:
+	pass
 
 
 ## Düşman vurdu: canı azalt, kırmızı parla. Can biterse fell gönderir (main.gd serbest bırakır).

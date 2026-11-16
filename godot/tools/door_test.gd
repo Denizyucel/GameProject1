@@ -78,6 +78,9 @@ func _initialize() -> void:
 	print("Dışarı çıktı mı: %s, konum %s; kapı yeniden içeri aldı mı: %s" % [not inside.is_inside(player.global_position), player.global_position, inside.is_inside(player.global_position)])
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png(out_dir + "/ic-cikis.png")
+	# Mektuptan birkaç saniye sonra zincirin son görevi (mahzendeki rün halkası, kemik golemi) açılmış olmalı
+	await create_timer(3.0).timeout
+	print("Mektuptan sonra görevler: %s, alt yazı '%s'" % [main.quests.lines(), main.hud.say_label.text])
 	quit()
 
 

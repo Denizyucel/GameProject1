@@ -91,7 +91,18 @@ Anlamayacağını biliyorum. Ama bir gün, sen de yorulduğunda, bana teşekkür
 const REWARD_MANA := 20.0
 const REWARD_LINE := "Mektubun altında kırık bir gümüş mühür… onun çaldıklarından biri. Elimde hâlâ ılık."
 
+# Kemik golemi (zincirin son halkası): mektup okununca "Mahzendeki rün halkasına in" görevi açılır. Mahzenin sağ büyük
+# odasındaki büyük rün halkasına (ortasında küreli kaide; yarıçapı 1.65 m) gelince Ruh Kıran büyü yapar, golem halkanın
+# içinde yerden kalkar ve 2 tuşuyla çağırma hakkı kazanılır (main.gd: awaken_golem).
+const CIRCLE_FLOOR := "KatEksi1"
+const CIRCLE_AT := Vector2(4.5, 0.0) # halkanın ortası (katın kendi koordinatında)
+const CIRCLE_REACH := 2.3 # ortaya bu kadar yaklaşınca
+const CIRCLE_SPOT := 1.1 # golem ortadan bu kadar uzakta, oyuncunun geldiği yanda kalkar (ortada kaide var)
+const CIRCLE_LINE := "Halkanın altında kemikler var… X onları buraya bağlamış. Çözeyim."
+const LETTER_HINT_LINE := "Mektupta bir not daha: «Aşağıdakileri rahat bırak.» Mahzende ne var?"
+
 var busy := false
+var rite_done := false # rün halkasındaki uyanış bir kez olur
 var armed := true # geçitler çalışıyor mu (bir geçitten gelince oyuncu hepsinin dışına çıkana kadar false)
 
 
@@ -181,6 +192,10 @@ func read_letter() -> void:
 	(get_tree().get_first_node_in_group("oyuncu")).raise_max_mana(REWARD_MANA)
 	main.hud.say(REWARD_LINE)
 	busy = false
+	# Zincir sürer: mahzendeki rün halkası (kemik golemi)
+	await get_tree().create_timer(main.hud.SAY_TIME + 1.0).timeout
+	main.quests.start(main.GOLEM_QUEST, main.GOLEM_TITLE)
+	main.hud.say(LETTER_HINT_LINE)
 
 
 ## Dışarıdan içeri gir (gothic_door.gd çağırır)
@@ -195,6 +210,7 @@ func _process(_delta: float) -> void:
 	if player == null or not player.alive or not is_inside(player.global_position):
 		return
 	var here := player.global_position
+	watch_circle(player)
 	# Bir geçitten gelince geçitler, oyuncu hepsinin dışına (TRIGGER + REARM_MARGIN) bir kez çıkana kadar beklemede
 	var nearest := INF
 	var hit: Array = []
@@ -213,6 +229,26 @@ func _process(_delta: float) -> void:
 			travel(OUTSIDE, true)
 		else:
 			travel(floor_point(hit[2], hit[3]))
+
+
+## Mahzendeki rün halkası: görev açıkken oyuncu halkaya gelince büyü yapar, büyünün yarısında golem kalkar
+func watch_circle(player: Node3D) -> void:
+	var main := get_tree().current_scene
+	if rite_done or not main.quests.is_open(main.GOLEM_QUEST) or player.is_busy():
+		return
+	var center := floor_point(CIRCLE_FLOOR, CIRCLE_AT)
+	var from_center := Vector3(player.global_position.x - center.x, 0, player.global_position.z - center.z)
+	if from_center.length() > CIRCLE_REACH:
+		return
+	rite_done = true
+	var wanted := center + from_center.normalized() * CIRCLE_SPOT
+	var found := NavigationServer3D.map_get_closest_point_to_segment(get_world_3d().navigation_map, wanted + Vector3.UP * 3.0, wanted + Vector3.DOWN * 2.0)
+	var spot := Vector3(found.x, 0, found.z)
+	main.hud.say(CIRCLE_LINE)
+	var duration: float = player.start_cast(spot)
+	if duration > 0:
+		await get_tree().create_timer(duration * 0.5).timeout
+	main.awaken_golem(spot)
 
 
 ## Ekranı karart, oyuncuyu (ve iskeletlerini) taşı, ekranı aç
