@@ -287,7 +287,8 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   tetiklenmez (armed: oyuncu bütün geçitlerin TRIGGER + 0.3 m dışına bir kez çıkınca yeniden çalışır). Kat 0'ın kapısı
   (0.1, 4.9) dışarıya (-22.9, 40); girişte kat 0'da (0.1, 3.3). Merdivenler: kat 0 sağ ön (3, 2.4) ↔ kat 1 sol alt oda
   (iniş noktası (2, 4.5): kat 1'in merdiven "odası" çoğunlukla boşluk), kat 0 arka orta (0, -2.3) ↔ mahzen koridoru,
-  kat 1 sol üst odada merdivenin sol dibi (-1.1, -3.9) ↔ kat 2 üst orta (0, -3.4).
+  kat 1 sol üst odada merdivenin sol dibi (-1.1, -3.9) ↔ kat 2 üst orta (0, -2.7; varış (0.9, -1.6)). Kullanıcının
+  son güncellemesinde kat 2'deki merdiven boşluğu dört yandan korkulukla çevrildi: ön yüzüne GAPS'te ağız açıldı.
   Geçitler: kat -1, 1, 2'de odaları ayıran ~1.2 m'lik alçak duvarlarda geçit yoktu (kullanıcı kodla açılmasını istedi:
   1.5 m, önü boş, yerden boş, her oda bağlı). levels/wall_cutter.gd (class_name WallCutter): cut(model, kutular) üçgenleri
   kutu sınırından kırpar (Sutherland-Hodgman; UV/normal/renk ara değerlenir, mesh bellekte yeniden kurulur, dosya
@@ -295,7 +296,7 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   ve keep adları hariç). bina_ici.GAPS (her geçit [x, z, duvar yönü], kesim derinliği duvarın iki yanına 0.75 m) +
   CLEAR_REACH 1.6 m önü temizlenir + CLEARS (yolu kesen tek tek eşyalar: mahzende ortadaki kaide ve iki şerit, kat 2'de
   sandık, bir kazan, yuvarlak bir eşya, bir dolap). Ulaşılabilirlik (varış noktasından yol): kat 0 %100, mahzen %95,
-  kat 1 %85, kat 2 %81 (kalanlar eşya arkası köşeler). Kat planı güncellenirse GAPS/CLEARS gözden geçirilmeli.
+  kat 1 %88, kat 2 %80 (kalanlar eşya arkası köşeler). Kat planı güncellenirse GAPS/CLEARS gözden geçirilmeli.
   Her kata görüş penceresi (building_window.gd, geçitler kesildikten sonra kurulur; tam boy ön duvarlar odaları
   kapatıyordu). Denemeler: tools/stairs_test.gd (katları merdivenle dolaşır), tools/door_test.gd. X'in mektubu kat 2'de, sol üst odada rün halkasının yanında
   (NamePage, "Mektup"; merdivenlerle çıkılır): alınınca fade → paused → HUD.show_note → görev biter, player.raise_max_mana(20). HUD.show_note

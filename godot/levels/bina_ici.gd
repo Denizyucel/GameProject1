@@ -21,8 +21,8 @@ const PORTALS := [
 	["Kat0", Vector2(0.0, -2.3), "KatEksi1", Vector2(0.0, -2.2)], # aşağı merdiven (arka ortada) → mahzen koridoru
 	# Kat 1'in aşağı merdiven "odası" çoğunlukla merdiven boşluğu: iniş noktası sol alt odadan açılan geçidin içinde
 	["Kat1", Vector2(2.0, 4.5), "Kat0", Vector2(3.0, 1.2)], # kat 1'den aşağı
-	["Kat1", Vector2(-1.1, -3.9), "Kat2", Vector2(0.4, -2.2)], # kat 1'den yukarı (sol üst odada merdivenin sol dibi)
-	["Kat2", Vector2(0.0, -3.4), "Kat1", Vector2(-2.6, -4.2)], # kat 2'den aşağı
+	["Kat1", Vector2(-1.1, -3.9), "Kat2", Vector2(0.9, -1.6)], # kat 1'den yukarı (sol üst odada merdivenin sol dibi)
+	["Kat2", Vector2(0.0, -2.7), "Kat1", Vector2(-2.6, -4.2)], # kat 2'den aşağı (merdiven boşluğunun korkuluğundaki ağzın önü)
 	["KatEksi1", Vector2(0.0, -3.4), "Kat0", Vector2(0.0, -1.1)], # mahzenden yukarı
 ]
 
@@ -50,6 +50,7 @@ const GAPS := {
 	],
 	"Kat2": [
 		[-1.6, -1.9, "z"], [4.5, -4.0, "z"], # merdivenin olduğu üst ortadan sol ve sağ üst odalara
+		[0.0, -3.05, "x"], # merdiven boşluğunun korkuluğu (dört yandan kapalıydı): ön yüzde ağız
 		[-4.2, 0.0, "x"], # sol üstten sol alta
 		[-1.6, 1.9, "z"], # sol alttan depoya
 		[5.9, 0.0, "x"], # sağ üstten sağ alta
