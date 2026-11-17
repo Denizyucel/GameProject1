@@ -1,8 +1,8 @@
 # Küçük harita (sağ üst köşe, Diablo tarzı sade çizim). Dünyayı ikinci bir kamerayla yeniden çizmez: açılışta
 # navmesh'in yürünebilir alanı bir kez bir resme (METRE_PX piksel/metre) dökülür; her karede bu resim, karakter
 # ortada kalacak ve ekrandaki izometrik açıyla aynı yöne bakacak şekilde yuvarlak bir pencereye çizilir.
-# Üstünde: oyuncu (köz kırmızısı ok, baktığı yöne), düşmanlar (altın), iskeletler (kemik beyazı), alınmamış
-# isim sayfaları (köz noktası). Boyut ve yer hud.tscn'de (Harita).
+# Üstünde: oyuncu (köz kırmızısı ok, baktığı yöne), düşmanlar (altın), iskeletler (kemik beyazı), köylüler (soluk mavi), alınmamış
+# isim sayfaları (köz noktası), görev hedefleri ("gorev_hedefi" grubu: köz halkası, uzaktaysa kenarda). Boyut ve yer hud.tscn'de (Harita).
 
 extends Control
 
@@ -15,6 +15,8 @@ const PLAYER := Color(1.0, 0.38, 0.18)
 const ENEMY := Color(1.0, 0.8, 0.35)
 const MINION := Color(0.9, 0.88, 0.8)
 const PAGE := Color(1.0, 0.3, 0.1)
+const VILLAGER := Color(0.6, 0.82, 1.0) # köylüler (konuşulabilen karakterler): soluk mavi
+const TARGET := Color(1.0, 0.45, 0.2) # görev hedefi ("gorev_hedefi" grubu): nabız atan köz halkası
 const SEGMENTS := 64
 
 var map_texture: ImageTexture
@@ -102,10 +104,18 @@ func draw_markers(radius: float) -> void:
 	for page in get_tree().get_nodes_in_group("isim_sayfasi"):
 		if not page.taken:
 			draw_dot(to_map(page.global_position), limit, PAGE, 3.0 + sin(Time.get_ticks_msec() / 250.0))
+	for villager in get_tree().get_nodes_in_group("koylu"):
+		draw_dot(to_map(villager.global_position), limit, VILLAGER, 3.0)
 	for minion in get_tree().get_nodes_in_group("iskelet"):
 		draw_dot(to_map(minion.global_position), limit, MINION, 2.5)
 	for enemy in get_tree().get_nodes_in_group("dusman"):
 		draw_dot(to_map(enemy.global_position), limit, ENEMY, 3.0)
+	# Görev hedefleri: noktanın çevresinde nabız atan halka; harita dışındaysa o yönde, kenarda durur (yön gösterir)
+	for target in get_tree().get_nodes_in_group("gorev_hedefi"):
+		var at := to_map(target.global_position)
+		if at.distance_to(center) > limit:
+			at = center + (at - center).normalized() * limit
+		draw_arc(at, 5.5 + sin(Time.get_ticks_msec() / 250.0), 0, TAU, 24, TARGET, 1.5, true)
 	# Oyuncu: baktığı yöne dönük küçük bir ok
 	var facing3 := player.global_basis.z # model +z'ye bakıyor
 	var tip := to_map(player.global_position + Vector3(facing3.x, 0, facing3.z).normalized() * 1.0) - center

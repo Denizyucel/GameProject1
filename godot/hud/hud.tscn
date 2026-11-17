@@ -129,6 +129,33 @@ font_color = Color(0.9, 0.85, 0.78, 1)
 font_size = 13
 font_color = Color(0.6, 0.55, 0.5, 1)
 
+[sub_resource type="StyleBoxFlat" id="DiyalogKutusu"]
+content_margin_left = 28.0
+content_margin_top = 16.0
+content_margin_right = 28.0
+content_margin_bottom = 12.0
+bg_color = Color(0.11, 0.085, 0.07, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.42, 0.33, 0.2, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+shadow_color = Color(0, 0, 0, 0.6)
+shadow_size = 14
+
+[sub_resource type="LabelSettings" id="DiyalogAdAyari"]
+font_size = 17
+font_color = Color(1, 1, 1, 1)
+
+[sub_resource type="LabelSettings" id="DiyalogMetniAyari"]
+font_size = 20
+line_spacing = 5.0
+font_color = Color(0.93, 0.88, 0.82, 1)
+
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
 
@@ -277,24 +304,20 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="Beceriler" type="HBoxContainer" parent="."]
-anchors_preset = 7
-anchor_left = 0.5
+anchors_preset = 2
 anchor_top = 1.0
-anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -78.0
-offset_top = -142.0
-offset_right = 78.0
-offset_bottom = 14.0
-grow_horizontal = 2
+offset_left = 244.0
+offset_top = -163.0
+offset_right = 360.0
+offset_bottom = -47.0
 grow_vertical = 0
 mouse_filter = 2
-theme_override_constants/separation = -52
-alignment = 1
+theme_override_constants/separation = -38
 script = ExtResource("12_skill_bar")
 
 [node name="Iskelet" type="Control" parent="Beceriler"]
-custom_minimum_size = Vector2(156, 156)
+custom_minimum_size = Vector2(116, 116)
 layout_mode = 2
 mouse_filter = 2
 script = ExtResource("13_skill_slot")
@@ -302,7 +325,7 @@ icon = ExtResource("14_skill_skeleton")
 
 [node name="Golem" type="Control" parent="Beceriler"]
 visible = false
-custom_minimum_size = Vector2(156, 156)
+custom_minimum_size = Vector2(116, 116)
 layout_mode = 2
 mouse_filter = 2
 script = ExtResource("13_skill_slot")
@@ -343,9 +366,9 @@ vertical_alignment = 1
 [node name="Konusma" type="Label" parent="."]
 modulate = Color(1, 1, 1, 0)
 anchors_preset = 12
-anchor_top = 0.74
+anchor_top = 0.71
 anchor_right = 1.0
-anchor_bottom = 0.74
+anchor_bottom = 0.71
 offset_bottom = 36.0
 grow_horizontal = 2
 mouse_filter = 2
@@ -492,3 +515,40 @@ layout_mode = 2
 text = "Devam etmek için tıkla"
 label_settings = SubResource("NotIpucuAyari")
 horizontal_alignment = 1
+
+[node name="Diyalog" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -330.0
+offset_top = -150.0
+offset_right = 330.0
+offset_bottom = -26.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("DiyalogKutusu")
+
+[node name="Duzen" type="VBoxContainer" parent="Diyalog"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Ad" type="Label" parent="Diyalog/Duzen"]
+layout_mode = 2
+label_settings = SubResource("DiyalogAdAyari")
+
+[node name="Metin" type="Label" parent="Diyalog/Duzen"]
+custom_minimum_size = Vector2(0, 62)
+layout_mode = 2
+size_flags_vertical = 3
+label_settings = SubResource("DiyalogMetniAyari")
+autowrap_mode = 3
+
+[node name="Ipucu" type="Label" parent="Diyalog/Duzen"]
+layout_mode = 2
+text = "Tık / Boşluk: devam    Esc: geç"
+label_settings = SubResource("NotIpucuAyari")
+horizontal_alignment = 2

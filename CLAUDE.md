@@ -115,7 +115,10 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   Düşman ölümünde with_soul = false (kullanıcı istedi): yalnızca altın kırılma (parlama, halka, kıymıklar, altın ışık)
   ve sarsıntı; mavi ruh noktaları ve "Teşekkür ederiz" fısıltısı yok (main.on_seal_broken). İskelet serbest kalırken
   (release) ruh duruyor. HUD.whisper başka işler için duruyor. 3.2 sn sonra kendini siler.
-  HUD.whisper(metin): Fisilti etiketi (italik SystemFont, mavi parıltı), belirip yukarı süzülerek kaybolur.
+  Adı olan düşmanlar: enemy.custom_style (boş değilse torbadan tarz çekilmez; sahneye eklenmeden önce verilir) ve
+  enemy.soul_rises = true (mührü kırılınca mavi ruh da yükselir: main.on_seal_broken with_soul'u buradan alır). İlki
+  Nazlı (Saklanan Anne). main.place_enemy(düşman, yer): yerine koyar, mühür / ceset sinyallerini bağlar.
+  HUD.whisper(metin, süre = 3 sn): Fisilti etiketi (italik SystemFont, mavi parıltı), belirip yukarı süzülerek kaybolur.
   Godot Forward+'ta sahneye ışık eklemek shader derletmez; ışık havuzu gerekmedi.
   Deneme: tools/seal_test.gd (efektin kendi saatine göre görüntü alır; ekran görüntüsü oyunu dondurur ve
   Godot o süreyi oyun zamanına saymaz, duvar saatine göre beklemek yanıltır).
@@ -228,7 +231,8 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   yazdırır). Navmesh: tools/bake_navmesh.gd köy bölgesine yürünebilir karelerden DÜZ zemin ekler (model
   navmesh'e girmez); editördeki Bake düğmesi köyü yürünemez bırakır, hep betiği kullan. Modeli taşıyınca:
   build_village_terrain, sonra bake_navmesh, sonra ENEMY_SPAWNS'ı haritaya göre gözden geçir.
-  Düşmanlar: köy girişinde 3 (z ~68), meydanda 4, batıdaki yokuşta 5; toplam 15. Yol köy girişinde biter
+  Düşmanlar: köy girişinde 3 (z ~68), meydanda 4 (dördüncüsü Nazlı: main.DAUGHTER_AT (2, 0, 77.5), ENEMY_SPAWNS'ta
+  değil), batıdaki yokuşta 5; toplam 15. Yol köy girişinde biter
   (road_count 12; köyün içinde modelin kendi taş yolu var). Köy tek mesh olduğu için saydamlaşmaz: evlerin
   arkasında karakter görünmeyebilir. Cevre halkası z = 130'a kadar (DisZemin 120 x 200). Ara sahnede köy yok.
   Deneme: tools/village_test.gd (düşmanlara yol, yokuş yürüyüşü, tıklama).
@@ -318,25 +322,51 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   main.on_golem_fell (mavi release efekti); hak kaybolmaz, 20 sn bekleme (main.golem_cooldown, GOLEM_COOLDOWN; oyun saatiyle
   azalır) dolunca yeniden çağrılır, beklerken "Kemikler henüz toplanmadı." Kendi isteğiyle çağırmada bekleme yok.
   Deneme: tools/golem_test.gd.
-- Beceri çubuğu (HUD, alt ortada, can ve mana küresinin arası): hud.tscn Beceriler (HBoxContainer, alt ortaya çapalı,
-  iki yana büyür) + hud/skill_bar.gd; içinde Iskelet ve Golem yuvaları (hud/skill_slot.gd, 156 x 156). Görselleri
+- Beceri çubuğu (HUD, altta can küresinin hemen sağından başlar, sağa doğru dizilir; kullanıcı ortada istemedi):
+  hud.tscn Beceriler (HBoxContainer, sol alta çapalı, offset_left 244: ilk çerçeve x ≈ 268'de, küre çerçevesi ≈ 258'de
+  biter; offset_top -163: çerçevenin ortası can küresinin ortasıyla (ekranın altından 108 px) aynı hizada, kullanıcı
+  altta kalmasını istemedi) + hud/skill_bar.gd; içinde Iskelet ve Golem yuvaları (hud/skill_slot.gd, 116 x 116; çerçeve ekranda ~68 px;
+  kullanıcı 156'yı, sonra 136'yı büyük buldu; boyut değişince offset'ler de değişir: görselin %20'si saydam kenar). Görselleri
   kullanıcı çizdi: assets/hud/skills/create-skeleton.png ve create-golem.png (asılları public/models/hud/Skills;
   golemin asıl adı Create-gollem.png; 300 x 300, gotik çerçeve x 62..238, y 54..232, iç resim x 90..210, y 82..206,
-  altta tuşun yazdığı kutu). Görselin kenarı saydam olduğu için yuvalar -52 aralıkla üst üste biner. skill_bar her kare
+  altta tuşun yazdığı kutu). Görselin kenarı saydam olduğu için yuvalar -38 aralıkla üst üste biner. skill_bar her kare
   main'den okur: iskelet simgesi 8 m içinde ceset varsa ve mana yetiyorsa parlak, yoksa soluk; golem simgesi hak
-  kazanılana kadar gizli (çubuk tek simgeyle ortalanır), golem ayaktayken çerçevenin üstünde can barı (mavi, son üçte
+  kazanılana kadar gizli, golem ayaktayken çerçevenin üstünde can barı (mavi, son üçte
   birde kızarır), ölünce soluk + iç resimde saat yönünde açılan koyu örtü + geri sayım, süre bitince mavi parlama,
-  mana yetmezken soluk. Yeni beceri: yuvayı kopyala, icon'u ver, skill_bar'a durumunu yaz. Alt yazı (Konusma)
-  simgelerle çakışmasın diye yukarı alındı (anchor 0.74). Eski, kodla çizilen golem yuvası (golem_slot.gd,
-  make_golem_icon.gd) kaldırıldı.
+  mana yetmezken soluk. Yeni beceri: yuvayı kopyala, icon'u ver, skill_bar'a durumunu yaz. Alt yazı (Konusma) uzun
+  cümlelerde simgelerin üstüne binmesin diye yukarı alındı (anchor 0.71). Eski, kodla çizilen
+  golem yuvası (golem_slot.gd, make_golem_icon.gd) kaldırıldı.
 - Köylü (NPC): npcs/villager.tscn + villager.gd (class_name Villager, "koylu" grubu): model assets/npc/woman1.glb (asıl
   public/models/Characters/Woman/woman1.glb; Meshy SmartRig, 1.7 m, 1.08 ölçek; içinde yalnızca Walking/Running), bekleme
   oyuncunun idle.fbx'i (RigAnimations.take), zemin yüksekliğine çekilir, oyuncu 5 m'ye gelince ona döner; crowd.gd'de
   ağırlığı 1000 (içinden geçilmez, itilmez). Düşmanlar ona saldırmaz. İlki saklanan anne: main.MOTHER_AT (-8, 0, 61),
   köyün kuzeybatısında orman kenarında büyük kayanın yanı, köye bakar; yoldan görünür, köye girmeden bulunur. (Önce
   meydanın güneyindeki çıkmaz sokaktaydı (4, 87): çatılar örttüğü için kullanıcı göremedi; köyde yer seçerken
-  görüntüyle bak.) Konuşma ve görev henüz yok.
+  görüntüyle bak.) Söyleyecek sözü varken başının üstünde köz rengi "!" (villager.set_marker: Label3D, billboard,
+  no_depth_test); küçük haritada soluk mavi nokta ("koylu" grubu). villager.watches = false: oyuncuya bakmaz, ilk
+  baktığı yöne (home_turn) yavaşça döner ve öyle kalır.
   Deneme: tools/villager_test.gd.
+- Konuşma kutusu: HUD.talk(lines) (hud.tscn Diyalog: altta ortada 660 px panel, Ad + Metin + Ipucu; lines =
+  [[konuşan, söz], ...]). Söz harf harf yazılır (TALK_SPEED 55/sn); tık / Boşluk / Enter önce sözü tamamlar, sonra
+  sıradakine geçer, Esc hepsini geçer; bitince talk_finished (await hud.talk(...)). Ad rengi: "Ruh Kıran" köz kırmızısı,
+  ötekiler soluk mavi. Açıkken beceri simgeleri gizlenir, HUD PROCESS_MODE_ALWAYS. Oyunu çağıran durdurur.
+- Saklanan Anne görevi (tamam): quests/hidden_mother.gd (main'de "SaklananAnne"; kadını ve Nazlı'yı main koyar, bu düğüme
+  verir: mother, daughter). Sözlerin hepsi bu dosyanın başındaki sabitlerde (Claude yazdı; kullanıcı değiştirebilir).
+  Konuşma (converse): kadına 2.2 m'ye gelince (TALK_RANGE) Ruh Kıran durur, ikisi birbirine döner, 0.25 sn sonra oyun
+  durur, ikisinin AnimationPlayer'ı PROCESS_MODE_ALWAYS olur (konuşurken nefes alsınlar), HUD.talk.
+  Akış: 1) FIRST_TALK (7 söz; kadının adı "Kadın"; "Ona dokunma, en azından yaşıyor!") → görev "Meydanda Nazlı'yı bul",
+  "!" kalkar, Nazlı'nın başında adı belirir (Label3D, Aguafina, soluk mavi; Nazlı'nın çocuğu, yüksekliği her kare
+  modelle birlikte) ve küçük haritada köz halkası. 2) Nazlı'ya 9 m (SPOT_RANGE) yaklaşınca Ruh Kıran tanır (alt yazı),
+  görev "Nazlı'nın mührünü kır". 3) Mührü kırılınca (kim vurursa; daughter.seal_broken) mavi ruh yükselir, fısıltı
+  "Teşekkür ederim… Anneme söyle, artık üşümüyorum." (5 sn), 3.4 sn sonra Ruh Kıran "Söyleyeceğim. Dinlemese de.";
+  görev "Nazlı'nın annesine dön", kadında yine "!" ve haritada halka. 4) Kadına dönünce LAST_TALK (5 söz: teşekkür etmez,
+  kovar) → görev biter, "Nazlı. Derimde bir isim daha.", kadın sırtını döner (watches = false); sonra gelince "Git
+  buradan." Ödül yok (bilerek: Hikaye.md "kimse teşekkür etmez"; kullanıcı isterse eklenir).
+  Mühür kadınla konuşmadan kırılırsa: görev "Nazlı'nın annesini bul" diye açılır, kadınla tek konuşmada (LATE_TALK) biter.
+  Kadınla konuştuktan sonra mühür kırılmadan dönülürse alt yazıda "Ona dokunma… ne olur."
+  Nazlı: enemies/enemy.tscn, DAUGHTER_STYLE (ad "Nazlı", 30 can, 5 hasar, boy 0.88: ötekilerin hepsinden ufak; düşman
+  can barında adı yazar), sıradan düşman gibi dövüşür; modeli ötekilerle aynı (zırhlı şövalye).
+  Denemeler: tools/talk_test.gd (konuşma kutusu), tools/mother_quest_test.gd (görevin tamamı; "gec" eki: mühür önce kırılır).
 - public/models kullanıcı tarafından klasörlendi (Characters/, Weapons/, kit/, floor/, hud/); Godot yalnızca godot/assets
   kopyalarını kullanır, etkilenmedi. Tarayıcı sürümünün (src/) bazı yolları (nightshade, skeleton, kılıç/kalkan, Lite Sword
   and Shield Pack, vampir) artık tutmuyor; orada yedek görünümler çıkar.
@@ -345,12 +375,13 @@ godot/ klasöründe; Three.js sürümü (src/) taşıma bitene kadar başvuru ol
   bir kez resme dökülür (4 px/m). Her kare yuvarlak pencereye (draw_colored_polygon + UV) karakter ortada, kameranın
   sağı/ilerisiyle döndürülmüş çizilir (salon ekrandaki gibi baklava görünür); 44 m çap. İşaretler: oyuncu köz kırmızısı
   ok (baktığı yön), düşmanlar altın, iskeletler kemik beyazı, alınmamış isim sayfaları ("isim_sayfasi" grubu) nabız atan
-  köz noktası. Çerçeve can barıyla aynı bronz. Deneme: tools/names_test.gd görüntüleri (sağ üst).
+  köz noktası. Görev hedefi: "gorev_hedefi" grubuna eklenen düğümün çevresinde nabız atan köz halkası; harita dışındaysa
+  o yönde kenarda durur (yön gösterir). Yeni görevlerde hedefi bu gruba ekle, iş bitince çıkar. Çerçeve can barıyla aynı bronz. Deneme: tools/names_test.gd görüntüleri (sağ üst).
 - Görevler: quests/quest_log.gd (class_name QuestLog; main.gd "Gorevler" düğümü olarak ekler, QuestLog.active):
   start(id, başlık, hedef), advance, retitle, finish, is_open/is_done; changed → HUD.show_quests (hud.tscn Gorevler: sağ
   üstte "Görevler" başlığı Aguafina 26 + liste; açık "•", biten "✓", sayaçlı "2 / 5"). Yan görev planı (kullanıcı
   hepsini istedi): 1) Unutulan İsimler (tamam), 2) küçük harita (tamam), 3) Altın Şampiyon (tamam),
-  4) gotik binanın kapısı (tamam), 5) Saklanan Anne (Harabe Köy, NPC + konuşma).
+  4) gotik binanın kapısı (tamam), 5) Saklanan Anne (tamam). Planlanan yan görevlerin hepsi bitti.
   Unutulan İsimler: items/name_page.gd (class_name NamePage, kodla: 0.44 x 0.58 m yanık kâğıt, köz rengi ışıma,
   nabız atan kırmızı ışık; görünen zeminin 0.35 m üstünde süzülür, 1.2 m'de kendiliğinden alınır). main.NAME_PAGES: 5
   sayfa (kütüphane içinde 2, dışında 1, Kül Yolu'nda 2; isim + son söz, taslağı Claude yazdı); ilk sayfada görev açılır,
@@ -469,6 +500,7 @@ Ayrıntılı plan: Necromancer-Baslangic-Plani.md
 - Yeni beceriler için simge: kemik mızrağı (sağ tık) ve kılıç vuruşu beceri çubuğunda yok
 - Mahzendeki rün halkasında golem kalkmadan önce görünen bir kemik yığını; uyanışa özel efekt ve ses
 - Saklanan anneye çömelmiş/korkmuş bekleme animasyonu (Mixamo)
+- Nazlı'ya kendi modeli (şimdi ötekilerle aynı zırhlı şövalye, yalnızca ufak); ruhunun fısıltısına ses
 - Köy modelinin kenarındaki basamağı (0.1-1 m) taş/çalıyla gizle
 - Harabe Köy'ün güneyine 4. bölge Sisli Orman
 - Kül Yolu'nda ölünce kütüphane yerine Kül Yolu girişinde doğma (kontrol noktası)

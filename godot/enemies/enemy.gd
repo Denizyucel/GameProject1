@@ -76,6 +76,11 @@ static var style_bag: Array = []
 @onready var skeleton: Skeleton3D = model.find_child("Skeleton3D")
 
 @export var champion := false
+## Kendine özgü tarz (adı olan düşman; ör. Saklanan Anne görevindeki Nazlı). Boş değilse torbadan tarz çekilmez.
+## Sahneye eklenmeden önce verilir.
+var custom_style := {}
+## Mührü kırılınca ruhu görünsün mü (mavi ışık; sıradan düşmanlarda kapalı). main.on_seal_broken bakar.
+var soul_rises := false
 var style: Dictionary
 var health := 1.0
 var alive := true
@@ -104,7 +109,12 @@ var current := ""
 func _ready() -> void:
 	add_to_group("dusman")
 	home = global_position
-	style = CHAMPION_STYLE if champion else next_style()
+	if champion:
+		style = CHAMPION_STYLE
+	elif not custom_style.is_empty():
+		style = custom_style
+	else:
+		style = next_style()
 	health = style["health"]
 	model.scale *= style["size"]
 	wait_time = randf_range(0.0, WAIT_MAX)

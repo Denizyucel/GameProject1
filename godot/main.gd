@@ -32,11 +32,11 @@ const POTION_CHANCE := 0.2 # ölen düşmanın can iksiri düşürme olasılığ
 const POTION_GAP := 2 # bir iksir düştükten sonra en az bu kadar ölümde iksir düşmez (art arda gelmesin)
 const POTION_DISTANCE := 1.0 # iksir cesedin bu kadar yanına düşer (üstüne değil)
 # Düşmanların yerleri (evleri; Hikaye.md): Kül Yolu'nda önce tek devriye, sonra iki;
-# Harabe Köy'de 3, 4 ve 5'lik gruplar (köy girişi, meydan, batıdaki yokuş)
+# Harabe Köy'de 3, 4 ve 5'lik gruplar (köy girişi, meydan, batıdaki yokuş). Meydandaki dördüncü Nazlı (DAUGHTER_AT).
 const ENEMY_SPAWNS := [
 	Vector3(0.5, 0, 36), Vector3(-1.5, 0, 48), Vector3(2, 0, 50),
 	Vector3(2, 0, 67), Vector3(5, 0, 68.5), Vector3(0, 0, 70.5),
-	Vector3(0, 0, 75), Vector3(4, 0, 74.5), Vector3(2, 0, 77.5), Vector3(7, 0, 76.5),
+	Vector3(0, 0, 75), Vector3(4, 0, 74.5), Vector3(7, 0, 76.5),
 	Vector3(-10, 0, 75.5), Vector3(-8, 0, 77.5), Vector3(-10, 0, 85), Vector3(-8, 0, 85.5), Vector3(-6.5, 0, 84.5),
 ]
 # Unutulan İsimler (yan görev): kütüphanenin yangınından kalan 5 yanık kayıt sayfası. Hepsi bulununca en fazla can +10.
@@ -59,10 +59,13 @@ const DOOR_QUEST := "kapi"
 const DOOR_TITLE := "Altın anahtarı gotik binanın kapısına götür"
 const KEY_LINE := "X'in altını. Batıdaki o kapalı binanın kapısına uyabilir."
 const GOLDEN_KEY := preload("res://items/golden_key.gd")
-# Saklanan Anne (yan görev): Harabe Köy'de evlerin arkasına saklanmış, dönüştürülmemiş bir kadın. Kızı köydeki Altın
-# Ölümsüzlerden biri. Şimdilik yalnızca durur (konuşma ve görev sonra).
+# Saklanan Anne (yan görev): Harabe Köy'ün kenarında saklanan, dönüştürülmemiş bir kadın. Kızı Nazlı köy
+# meydanındaki Altın Ölümsüzlerden biri. Konuşmalar ve görev quests/hidden_mother.gd'de ("SaklananAnne" düğümü);
+# main yalnızca ikisini yerine koyar ve o düğüme verir.
 const VILLAGER := preload("res://npcs/villager.tscn")
+const HIDDEN_MOTHER := preload("res://quests/hidden_mother.gd")
 const MOTHER_AT := Vector3(-8, 0, 61) # köyün kuzeybatısında, orman kenarında büyük kayanın yanı; köye girmeden görülür
+const DAUGHTER_AT := Vector3(2, 0, 77.5) # meydanın ortası (öteki üç düşmanın arasında)
 # Kemik golemi (yan görev zincirinin sonu): X'in mektubu okununca görev açılır; gotik binanın mahzenindeki rün
 # halkasına inilince golem ilk kez kalkar (levels/bina_ici.gd → awaken_golem) ve 2 tuşuyla çağırma hakkı kazanılır.
 # Aynı anda tek golem; iskeletlerin 5'lik sınırından ayrı. Canı bitince ruhu serbest kalır; hak kaybolmaz, 20 sn
@@ -128,28 +131,40 @@ func _ready() -> void:
 		fire.global_position = point
 		fire.ignite()
 	for point in ENEMY_SPAWNS:
-		var enemy := ENEMY.instantiate()
-		enemy.position = point # evi burası olur (_ready'de)
-		enemies_root.add_child(enemy)
-		enemy.seal_broken.connect(on_seal_broken)
-		enemy.buried.connect(on_enemy_fell)
+		place_enemy(ENEMY.instantiate(), point)
 	champion = ENEMY.instantiate()
 	champion.champion = true
 	champion.name = "AltinSampiyon"
-	champion.position = CHAMPION_AT
-	enemies_root.add_child(champion)
-	champion.seal_broken.connect(on_seal_broken)
-	champion.buried.connect(on_enemy_fell)
+	place_enemy(champion, CHAMPION_AT)
+	# Saklanan Anne: kadın köyün kenarında, kızı Nazlı meydanda (ötekilerden ufak, mührü kırılınca ruhu görünür)
 	var mother := VILLAGER.instantiate()
 	mother.name = "Anne"
 	mother.position = MOTHER_AT
 	mother.rotation.y = atan2(12.0, 15.0) # köye (meydana) bakar: kızı orada
 	add_child(mother)
+	var daughter := ENEMY.instantiate()
+	daughter.name = "Nazli"
+	daughter.custom_style = HIDDEN_MOTHER.DAUGHTER_STYLE
+	daughter.soul_rises = true
+	place_enemy(daughter, DAUGHTER_AT)
+	var mother_quest := HIDDEN_MOTHER.new()
+	mother_quest.name = "SaklananAnne"
+	mother_quest.mother = mother
+	mother_quest.daughter = daughter
+	add_child(mother_quest)
 	# Açılıştan geldiyse: Ruh Kıran kapıdan girer, salonun ortasında durup yangının izlerine bakar
 	if after_intro:
 		after_intro = false
 		player.enter_scene(ENTER_FROM, ENTER_TO)
 		player.arrived.connect(func(): hud.say(ENTER_LINE), CONNECT_ONE_SHOT)
+
+
+## Hazırlanmış bir düşmanı at noktasına koy (evi orası olur) ve mühür / ceset sinyallerini bağla
+func place_enemy(enemy: Node3D, at: Vector3) -> void:
+	enemy.position = at
+	enemies_root.add_child(enemy)
+	enemy.seal_broken.connect(on_seal_broken)
+	enemy.buried.connect(on_enemy_fell)
 
 
 func place_name_pages() -> void:
@@ -182,9 +197,10 @@ func on_name_page(page: NamePage) -> void:
 		hud.say("%s. %s" % [page.person, page.line])
 
 
-# Düşman ölünce yalnızca altın mühür kırılır: mavi ruh ve "Teşekkür ederiz" fısıltısı yok (kullanıcı istedi)
+# Düşman ölünce yalnızca altın mühür kırılır: mavi ruh ve "Teşekkür ederiz" fısıltısı yok (kullanıcı istedi).
+# Adı olan düşmanlarda (enemy.soul_rises; Nazlı) ruh da yükselir; fısıltısını kendi görevi söyler.
 func on_seal_broken(enemy: Node3D) -> void:
-	spawn_effect(enemy.global_position, false, false)
+	spawn_effect(enemy.global_position, false, enemy.soul_rises)
 	GameCamera.shake(0.6)
 	if enemy.champion:
 		quests.start(CHAMPION_QUEST, CHAMPION_TITLE) # yaklaşmadan uzaktan (mızrakla) kırıldıysa da açılıp bitsin

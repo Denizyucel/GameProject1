@@ -1,7 +1,7 @@
-# Beceri çubuğu (HUD, alt ortada: can küresi ile mana küresinin arası; hud.tscn Beceriler). Her beceri bir yuva
+# Beceri çubuğu (HUD, altta can küresinin hemen sağından başlar, sağa doğru dizilir; hud.tscn Beceriler). Her beceri bir yuva
 # (hud/skill_slot.gd); görsellerde tuş da yazıyor. Bu betik her kare oyunun durumuna bakıp yuvaları günceller:
 #   - Iskelet (1 tuşu, iskelet kaldır): yakında (8 m) ceset varsa ve mana yetiyorsa parlak, yoksa soluk.
-#   - Golem (2 tuşu, kemik golemi): hak kazanılana kadar gizli (çubuk tek simgeyle ortalanır). Golem ayaktayken üstünde
+#   - Golem (2 tuşu, kemik golemi): hak kazanılana kadar gizli. Golem ayaktayken üstünde
 #     can barı; ölünce geri sayım; hazırken mana yetmiyorsa soluk.
 # Durumu main.gd'den okur (nearest_corpse, has_golem, golem, golem_cooldown).
 

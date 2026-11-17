@@ -13,6 +13,7 @@ func _initialize() -> void:
 	var player = main.get_node("Player")
 	await create_timer(1.0).timeout
 	var mother = main.get_node("Anne")
+	main.get_node("SaklananAnne").set_process(false) # bu deneme yalnızca köylünün kendisi; konuşma tools/talk_test.gd'de
 	var map: RID = player.get_world_3d().navigation_map
 	while NavigationServer3D.map_get_iteration_id(map) == 0:
 		await physics_frame
